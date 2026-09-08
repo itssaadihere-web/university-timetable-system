@@ -142,13 +142,54 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     searchQuery: '',
   });
 
-  // Offline caching on load / changes
+  // Fetch Live Data from Supabase if configured
   useEffect(() => {
-    const cached = loadTimetableFromCache();
-    if (cached && !isSupabaseConfigured) {
-      // Load cached items if available
-      if (cached.sessions?.length) setSessions(cached.sessions);
+    async function loadLiveSupabaseData() {
+      if (!isSupabaseConfigured || !supabase) {
+        const cached = loadTimetableFromCache();
+        if (cached?.sessions?.length) setSessions(cached.sessions);
+        return;
+      }
+
+      try {
+        const [
+          { data: semData },
+          { data: roomData },
+          { data: facData },
+          { data: batchData },
+          { data: crsData },
+          { data: sessData },
+          { data: advData },
+          { data: mupData }
+        ] = await Promise.all([
+          supabase.from('semesters').select('*'),
+          supabase.from('rooms').select('*'),
+          supabase.from('faculty').select('*'),
+          supabase.from('batches').select('*'),
+          supabase.from('courses').select('*'),
+          supabase.from('class_sessions').select('*'),
+          supabase.from('advising_suggestions').select('*'),
+          supabase.from('makeup_requests').select('*'),
+        ]);
+
+        if (semData && semData.length > 0) {
+          setSemesters(semData as Semester[]);
+          const active = semData.find((s) => s.is_active) || semData[0];
+          setActiveSemester(active as Semester);
+        }
+        if (roomData && roomData.length > 0) setRooms(roomData as Room[]);
+        if (facData && facData.length > 0) setFaculty(facData as Faculty[]);
+        if (batchData && batchData.length > 0) setBatches(batchData as Batch[]);
+        if (crsData && crsData.length > 0) setCourses(crsData as Course[]);
+        if (sessData && sessData.length > 0) setSessions(sessData as ClassSession[]);
+        if (advData && advData.length > 0) setAdvisingSuggestions(advData as AdvisingSuggestion[]);
+        if (mupData && mupData.length > 0) setMakeupRequests(mupData as MakeupRequest[]);
+      } catch (err) {
+        console.warn('Supabase fetch notice (using cached/fallback state):', err);
+      }
     }
+
+    loadLiveSupabaseData();
   }, []);
 
   // Save to cache whenever published sessions change
@@ -224,7 +265,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
   const addSession = async (
     sessionData: Omit<ClassSession, 'id'>
   ): Promise<{ success: boolean; errors?: string[] }> => {
-    const newId = `sess-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    // Generate valid UUID for Postgres
+    const newId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `sess-${Date.now()}`;
     const fullSession: ClassSession = {
       ...sessionData,
       id: newId,
@@ -239,6 +281,14 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
     // Optimistic state update
     setSessions((prev) => [...prev, fullSession]);
+
+    // Persist to Supabase if configured
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('class_sessions').insert([fullSession]);
+      if (error) {
+        console.warn('Supabase DB Insert notice:', error.message);
+      }
+    }
 
     // Add Audit Log
     const newLog: AuditLogEntry = {
@@ -267,6 +317,16 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const oldSession = sessions.find((s) => s.id === updatedSession.id);
     setSessions((prev) => prev.map((s) => (s.id === updatedSession.id ? updatedSession : s)));
 
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase
+        .from('class_sessions')
+        .update(updatedSession)
+        .eq('id', updatedSession.id);
+      if (error) {
+        console.warn('Supabase DB Update notice:', error.message);
+      }
+    }
+
     const newLog: AuditLogEntry = {
       id: `log-${Date.now()}`,
       class_session_id: updatedSession.id,
@@ -286,6 +346,10 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
   const deleteSession = async (sessionId: string): Promise<{ success: boolean }> => {
     const oldSession = sessions.find((s) => s.id === sessionId);
     setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('class_sessions').delete().eq('id', sessionId);
+    }
 
     if (oldSession) {
       const newLog: AuditLogEntry = {
@@ -330,6 +394,19 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
     setSessions((prev) => prev.map((s) => (s.id === sessionId ? proposed : s)));
 
+    if (isSupabaseConfigured && supabase) {
+      await supabase
+        .from('class_sessions')
+        .update({
+          day_of_week: targetDay,
+          start_time: targetStartTime,
+          end_time: targetEndTime,
+          room_id: proposed.room_id,
+          updated_at: proposed.updated_at,
+        })
+        .eq('id', sessionId);
+    }
+
     const newLog: AuditLogEntry = {
       id: `log-${Date.now()}`,
       class_session_id: sessionId,
@@ -353,8 +430,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const publishedSessions = sessions.map((s) => ({ ...s, status: 'published' as const }));
 
     const newVersion: TimetableVersion = {
-      id: `ver-${nextVer}-${Date.now()}`,
-      semester_id: activeSemester?.id || 'sem-fall-2026',
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `ver-${nextVer}-${Date.now()}`,
+      semester_id: activeSemester?.id || '11111111-1111-1111-1111-111111111111',
       version_number: nextVer,
       snapshot: publishedSessions,
       changes_summary: summary,
@@ -364,6 +441,14 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
     setSessions(publishedSessions);
     setVersions((prev) => [newVersion, ...prev]);
+
+    if (isSupabaseConfigured && supabase) {
+      await supabase
+        .from('class_sessions')
+        .update({ status: 'published' })
+        .eq('semester_id', activeSemester?.id || '11111111-1111-1111-1111-111111111111');
+      await supabase.from('timetable_versions').insert([newVersion]);
+    }
 
     const newLog: AuditLogEntry = {
       id: `log-${Date.now()}`,
