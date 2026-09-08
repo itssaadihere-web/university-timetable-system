@@ -17,7 +17,8 @@ import {
   Layers,
   Monitor,
   Tv,
-  Cpu
+  Cpu,
+  AlertTriangle
 } from 'lucide-react';
 
 interface DraggableSessionCardProps {
@@ -55,6 +56,13 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
   const teacher = faculty.find((f) => f.id === session.faculty_id);
   const room = rooms.find((r) => r.id === session.room_id);
   const batch = batches.find((b) => b.id === session.batch_id);
+
+  const isUnassignedRoom =
+    !room ||
+    session.room_id === 'room-unassigned' ||
+    session.room_id === 'a0000000-0000-0000-0000-000000000000' ||
+    room.name.includes('Not Assigned') ||
+    room.name.includes('Pending');
 
   // Check if another coordinator has a soft lock on this session
   const softLock = activeLocks[session.id];
@@ -166,35 +174,43 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
         </div>
 
         {/* Room with tags */}
-        <div className="flex items-center justify-between gap-1">
+        <div className={`flex items-center justify-between gap-1 p-1 rounded-md ${isUnassignedRoom ? 'bg-amber-50 border border-amber-200 text-amber-800' : ''}`}>
           <div className="flex items-center gap-1.5 truncate">
-            <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-            <span className="font-medium text-slate-800 truncate">{room?.name || 'Unassigned'}</span>
+            {isUnassignedRoom ? (
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 animate-pulse" />
+            ) : (
+              <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+            )}
+            <span className={`font-semibold truncate ${isUnassignedRoom ? 'text-amber-800 text-[10px]' : 'text-slate-800'}`}>
+              {isUnassignedRoom ? '⚠️ Room Not Assigned' : (room?.name || 'Unassigned')}
+            </span>
           </div>
 
           {/* Room capability icons */}
-          <div className="flex items-center gap-0.5 shrink-0">
-            {room?.room_types.includes('multimedia') && (
-              <span title="Multimedia projector enabled">
-                <Monitor className="w-2.5 h-2.5 text-indigo-500" />
-              </span>
-            )}
-            {room?.room_types.includes('interactive_lcd') && (
-              <span title="Interactive LCD touch display">
-                <Tv className="w-2.5 h-2.5 text-emerald-500" />
-              </span>
-            )}
-            {room?.room_types.includes('horseshoe') && (
-              <span title="Horseshoe Amphitheater layout">
-                <Sparkles className="w-2.5 h-2.5 text-amber-500" />
-              </span>
-            )}
-            {room?.room_types.includes('computer_lab') && (
-              <span title="Computer Lab workstation layout">
-                <Cpu className="w-2.5 h-2.5 text-blue-500" />
-              </span>
-            )}
-          </div>
+          {!isUnassignedRoom && (
+            <div className="flex items-center gap-0.5 shrink-0">
+              {room?.room_types.includes('multimedia') && (
+                <span title="Multimedia projector enabled">
+                  <Monitor className="w-2.5 h-2.5 text-indigo-500" />
+                </span>
+              )}
+              {room?.room_types.includes('interactive_lcd') && (
+                <span title="Interactive LCD touch display">
+                  <Tv className="w-2.5 h-2.5 text-emerald-500" />
+                </span>
+              )}
+              {room?.room_types.includes('horseshoe') && (
+                <span title="Horseshoe Amphitheater layout">
+                  <Sparkles className="w-2.5 h-2.5 text-amber-500" />
+                </span>
+              )}
+              {room?.room_types.includes('computer_lab') && (
+                <span title="Computer Lab workstation layout">
+                  <Cpu className="w-2.5 h-2.5 text-blue-500" />
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Faculty */}

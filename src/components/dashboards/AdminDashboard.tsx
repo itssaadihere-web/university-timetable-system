@@ -21,7 +21,8 @@ import {
   BookOpen, 
   Sparkles,
   Layers,
-  ArrowRight
+  ArrowRight,
+  AlertTriangle
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -46,6 +47,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const publishedCount = sessions.filter((s) => s.status === 'published').length;
   const draftCount = sessions.filter((s) => s.status === 'draft').length;
+  const unassignedSessions = sessions.filter((s) => {
+    const r = rooms.find((rm) => rm.id === s.room_id);
+    return !r || s.room_id === 'room-unassigned' || s.room_id === 'a0000000-0000-0000-0000-000000000000' || r.name.includes('Pending') || r.name.includes('Not Assigned');
+  });
 
   return (
     <div className="space-y-6">
@@ -82,7 +87,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               onClick={onOpenRollover}
               className="flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all"
             >
-              <Copy className="w-4 h-4 text-purple-300" />
+              <Copy className="w-3.5 h-3.5 text-purple-300" />
               <span>Semester Rollover</span>
             </button>
 
@@ -90,12 +95,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               onClick={onOpenImport}
               className="flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all"
             >
-              <Upload className="w-4 h-4 text-purple-300" />
+              <Upload className="w-3.5 h-3.5 text-purple-300" />
               <span>CSV Importer</span>
             </button>
           </div>
         </div>
       </div>
+
+      {/* Unassigned Rooms Alert Notification for Admin */}
+      {unassignedSessions.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="text-xs">
+              <p className="font-bold text-amber-950">
+                Institutional Alert: {unassignedSessions.length} Class Sessions Across Department Timetables Have No Room Assigned
+              </p>
+              <p className="text-amber-800/90 mt-0.5">
+                Department schedules have courses with pending rooms. Switch to the Timetable Matrix tab or notify program coordinators to assign available lecture halls.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setAdminTab('matrix')}
+            className="px-3.5 py-1.5 rounded-xl bg-amber-200 hover:bg-amber-300 text-amber-950 font-bold text-xs shrink-0 self-start sm:self-auto transition-all"
+          >
+            View Matrix ({unassignedSessions.length})
+          </button>
+        </div>
+      )}
 
       {/* KPI Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

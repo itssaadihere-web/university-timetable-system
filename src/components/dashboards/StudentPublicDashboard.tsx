@@ -17,7 +17,8 @@ import {
   Layers,
   ChevronLeft,
   ChevronRight,
-  Info
+  Info,
+  AlertTriangle
 } from 'lucide-react';
 
 const DAYS = [
@@ -62,6 +63,12 @@ export const StudentPublicDashboard: React.FC = () => {
   const daySessions = batchSessions
     .filter((s) => s.day_of_week === selectedDay)
     .sort((a, b) => a.start_time.localeCompare(b.start_time));
+
+  // Count unassigned rooms for the selected batch
+  const unassignedInBatchCount = batchSessions.filter((s) => {
+    const r = rooms.find((room) => room.id === s.room_id);
+    return !r || s.room_id === 'room-unassigned' || s.room_id === 'a0000000-0000-0000-0000-000000000000' || r.name.includes('Pending') || r.name.includes('Not Assigned');
+  }).length;
 
   const handleExport = (type: 'excel' | 'pdf') => {
     const title = selectedBatch ? `Batch_${selectedBatch.name}` : 'Student_Timetable';
@@ -127,6 +134,21 @@ export const StudentPublicDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Unassigned Rooms Alert Notice (If Any) */}
+      {unassignedInBatchCount > 0 && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl p-4 flex items-start gap-3 shadow-2xs">
+          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="text-xs">
+            <p className="font-bold">
+              Venue Notice: {unassignedInBatchCount} class session{unassignedInBatchCount === 1 ? '' : 's'} in this batch {unassignedInBatchCount === 1 ? 'has' : 'have'} pending room assignment.
+            </p>
+            <p className="text-amber-800/90 mt-0.5">
+              These sessions are marked with <span className="font-bold text-amber-900">⚠️ Room Not Assigned</span> below. The department coordinator will allocate rooms prior to class commencement.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Selector & Filter Card */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5">
@@ -228,11 +250,21 @@ export const StudentPublicDashboard: React.FC = () => {
               const course = courses.find((c) => c.id === session.course_id);
               const teacher = faculty.find((f) => f.id === session.faculty_id);
               const room = rooms.find((r) => r.id === session.room_id);
+              const isUnassigned =
+                !room ||
+                session.room_id === 'room-unassigned' ||
+                session.room_id === 'a0000000-0000-0000-0000-000000000000' ||
+                room.name.includes('Pending') ||
+                room.name.includes('Not Assigned');
 
               return (
                 <div
                   key={session.id}
-                  className="bg-white rounded-2xl border border-slate-200/90 hover:border-indigo-400 hover:shadow-md transition-all p-5 space-y-3"
+                  className={`bg-white rounded-2xl border transition-all p-5 space-y-3 ${
+                    isUnassigned
+                      ? 'border-amber-300 bg-amber-50/30 hover:border-amber-400 hover:shadow-md'
+                      : 'border-slate-200/90 hover:border-indigo-400 hover:shadow-md'
+                  }`}
                 >
                   {/* Top: Course Code & Time */}
                   <div className="flex items-start justify-between gap-2">
@@ -251,15 +283,24 @@ export const StudentPublicDashboard: React.FC = () => {
                   </h4>
 
                   {/* Room & Instructor */}
-                  <div className="pt-2 border-t border-slate-100 space-y-1.5 text-xs text-slate-600">
+                  <div className="pt-2 border-t border-slate-100 space-y-2 text-xs text-slate-600">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 font-semibold text-slate-800">
-                        <MapPin className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>{room?.name}</span>
-                      </div>
-                      <span className="text-[11px] text-slate-400">
-                        {room?.building} (Fl {room?.floor})
-                      </span>
+                      {isUnassigned ? (
+                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-100 text-amber-900 font-bold text-[11px] border border-amber-200 animate-pulse">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
+                          <span>⚠️ Room Not Assigned (Pending)</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 font-semibold text-slate-800">
+                          <MapPin className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>{room?.name}</span>
+                        </div>
+                      )}
+                      {!isUnassigned && room && (
+                        <span className="text-[11px] text-slate-400">
+                          {room.building} (Fl {room.floor})
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-1.5">
@@ -276,3 +317,4 @@ export const StudentPublicDashboard: React.FC = () => {
     </div>
   );
 };
+

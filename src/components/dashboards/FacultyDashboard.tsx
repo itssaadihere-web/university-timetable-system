@@ -16,7 +16,8 @@ import {
   DoorOpen, 
   PlusCircle, 
   Sparkles,
-  Layers
+  Layers,
+  AlertTriangle
 } from 'lucide-react';
 
 const DAYS = [
@@ -187,19 +188,36 @@ export const FacultyDashboard: React.FC = () => {
                               const crs = courses.find((c) => c.id === s.course_id);
                               const rm = rooms.find((r) => r.id === s.room_id);
                               const bth = batches.find((b) => b.id === s.batch_id);
+                              const isUnassigned =
+                                !rm ||
+                                s.room_id === 'room-unassigned' ||
+                                s.room_id === 'a0000000-0000-0000-0000-000000000000' ||
+                                rm.name.includes('Pending') ||
+                                rm.name.includes('Not Assigned');
 
                               return (
                                 <div
                                   key={s.id}
-                                  className="p-2.5 rounded-xl bg-teal-50 border border-teal-200 space-y-1 shadow-2xs"
+                                  className={`p-2.5 rounded-xl border space-y-1 shadow-2xs ${
+                                    isUnassigned
+                                      ? 'bg-amber-50 border-amber-300'
+                                      : 'bg-teal-50 border-teal-200'
+                                  }`}
                                 >
                                   <div className="flex items-center justify-between">
                                     <span className="font-bold text-teal-900 font-mono text-[11px]">
                                       {crs?.code}
                                     </span>
-                                    <span className="text-[10px] font-semibold text-teal-700">
-                                      {rm?.name}
-                                    </span>
+                                    {isUnassigned ? (
+                                      <span className="flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-200/80 px-1.5 py-0.5 rounded">
+                                        <AlertTriangle className="w-2.5 h-2.5 text-amber-700" />
+                                        <span>Pending Room</span>
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] font-semibold text-teal-700">
+                                        {rm?.name}
+                                      </span>
+                                    )}
                                   </div>
                                   <h5 className="font-bold text-slate-900 line-clamp-1 text-[11px]">
                                     {crs?.name}

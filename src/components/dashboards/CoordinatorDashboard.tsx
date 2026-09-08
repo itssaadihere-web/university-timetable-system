@@ -20,7 +20,8 @@ import {
   UserPlus, 
   Layers, 
   Copy, 
-  Upload 
+  Upload,
+  AlertTriangle 
 } from 'lucide-react';
 
 interface CoordinatorDashboardProps {
@@ -41,13 +42,18 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
   onOpenImport,
 }) => {
   const { currentUser } = useAuth();
-  const { sessions, advisingSuggestions, makeupRequests, activeSemester } = useTimetable();
+  const { sessions, rooms, advisingSuggestions, makeupRequests, activeSemester } = useTimetable();
 
   const [activeTab, setActiveTab] = useState<'matrix' | 'advising' | 'makeup' | 'analytics'>('matrix');
 
   const draftSessionsCount = sessions.filter((s) => s.status === 'draft').length;
   const pendingAdvisingCount = advisingSuggestions.filter((a) => a.status === 'pending').length;
   const pendingMakeupCount = makeupRequests.filter((m) => m.status === 'pending').length;
+
+  const unassignedSessions = sessions.filter((s) => {
+    const r = rooms.find((rm) => rm.id === s.room_id);
+    return !r || s.room_id === 'room-unassigned' || s.room_id === 'a0000000-0000-0000-0000-000000000000' || r.name.includes('Pending') || r.name.includes('Not Assigned');
+  });
 
   return (
     <div className="space-y-6">
@@ -117,6 +123,26 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Unassigned Rooms Alert Notification for Coordinator */}
+      {unassignedSessions.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="text-xs">
+              <p className="font-bold text-amber-950">
+                ⚠️ Room Allocation Alert: {unassignedSessions.length} Scheduled Class Sessions Have No Room Assigned
+              </p>
+              <p className="text-amber-800/90 mt-0.5">
+                From the uploaded department schedules, some courses (e.g. BAN-202 Fri, PST-101, ARM-5/6 RM courses, BS(AF)-3 HUS-202, BBA-6 electives) currently have pending room numbers.
+              </p>
+            </div>
+          </div>
+          <span className="px-3 py-1 rounded-lg bg-amber-200 text-amber-900 font-bold text-xs shrink-0 self-start sm:self-auto">
+            {unassignedSessions.length} Venues Pending
+          </span>
+        </div>
+      )}
 
       {/* Navigation Sub-Tabs */}
       <div className="bg-white p-1.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-1 overflow-x-auto">
