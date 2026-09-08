@@ -1,61 +1,72 @@
 'use client';
 
 import React from 'react';
+import { useAuth } from '@/context/AuthContext';
 import { useTimetable } from '@/context/TimetableContext';
-import { UserRole } from '@/types';
 import { 
   Calendar, 
+  Lock, 
+  LogOut, 
+  ShieldCheck, 
   Sparkles, 
-  Radio, 
-  Shield, 
   UserCheck, 
   GraduationCap, 
-  Plus, 
-  UploadCloud, 
-  Layers,
-  AlertCircle
+  UserPlus,
+  Radio,
+  User
 } from 'lucide-react';
 
 interface NavbarProps {
-  onOpenNewSessionModal: () => void;
-  onOpenPublishModal: () => void;
+  onOpenLoginModal: () => void;
+  onOpenUserManagement: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
-  onOpenNewSessionModal,
-  onOpenPublishModal,
+  onOpenLoginModal,
+  onOpenUserManagement,
 }) => {
-  const {
-    activeSemester,
-    currentRole,
-    setCurrentRole,
-    currentUserName,
-    setCurrentUserName,
-    sessions,
-    isOnline,
-    lastSyncTime,
-  } = useTimetable();
+  const { currentUser, currentRole, isAuthenticated, logout, quickLogin } = useAuth();
+  const { activeSemester, lastSyncTime } = useTimetable();
 
-  const draftSessionsCount = sessions.filter((s) => s.status === 'draft').length;
-
-  const handleRoleChange = (role: UserRole) => {
-    setCurrentRole(role);
-    if (role === 'coordinator' || role === 'admin') {
-      setCurrentUserName('Coordinator Alice');
-    } else if (role === 'faculty') {
-      setCurrentUserName('Dr. Alan Turing');
-    } else {
-      setCurrentUserName('Hamza Tariq (Student)');
+  const getRoleBadge = () => {
+    switch (currentRole) {
+      case 'admin':
+        return {
+          label: 'System Administrator',
+          badgeClass: 'bg-purple-100 text-purple-800 border-purple-200',
+          icon: ShieldCheck,
+        };
+      case 'coordinator':
+        return {
+          label: 'Program Coordinator',
+          badgeClass: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+          icon: Sparkles,
+        };
+      case 'faculty':
+        return {
+          label: 'Faculty / Instructor',
+          badgeClass: 'bg-teal-100 text-teal-800 border-teal-200',
+          icon: UserCheck,
+        };
+      default:
+        return {
+          label: 'Student (Public Access)',
+          badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
+          icon: GraduationCap,
+        };
     }
   };
 
+  const roleInfo = getRoleBadge();
+  const RoleIcon = roleInfo.icon;
+
   return (
-    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm">
+    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200 shadow-2xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Brand & Active Semester */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-indigo-200">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-200">
               <Calendar className="w-5 h-5" />
             </div>
             <div>
@@ -67,98 +78,86 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {activeSemester?.name || 'Fall 2026'}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 hidden md:block">
-                Centralized Conflict-Free Timetable & Resource Engine
+              <p className="text-[11px] text-slate-500 hidden md:block">
+                University Centralized Timetable & Resource Engine
               </p>
             </div>
           </div>
 
-          {/* Center: Live Sync & Status Indicator */}
-          <div className="hidden lg:flex items-center gap-4">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-xs text-slate-600 shadow-inner">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-              </span>
-              <span className="font-medium text-slate-700">Centralized DB Sync</span>
-              <span className="text-slate-400">|</span>
-              <span className="text-slate-500 font-mono text-[11px]">{lastSyncTime}</span>
-            </div>
-
-            {currentRole === 'coordinator' && draftSessionsCount > 0 && (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-xs text-amber-800 animate-pulse">
-                <Layers className="w-3.5 h-3.5" />
-                <span>{draftSessionsCount} Draft Edits Staged</span>
-              </div>
-            )}
+          {/* Center: Live Sync Pulse */}
+          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-xs text-slate-600">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span className="font-semibold text-slate-700">Centralized Postgres Realtime</span>
+            <span className="text-slate-300">|</span>
+            <span className="text-slate-500 font-mono text-[11px]">{lastSyncTime}</span>
           </div>
 
-          {/* Right Controls: Role Switcher & Action Buttons */}
+          {/* Right: Auth Profile & Login Action */}
           <div className="flex items-center gap-3">
-            {/* Role Switcher */}
-            <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-              <button
-                onClick={() => handleRoleChange('coordinator')}
-                title="Coordinator / Admin (Full Edit & Advising Access)"
-                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
-                  currentRole === 'coordinator' || currentRole === 'admin'
-                    ? 'bg-white text-indigo-700 shadow-sm font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Shield className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Coordinator</span>
-              </button>
-
-              <button
-                onClick={() => handleRoleChange('faculty')}
-                title="Faculty (View Teaching Schedule & Free Rooms)"
-                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
-                  currentRole === 'faculty'
-                    ? 'bg-white text-indigo-700 shadow-sm font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <UserCheck className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Faculty</span>
-              </button>
-
-              <button
-                onClick={() => handleRoleChange('student')}
-                title="Student (View Published Batch Timetable)"
-                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
-                  currentRole === 'student'
-                    ? 'bg-white text-indigo-700 shadow-sm font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <GraduationCap className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Student</span>
-              </button>
-            </div>
-
-            {/* Coordinator Actions */}
-            {(currentRole === 'coordinator' || currentRole === 'admin') && (
-              <div className="flex items-center gap-2">
-                {draftSessionsCount > 0 && (
-                  <button
-                    onClick={onOpenPublishModal}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-lg shadow-sm hover:shadow transition-all"
-                  >
-                    <UploadCloud className="w-3.5 h-3.5" />
-                    <span className="hidden md:inline">Review & Publish</span>
-                    <span className="inline-flex items-center justify-center px-1.5 py-0.2 rounded-full bg-white/20 text-[10px]">
-                      {draftSessionsCount}
+            {isAuthenticated && currentUser ? (
+              <div className="flex items-center gap-2 sm:gap-3">
+                {/* User Role Tag */}
+                <div className="hidden sm:flex flex-col items-end text-right">
+                  <span className="text-xs font-bold text-slate-900">{currentUser.name}</span>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-0.2 rounded-full text-[10px] font-bold border ${roleInfo.badgeClass}`}
+                    >
+                      <RoleIcon className="w-3 h-3" />
+                      <span>{roleInfo.label}</span>
                     </span>
+                  </div>
+                </div>
+
+                {/* Switch / User Console (Admin/Coord) */}
+                {(currentUser.role === 'admin' || currentUser.role === 'coordinator') && (
+                  <button
+                    onClick={onOpenUserManagement}
+                    className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-xl transition-all"
+                    title={
+                      currentUser.role === 'admin'
+                        ? 'Manage Users & Roles'
+                        : 'Create Faculty Account'
+                    }
+                  >
+                    <UserPlus className="w-4 h-4" />
                   </button>
                 )}
 
+                {/* Switch Role / Login Modal */}
                 <button
-                  onClick={onOpenNewSessionModal}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm hover:shadow transition-all"
+                  onClick={onOpenLoginModal}
+                  className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all"
+                  title="Switch User Profile or Role"
                 >
-                  <Plus className="w-4 h-4" />
-                  <span className="hidden sm:inline">Add Class</span>
+                  Switch
+                </button>
+
+                {/* Logout to Student View */}
+                <button
+                  onClick={logout}
+                  className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                  title="Sign Out (Return to Student Public Schedule)"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                  <GraduationCap className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Public Student View</span>
+                </span>
+
+                <button
+                  onClick={onOpenLoginModal}
+                  className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs hover:shadow transition-all"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Staff / Faculty Login</span>
                 </button>
               </div>
             )}

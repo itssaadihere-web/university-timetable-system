@@ -1,5 +1,16 @@
 export type UserRole = 'student' | 'faculty' | 'coordinator' | 'admin';
 
+export interface UserAccount {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  department?: string;
+  faculty_id?: string;
+  created_at: string;
+  created_by?: string;
+}
+
 export type RoomType = 'standard' | 'horseshoe' | 'multimedia' | 'interactive_lcd' | 'computer_lab';
 
 export interface Room {

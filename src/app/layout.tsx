@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { AuthProvider } from '@/context/AuthContext';
 import { TimetableProvider } from '@/context/TimetableContext';
 
 export const metadata: Metadata = {
@@ -15,7 +16,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-slate-50 text-slate-900 antialiased min-h-screen">
-        <TimetableProvider>{children}</TimetableProvider>
+        <AuthProvider>
+          <TimetableProvider>{children}</TimetableProvider>
+        </AuthProvider>
       </body>
     </html>
   );
