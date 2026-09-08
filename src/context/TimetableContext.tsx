@@ -135,7 +135,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     viewMode: 'batch',
     selectedBatchId: INITIAL_BATCHES[0]?.id,
     selectedFacultyId: INITIAL_FACULTY[0]?.id,
-    selectedRoomId: INITIAL_ROOMS[0]?.id,
+    selectedRoomId: INITIAL_ROOMS.find((r) => r.id !== 'room-unassigned')?.id || INITIAL_ROOMS[0]?.id,
     selectedRoomTypes: [],
     departmentFilter: 'ALL',
     showDrafts: true,
@@ -177,10 +177,31 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           const active = semData.find((s) => s.is_active) || semData[0];
           setActiveSemester(active as Semester);
         }
-        if (roomData && roomData.length > 0) setRooms(roomData as Room[]);
-        if (facData && facData.length > 0) setFaculty(facData as Faculty[]);
+
+        // Sanitize any legacy dummy records from old test databases
+        if (roomData && roomData.length > 0) {
+          const cleanRooms = (roomData as Room[]).filter(
+            (r) => !r.name.toLowerCase().includes('flexible') && !r.name.toLowerCase().includes('hall 101')
+          );
+          if (cleanRooms.length > 0) setRooms(cleanRooms);
+        }
+
+        if (facData && facData.length > 0) {
+          const cleanFaculty = (facData as Faculty[]).filter(
+            (f) => !f.name.toLowerCase().includes('turing') && !f.name.toLowerCase().includes('hopper')
+          );
+          if (cleanFaculty.length > 0) setFaculty(cleanFaculty);
+        }
+
         if (batchData && batchData.length > 0) setBatches(batchData as Batch[]);
-        if (crsData && crsData.length > 0) setCourses(crsData as Course[]);
+
+        if (crsData && crsData.length > 0) {
+          const cleanCourses = (crsData as Course[]).filter(
+            (c) => !c.code.toLowerCase().includes('cs-301') && !c.name.toLowerCase().includes('compiler')
+          );
+          if (cleanCourses.length > 0) setCourses(cleanCourses);
+        }
+
         if (sessData && sessData.length > 0) setSessions(sessData as ClassSession[]);
         if (advData && advData.length > 0) setAdvisingSuggestions(advData as AdvisingSuggestion[]);
         if (mupData && mupData.length > 0) setMakeupRequests(mupData as MakeupRequest[]);

@@ -1,13 +1,23 @@
 import { ClassSession, Room, Faculty, Batch, Course } from '@/types';
 
 const CACHE_KEYS = {
-  SESSIONS: 'utt_cached_sessions',
-  ROOMS: 'utt_cached_rooms',
-  FACULTY: 'utt_cached_faculty',
-  BATCHES: 'utt_cached_batches',
-  COURSES: 'utt_cached_courses',
-  LAST_SYNC: 'utt_last_sync_time',
+  SESSIONS: 'fbs_shu_v3_sessions',
+  ROOMS: 'fbs_shu_v3_rooms',
+  FACULTY: 'fbs_shu_v3_faculty',
+  BATCHES: 'fbs_shu_v3_batches',
+  COURSES: 'fbs_shu_v3_courses',
+  LAST_SYNC: 'fbs_shu_v3_last_sync_time',
 };
+
+// Legacy keys to clean up
+const STALE_LEGACY_KEYS = [
+  'utt_cached_sessions',
+  'utt_cached_rooms',
+  'utt_cached_faculty',
+  'utt_cached_batches',
+  'utt_cached_courses',
+  'utt_last_sync_time',
+];
 
 export interface CachedTimetableData {
   sessions: ClassSession[];
@@ -16,6 +26,15 @@ export interface CachedTimetableData {
   batches: Batch[];
   courses: Course[];
   lastSync: string;
+}
+
+export function clearStaleCache(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    STALE_LEGACY_KEYS.forEach((key) => localStorage.removeItem(key));
+  } catch (err) {
+    // Ignore storage errors
+  }
 }
 
 export function saveTimetableToCache(data: {
@@ -27,7 +46,7 @@ export function saveTimetableToCache(data: {
 }): void {
   if (typeof window === 'undefined') return;
   try {
-    // Only cache published sessions for viewers
+    clearStaleCache();
     const publishedSessions = data.sessions.filter((s) => s.status === 'published');
     localStorage.setItem(CACHE_KEYS.SESSIONS, JSON.stringify(publishedSessions));
     localStorage.setItem(CACHE_KEYS.ROOMS, JSON.stringify(data.rooms));
@@ -43,6 +62,7 @@ export function saveTimetableToCache(data: {
 export function loadTimetableFromCache(): CachedTimetableData | null {
   if (typeof window === 'undefined') return null;
   try {
+    clearStaleCache();
     const rawSessions = localStorage.getItem(CACHE_KEYS.SESSIONS);
     if (!rawSessions) return null;
 
