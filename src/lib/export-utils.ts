@@ -104,13 +104,17 @@ export function exportTimetableToPDF(params: ExportDataParams): void {
   });
 
   // Header Title
-  doc.setFontSize(18);
-  doc.setTextColor(30, 27, 75);
-  doc.text('University Timetable & Resource Schedule', 14, 15);
+  doc.setFontSize(16);
+  doc.setTextColor(200, 16, 46); // Salim Habib Crimson Red
+  doc.text('FATIMA BUSINESS SCHOOL — SALIM HABIB UNIVERSITY', 14, 13);
 
-  doc.setFontSize(11);
+  doc.setFontSize(10);
+  doc.setTextColor(30, 41, 59);
+  doc.text('Faculty of Management Sciences • Faculty of Computer Science', 14, 19);
+
+  doc.setFontSize(9);
   doc.setTextColor(100, 116, 139);
-  doc.text(`Scope: ${filterTitle} | Generated on: ${new Date().toLocaleDateString()}`, 14, 22);
+  doc.text(`Schedule: ${filterTitle} | Generated on: ${new Date().toLocaleDateString()}`, 14, 25);
 
   // Prepare table columns and body
   const tableColumns = ['Time Slot', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -146,10 +150,10 @@ export function exportTimetableToPDF(params: ExportDataParams): void {
   autoTable(doc, {
     head: [tableColumns],
     body: tableRows,
-    startY: 27,
+    startY: 29,
     theme: 'grid',
     headStyles: {
-      fillColor: [79, 70, 229], // primary-600 Indigo
+      fillColor: [200, 16, 46], // Salim Habib Crimson Red
       textColor: [255, 255, 255],
       fontStyle: 'bold',
       halign: 'center',

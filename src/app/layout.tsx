@@ -4,8 +4,11 @@ import { AuthProvider } from '@/context/AuthContext';
 import { TimetableProvider } from '@/context/TimetableContext';
 
 export const metadata: Metadata = {
-  title: 'University Timetable & Resource Scheduling System',
-  description: 'Zero-operational-cost centralized timetable scheduling and resource allocation engine',
+  title: 'Fatima Business School | Salim Habib University — Academic Timetable Portal',
+  description: 'Official Academic Timetable & Resource Scheduling System for Faculty of Management Sciences and Faculty of Computer Science at Fatima Business School, Salim Habib University.',
+  icons: {
+    icon: '/fbs-logo.png',
+  },
 };
 
 export default function RootLayout({

@@ -88,36 +88,40 @@ export const FacultyDashboard: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Faculty Welcome Header */}
-      <div className="bg-gradient-to-r from-teal-900 via-teal-800 to-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="bg-gradient-to-r from-red-950 via-slate-900 to-red-900 text-white rounded-3xl p-6 sm:p-8 shadow-sm border border-red-900/40 relative overflow-hidden">
+        <div className="absolute right-0 top-0 w-96 h-96 bg-red-600/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-teal-400 text-teal-950">
-                Faculty Portal
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/20 text-white">
+                Fatima Business School
               </span>
-              <span className="text-xs text-teal-200">
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-600/60 text-white">
+                Salim Habib University
+              </span>
+              <span className="text-xs text-red-200">
                 {teacherProfile?.department} • Max {teacherProfile?.max_load_per_day}h/day
               </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
               {teacherProfile?.name || currentUser?.name}
             </h1>
-            <p className="text-xs sm:text-sm text-teal-100/90 mt-1 max-w-xl">
-              Welcome back. You are scheduled for <span className="font-bold text-white">{teacherSessions.length} lecture sections</span> ({totalWeeklyHours.toFixed(1)} hours/week) this semester.
+            <p className="text-xs sm:text-sm text-red-100/90 mt-1 max-w-xl">
+              Welcome back to Fatima Business School faculty portal. You have <span className="font-bold text-white">{teacherSessions.length} lecture sections</span> ({totalWeeklyHours.toFixed(1)} hours/week) allocated this term.
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 self-start md:self-auto">
             <button
               onClick={() => handleExport('excel')}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-white text-slate-800 hover:bg-teal-50 rounded-xl shadow-xs transition-all"
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-white text-slate-800 hover:bg-red-50 rounded-xl shadow-xs transition-all"
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
               <span>Export Schedule</span>
             </button>
             <button
               onClick={() => handleExport('pdf')}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-white text-slate-800 hover:bg-teal-50 rounded-xl shadow-xs transition-all"
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-white text-slate-800 hover:bg-red-50 rounded-xl shadow-xs transition-all"
             >
               <FileText className="w-4 h-4 text-rose-600" />
               <span>PDF Copy</span>
@@ -132,7 +136,7 @@ export const FacultyDashboard: React.FC = () => {
           onClick={() => setActiveSubTab('schedule')}
           className={`flex items-center gap-2 pb-3 px-4 text-xs font-bold border-b-2 transition-all ${
             activeSubTab === 'schedule'
-              ? 'border-teal-600 text-teal-700'
+              ? 'border-shu-700 text-shu-700'
               : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
@@ -144,7 +148,7 @@ export const FacultyDashboard: React.FC = () => {
           onClick={() => setActiveSubTab('room_lookup')}
           className={`flex items-center gap-2 pb-3 px-4 text-xs font-bold border-b-2 transition-all ${
             activeSubTab === 'room_lookup'
-              ? 'border-teal-600 text-teal-700'
+              ? 'border-shu-700 text-shu-700'
               : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >

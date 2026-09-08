@@ -137,7 +137,7 @@ export const TimetableFilterBar: React.FC = () => {
               onClick={() => handleViewModeChange('batch')}
               className={`flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
                 filterState.viewMode === 'batch'
-                  ? 'bg-white text-indigo-700 shadow-sm'
+                  ? 'bg-white text-shu-700 shadow-sm font-bold'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -149,7 +149,7 @@ export const TimetableFilterBar: React.FC = () => {
               onClick={() => handleViewModeChange('faculty')}
               className={`flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
                 filterState.viewMode === 'faculty'
-                  ? 'bg-white text-indigo-700 shadow-sm'
+                  ? 'bg-white text-shu-700 shadow-sm font-bold'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -161,7 +161,7 @@ export const TimetableFilterBar: React.FC = () => {
               onClick={() => handleViewModeChange('room')}
               className={`flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
                 filterState.viewMode === 'room'
-                  ? 'bg-white text-indigo-700 shadow-sm'
+                  ? 'bg-white text-shu-700 shadow-sm font-bold'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -179,7 +179,7 @@ export const TimetableFilterBar: React.FC = () => {
               onChange={(e) =>
                 setFilterState((prev) => ({ ...prev, selectedBatchId: e.target.value }))
               }
-              className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg font-medium text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg font-medium text-slate-800 focus:ring-2 focus:ring-shu-700 focus:outline-none"
             >
               <option value="">-- All Student Batches --</option>
               {batches.map((b) => (
@@ -196,7 +196,7 @@ export const TimetableFilterBar: React.FC = () => {
               onChange={(e) =>
                 setFilterState((prev) => ({ ...prev, selectedFacultyId: e.target.value }))
               }
-              className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg font-medium text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg font-medium text-slate-800 focus:ring-2 focus:ring-shu-700 focus:outline-none"
             >
               <option value="">-- All Faculty Members --</option>
               {faculty.map((f) => (
@@ -213,7 +213,7 @@ export const TimetableFilterBar: React.FC = () => {
               onChange={(e) =>
                 setFilterState((prev) => ({ ...prev, selectedRoomId: e.target.value }))
               }
-              className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg font-medium text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg font-medium text-slate-800 focus:ring-2 focus:ring-shu-700 focus:outline-none"
             >
               <option value="">-- All Rooms & Venues --</option>
               {rooms.map((r) => (

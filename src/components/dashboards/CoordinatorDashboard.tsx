@@ -58,22 +58,26 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Banner */}
-      <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-900 text-white rounded-3xl p-6 sm:p-7 shadow-sm">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+      <div className="bg-gradient-to-r from-red-950 via-slate-900 to-red-900 text-white rounded-3xl p-6 sm:p-7 shadow-sm border border-red-900/40 relative overflow-hidden">
+        <div className="absolute right-0 top-0 w-96 h-96 bg-red-600/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 relative z-10">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-500 text-white">
-                Program Coordinator Console
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/20 text-white">
+                Fatima Business School
               </span>
-              <span className="text-xs text-indigo-200">
-                {activeSemester?.name || 'Fall 2026'} Schedule Control
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-600/60 text-white">
+                Salim Habib University
+              </span>
+              <span className="text-xs text-red-200">
+                {activeSemester?.name || 'Fall 2026'} Coordinator Console
               </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
               {currentUser?.name || 'Program Coordinator'}
             </h1>
-            <p className="text-xs sm:text-sm text-indigo-200/90 mt-1 max-w-xl">
-              Drag-and-drop scheduling, multi-coordinator real-time synchronization, and automated 3D conflict prevention across faculty, rooms, and batches.
+            <p className="text-xs sm:text-sm text-red-100/90 mt-1 max-w-xl">
+              Centralized timetable management for Faculty of Management Sciences and Faculty of Computer Science with automated 3D conflict prevention.
             </p>
           </div>
 
@@ -81,7 +85,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => onOpenNewSession()}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-xs transition-all"
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-shu-700 hover:bg-shu-800 text-white rounded-xl shadow-xs transition-all"
             >
               <Plus className="w-4 h-4" />
               <span>Schedule Class</span>
@@ -101,7 +105,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
               onClick={onOpenUserManagement}
               className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all"
             >
-              <UserPlus className="w-4 h-4 text-teal-400" />
+              <UserPlus className="w-4 h-4 text-red-300" />
               <span>Faculty Accounts</span>
             </button>
 
@@ -109,7 +113,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
               onClick={onOpenRollover}
               className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all"
             >
-              <Copy className="w-3.5 h-3.5 text-indigo-300" />
+              <Copy className="w-3.5 h-3.5 text-red-300" />
               <span>Rollover</span>
             </button>
 
@@ -117,7 +121,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
               onClick={onOpenImport}
               className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all"
             >
-              <Upload className="w-3.5 h-3.5 text-indigo-300" />
+              <Upload className="w-3.5 h-3.5 text-red-300" />
               <span>CSV</span>
             </button>
           </div>
@@ -150,7 +154,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
           onClick={() => setActiveTab('matrix')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
             activeTab === 'matrix'
-              ? 'bg-indigo-600 text-white shadow-xs'
+              ? 'bg-shu-700 text-white shadow-xs'
               : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
@@ -162,7 +166,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
           onClick={() => setActiveTab('advising')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
             activeTab === 'advising'
-              ? 'bg-indigo-600 text-white shadow-xs'
+              ? 'bg-shu-700 text-white shadow-xs'
               : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
@@ -179,7 +183,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
           onClick={() => setActiveTab('makeup')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
             activeTab === 'makeup'
-              ? 'bg-indigo-600 text-white shadow-xs'
+              ? 'bg-shu-700 text-white shadow-xs'
               : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
@@ -196,7 +200,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
           onClick={() => setActiveTab('analytics')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
             activeTab === 'analytics'
-              ? 'bg-indigo-600 text-white shadow-xs'
+              ? 'bg-shu-700 text-white shadow-xs'
               : 'text-slate-600 hover:bg-slate-100'
           }`}
         >

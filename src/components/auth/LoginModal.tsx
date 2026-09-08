@@ -60,13 +60,18 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
       <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 overflow-hidden">
         {/* Modal Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-sm">
-              <Lock className="w-4 h-4" />
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-auto flex items-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/fbs-logo.png"
+                alt="Fatima Business School"
+                className="h-10 w-auto object-contain"
+              />
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 text-base">Portal Authentication</h3>
-              <p className="text-[11px] text-slate-500">Sign in to access privileged dashboards</p>
+              <h3 className="font-extrabold text-slate-900 text-sm">Fatima Business School</h3>
+              <p className="text-[11px] text-shu-700 font-semibold">Salim Habib University Portal</p>
             </div>
           </div>
           <button
@@ -78,34 +83,34 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* 1-Click Fast Role Switcher */}
-        <div className="mt-4 p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
+        <div className="mt-4 p-3 bg-red-50/50 rounded-2xl border border-red-100">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
               Quick 1-Click Demo Login:
             </span>
-            <span className="text-[10px] text-indigo-600 font-semibold">Instant Access</span>
+            <span className="text-[10px] text-shu-700 font-bold">Instant Access</span>
           </div>
 
           <div className="grid grid-cols-3 gap-1.5">
             <button
               onClick={() => handleQuickLogin('admin', 'admin@univ.edu')}
-              className="px-2 py-2 rounded-xl text-xs font-bold bg-white text-slate-800 border border-slate-200 hover:border-indigo-500 hover:text-indigo-600 hover:shadow-xs transition-all flex flex-col items-center gap-1"
+              className="px-2 py-2 rounded-xl text-xs font-bold bg-white text-slate-800 border border-slate-200 hover:border-shu-700 hover:text-shu-700 hover:shadow-xs transition-all flex flex-col items-center gap-1"
             >
-              <ShieldCheck className="w-4 h-4 text-purple-600" />
+              <ShieldCheck className="w-4 h-4 text-shu-700" />
               <span>Admin</span>
             </button>
 
             <button
               onClick={() => handleQuickLogin('coordinator', 'coordinator@univ.edu')}
-              className="px-2 py-2 rounded-xl text-xs font-bold bg-white text-slate-800 border border-slate-200 hover:border-indigo-500 hover:text-indigo-600 hover:shadow-xs transition-all flex flex-col items-center gap-1"
+              className="px-2 py-2 rounded-xl text-xs font-bold bg-white text-slate-800 border border-slate-200 hover:border-shu-700 hover:text-shu-700 hover:shadow-xs transition-all flex flex-col items-center gap-1"
             >
-              <Sparkles className="w-4 h-4 text-indigo-600" />
+              <Sparkles className="w-4 h-4 text-shu-700" />
               <span>Coordinator</span>
             </button>
 
             <button
               onClick={() => handleQuickLogin('faculty', 'alan.turing@univ.edu')}
-              className="px-2 py-2 rounded-xl text-xs font-bold bg-white text-slate-800 border border-slate-200 hover:border-indigo-500 hover:text-indigo-600 hover:shadow-xs transition-all flex flex-col items-center gap-1"
+              className="px-2 py-2 rounded-xl text-xs font-bold bg-white text-slate-800 border border-slate-200 hover:border-shu-700 hover:text-shu-700 hover:shadow-xs transition-all flex flex-col items-center gap-1"
             >
               <UserCheck className="w-4 h-4 text-teal-600" />
               <span>Faculty</span>
@@ -124,8 +129,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="e.g. coordinator@univ.edu"
-                className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="e.g. coordinator@shu.edu.pk"
+                className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-shu-700"
               />
             </div>
           </div>
@@ -140,7 +145,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="Enter password"
-                className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-shu-700"
               />
             </div>
           </div>
@@ -155,7 +160,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-2"
+            className="w-full py-2.5 bg-shu-700 hover:bg-shu-800 text-white font-bold rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-2"
           >
             <span>{isSubmitting ? 'Verifying...' : 'Sign In'}</span>
             <ArrowRight className="w-4 h-4" />
@@ -166,9 +171,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
         <div className="mt-4 pt-3 border-t border-slate-100 text-center">
           <button
             onClick={() => handleQuickLogin('student')}
-            className="text-xs font-semibold text-slate-500 hover:text-indigo-600 inline-flex items-center gap-1.5 transition-colors"
+            className="text-xs font-semibold text-slate-500 hover:text-shu-700 inline-flex items-center gap-1.5 transition-colors"
           >
-            <GraduationCap className="w-4 h-4 text-indigo-500" />
+            <GraduationCap className="w-4 h-4 text-shu-700" />
             <span>Are you a Student? No login required. View Public Schedule &rarr;</span>
           </button>
         </div>
@@ -176,3 +181,4 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     </div>
   );
 };
+

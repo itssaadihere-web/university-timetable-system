@@ -63,36 +63,44 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200 shadow-2xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Brand & Active Semester */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-200">
-              <Calendar className="w-5 h-5" />
+        <div className="flex items-center justify-between h-20">
+          {/* Brand & Logo */}
+          <div className="flex items-center gap-3.5">
+            <div className="h-12 w-auto flex items-center shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/fbs-logo.png"
+                alt="Fatima Business School - Salim Habib University"
+                className="h-12 w-auto object-contain"
+              />
             </div>
-            <div>
+
+            <div className="hidden sm:block border-l border-slate-200 pl-3.5">
               <div className="flex items-center gap-2">
-                <span className="font-bold text-slate-900 tracking-tight text-base sm:text-lg">
-                  UniSchedule
+                <span className="font-extrabold text-slate-900 tracking-tight text-base sm:text-lg">
+                  Fatima Business School
                 </span>
-                <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200/60">
-                  {activeSemester?.name || 'Fall 2026'}
+                <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-red-50 text-shu-700 border border-red-200">
+                  Salim Habib University
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 hidden md:block">
-                University Centralized Timetable & Resource Engine
+              <p className="text-[11px] font-medium text-slate-500">
+                Faculty of Management Sciences • Faculty of Computer Science
               </p>
             </div>
           </div>
 
-          {/* Center: Live Sync Pulse */}
-          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-xs text-slate-600">
+          {/* Center: Live Sync & Academic Term */}
+          <div className="hidden xl:flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-xs text-slate-600">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
-            <span className="font-semibold text-slate-700">Centralized Postgres Realtime</span>
+            <span className="font-semibold text-slate-800">
+              {activeSemester?.name || 'Fall 2026 Term'}
+            </span>
             <span className="text-slate-300">|</span>
-            <span className="text-slate-500 font-mono text-[11px]">{lastSyncTime}</span>
+            <span className="text-slate-500 text-[11px]">Realtime Synced: {lastSyncTime}</span>
           </div>
 
           {/* Right: Auth Profile & Login Action */}
@@ -116,7 +124,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {(currentUser.role === 'admin' || currentUser.role === 'coordinator') && (
                   <button
                     onClick={onOpenUserManagement}
-                    className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-xl transition-all"
+                    className="p-2 text-slate-500 hover:text-shu-700 hover:bg-red-50 rounded-xl transition-all"
                     title={
                       currentUser.role === 'admin'
                         ? 'Manage Users & Roles'
@@ -147,14 +155,14 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-                  <GraduationCap className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Public Student View</span>
+                <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-shu-700 border border-red-200">
+                  <GraduationCap className="w-3.5 h-3.5 text-shu-700" />
+                  <span>Student Public Portal</span>
                 </span>
 
                 <button
                   onClick={onOpenLoginModal}
-                  className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs hover:shadow transition-all"
+                  className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-shu-700 hover:bg-shu-800 rounded-xl shadow-xs hover:shadow transition-all"
                 >
                   <Lock className="w-3.5 h-3.5" />
                   <span>Staff / Faculty Login</span>
