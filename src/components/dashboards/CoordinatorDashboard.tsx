@@ -8,6 +8,7 @@ import { TimetableGrid } from '@/components/timetable/TimetableGrid';
 import { StudentAdvisingModule } from '@/components/advising/StudentAdvisingModule';
 import { MakeupClassManager } from '@/components/makeup/MakeupClassManager';
 import { AnalyticsReports } from '@/components/reports/AnalyticsReports';
+import { RoomAllocationModal } from '@/components/modals/RoomAllocationModal';
 import { ClassSession } from '@/types';
 import { 
   Sparkles, 
@@ -21,7 +22,9 @@ import {
   Layers, 
   Copy, 
   Upload,
-  AlertTriangle 
+  AlertTriangle,
+  DoorOpen,
+  ArrowRight
 } from 'lucide-react';
 
 interface CoordinatorDashboardProps {
@@ -45,6 +48,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
   const { sessions, rooms, advisingSuggestions, makeupRequests, activeSemester } = useTimetable();
 
   const [activeTab, setActiveTab] = useState<'matrix' | 'advising' | 'makeup' | 'analytics'>('matrix');
+  const [isRoomAllocationOpen, setIsRoomAllocationOpen] = useState<boolean>(false);
 
   const draftSessionsCount = sessions.filter((s) => s.status === 'draft').length;
   const pendingAdvisingCount = advisingSuggestions.filter((a) => a.status === 'pending').length;
@@ -84,7 +88,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => onOpenNewSession()}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-shu-700 hover:bg-shu-800 text-white rounded-xl shadow-xs transition-all"
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-shu-700 hover:bg-shu-800 text-white rounded-xl shadow-xs transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Schedule Class</span>
@@ -93,16 +97,26 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             {draftSessionsCount > 0 && (
               <button
                 onClick={onOpenPublishModal}
-                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-xs transition-all animate-pulse"
+                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-xs transition-all animate-pulse cursor-pointer"
               >
                 <UploadCloud className="w-4 h-4" />
                 <span>Review & Publish ({draftSessionsCount})</span>
               </button>
             )}
 
+            {unassignedSessions.length > 0 && (
+              <button
+                onClick={() => setIsRoomAllocationOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white rounded-xl shadow-xs transition-all cursor-pointer"
+              >
+                <DoorOpen className="w-4 h-4" />
+                <span>Assign Rooms ({unassignedSessions.length})</span>
+              </button>
+            )}
+
             <button
               onClick={onOpenUserManagement}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all cursor-pointer"
             >
               <UserPlus className="w-4 h-4 text-red-300" />
               <span>Faculty Accounts</span>
@@ -110,7 +124,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
             <button
               onClick={onOpenRollover}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all cursor-pointer"
             >
               <Copy className="w-3.5 h-3.5 text-red-300" />
               <span>Rollover</span>
@@ -118,7 +132,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
             <button
               onClick={onOpenImport}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all cursor-pointer"
             >
               <Upload className="w-3.5 h-3.5 text-red-300" />
               <span>CSV</span>
@@ -127,23 +141,38 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
         </div>
       </div>
 
-      {/* Unassigned Rooms Alert Notification for Coordinator */}
+      {/* Unassigned Rooms Clickable Alert Notification */}
       {unassignedSessions.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+        <div 
+          onClick={() => setIsRoomAllocationOpen(true)}
+          className="bg-amber-50 hover:bg-amber-100/80 border border-amber-300/80 text-amber-900 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs hover:shadow-md transition-all cursor-pointer group"
+          role="button"
+          tabIndex={0}
+          title="Click to view all unassigned classes and allocate classrooms"
+        >
           <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="p-2 rounded-xl bg-amber-200/70 text-amber-800 group-hover:scale-110 transition-transform">
+              <AlertTriangle className="w-5 h-5 text-amber-700 shrink-0" />
+            </div>
             <div className="text-xs">
-              <p className="font-bold text-amber-950">
-                ⚠️ Room Allocation Alert: {unassignedSessions.length} Scheduled Class Sessions Have No Room Assigned
+              <p className="font-extrabold text-amber-950 text-xs sm:text-sm flex items-center gap-2">
+                <span>⚠️ Room Allocation Alert: {unassignedSessions.length} Scheduled Class Sessions Have No Room Assigned</span>
               </p>
               <p className="text-amber-800/90 mt-0.5">
                 From the uploaded department schedules, some courses (e.g. BAN-202 Fri, PST-101, ARM-5/6 RM courses, BS(AF)-3 HUS-202, BBA-6 electives) currently have pending room numbers.
               </p>
             </div>
           </div>
-          <span className="px-3 py-1 rounded-lg bg-amber-200 text-amber-900 font-bold text-xs shrink-0 self-start sm:self-auto">
-            {unassignedSessions.length} Venues Pending
-          </span>
+          <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+            <span className="px-3.5 py-1.5 rounded-xl bg-amber-200 group-hover:bg-amber-300 text-amber-950 font-black text-xs transition-colors flex items-center gap-1.5">
+              <DoorOpen className="w-3.5 h-3.5" />
+              <span>{unassignedSessions.length} Venues Pending</span>
+            </span>
+            <span className="px-3 py-1.5 rounded-xl bg-shu-700 group-hover:bg-shu-800 text-white font-bold text-xs shadow-xs flex items-center gap-1 transition-all">
+              <span>Assign Rooms</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </span>
+          </div>
         </div>
       )}
 
@@ -224,6 +253,13 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
       {activeTab === 'makeup' && <MakeupClassManager />}
 
       {activeTab === 'analytics' && <AnalyticsReports />}
+
+      {/* Room Allocation Modal */}
+      <RoomAllocationModal
+        isOpen={isRoomAllocationOpen}
+        onClose={() => setIsRoomAllocationOpen(false)}
+        onOpenEditSession={onOpenEditSession}
+      />
     </div>
   );
 };

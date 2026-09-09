@@ -7,6 +7,7 @@ import { AuditLogViewer } from '@/components/audit/AuditLogViewer';
 import { AnalyticsReports } from '@/components/reports/AnalyticsReports';
 import { TimetableFilterBar } from '@/components/timetable/TimetableFilterBar';
 import { TimetableGrid } from '@/components/timetable/TimetableGrid';
+import { RoomAllocationModal } from '@/components/modals/RoomAllocationModal';
 import { ClassSession } from '@/types';
 import { 
   ShieldCheck, 
@@ -44,6 +45,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const { sessions, rooms, faculty, courses, batches, activeSemester } = useTimetable();
 
   const [adminTab, setAdminTab] = useState<'overview' | 'matrix' | 'analytics' | 'audit'>('overview');
+  const [isRoomAllocationOpen, setIsRoomAllocationOpen] = useState<boolean>(false);
 
   const publishedCount = sessions.filter((s) => s.status === 'published').length;
   const draftCount = sessions.filter((s) => s.status === 'draft').length;
@@ -80,15 +82,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div className="flex flex-wrap items-center gap-2.5">
             <button
               onClick={onOpenUserManagement}
-              className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold bg-shu-700 hover:bg-shu-800 text-white rounded-xl shadow-xs transition-all"
+              className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold bg-shu-700 hover:bg-shu-800 text-white rounded-xl shadow-xs transition-all cursor-pointer"
             >
               <UserPlus className="w-4 h-4" />
               <span>User & Role Console</span>
             </button>
 
+            {unassignedSessions.length > 0 && (
+              <button
+                onClick={() => setIsRoomAllocationOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white rounded-xl shadow-xs transition-all cursor-pointer"
+              >
+                <DoorOpen className="w-4 h-4" />
+                <span>Assign Rooms ({unassignedSessions.length})</span>
+              </button>
+            )}
+
             <button
               onClick={onOpenRollover}
-              className="flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all"
+              className="flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all cursor-pointer"
             >
               <Copy className="w-3.5 h-3.5 text-red-300" />
               <span>Semester Rollover</span>
@@ -96,7 +108,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
             <button
               onClick={onOpenImport}
-              className="flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all"
+              className="flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all cursor-pointer"
             >
               <Upload className="w-3.5 h-3.5 text-red-300" />
               <span>CSV Importer</span>
@@ -107,24 +119,36 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
       {/* Unassigned Rooms Alert Notification for Admin */}
       {unassignedSessions.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+        <div 
+          onClick={() => setIsRoomAllocationOpen(true)}
+          className="bg-amber-50 hover:bg-amber-100/80 border border-amber-300/80 text-amber-900 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs hover:shadow-md transition-all cursor-pointer group"
+          role="button"
+          tabIndex={0}
+          title="Click to open Classroom Allocator and assign venues"
+        >
           <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="p-2 rounded-xl bg-amber-200/70 text-amber-800 group-hover:scale-110 transition-transform">
+              <AlertTriangle className="w-5 h-5 text-amber-700 shrink-0" />
+            </div>
             <div className="text-xs">
-              <p className="font-bold text-amber-950">
-                Institutional Alert: {unassignedSessions.length} Class Sessions Across Department Timetables Have No Room Assigned
+              <p className="font-extrabold text-amber-950 text-xs sm:text-sm flex items-center gap-2">
+                <span>Institutional Alert: {unassignedSessions.length} Class Sessions Across Department Timetables Have No Room Assigned</span>
               </p>
               <p className="text-amber-800/90 mt-0.5">
-                Department schedules have courses with pending rooms. Switch to the Timetable Matrix tab or notify program coordinators to assign available lecture halls.
+                Department schedules have courses with pending rooms. Click here to open the Classroom & Venue Allocator and assign available rooms.
               </p>
             </div>
           </div>
-          <button
-            onClick={() => setAdminTab('matrix')}
-            className="px-3.5 py-1.5 rounded-xl bg-amber-200 hover:bg-amber-300 text-amber-950 font-bold text-xs shrink-0 self-start sm:self-auto transition-all"
-          >
-            View Matrix ({unassignedSessions.length})
-          </button>
+          <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+            <span className="px-3.5 py-1.5 rounded-xl bg-amber-200 group-hover:bg-amber-300 text-amber-950 font-black text-xs transition-colors flex items-center gap-1.5">
+              <DoorOpen className="w-3.5 h-3.5" />
+              <span>{unassignedSessions.length} Venues Pending</span>
+            </span>
+            <span className="px-3.5 py-1.5 rounded-xl bg-shu-700 group-hover:bg-shu-800 text-white font-bold text-xs shadow-xs flex items-center gap-1 transition-all">
+              <span>Assign Rooms</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </span>
+          </div>
         </div>
       )}
 
@@ -296,6 +320,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {adminTab === 'analytics' && <AnalyticsReports />}
 
       {adminTab === 'audit' && <AuditLogViewer />}
+
+      {/* Room Allocation Modal */}
+      <RoomAllocationModal
+        isOpen={isRoomAllocationOpen}
+        onClose={() => setIsRoomAllocationOpen(false)}
+        onOpenEditSession={onOpenEditSession}
+      />
     </div>
   );
 };
