@@ -1,16 +1,22 @@
 import { ClassSession, Room, Faculty, Batch, Course } from '@/types';
 
 const CACHE_KEYS = {
-  SESSIONS: 'fbs_shu_v3_sessions',
-  ROOMS: 'fbs_shu_v3_rooms',
-  FACULTY: 'fbs_shu_v3_faculty',
-  BATCHES: 'fbs_shu_v3_batches',
-  COURSES: 'fbs_shu_v3_courses',
-  LAST_SYNC: 'fbs_shu_v3_last_sync_time',
+  SESSIONS: 'fbs_shu_v4_sessions',
+  ROOMS: 'fbs_shu_v4_rooms',
+  FACULTY: 'fbs_shu_v4_faculty',
+  BATCHES: 'fbs_shu_v4_batches',
+  COURSES: 'fbs_shu_v4_courses',
+  LAST_SYNC: 'fbs_shu_v4_last_sync_time',
 };
 
 // Legacy keys to clean up
 const STALE_LEGACY_KEYS = [
+  'fbs_shu_v3_sessions',
+  'fbs_shu_v3_rooms',
+  'fbs_shu_v3_faculty',
+  'fbs_shu_v3_batches',
+  'fbs_shu_v3_courses',
+  'fbs_shu_v3_last_sync_time',
   'utt_cached_sessions',
   'utt_cached_rooms',
   'utt_cached_faculty',

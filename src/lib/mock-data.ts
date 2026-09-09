@@ -58,6 +58,7 @@ export const INITIAL_ROOMS: Room[] = [
   { id: 'room-tf-309', name: 'TF-309 (3rd Floor IT Lab)', building: 'Academic Tower 3', floor: 3, capacity: 45, room_types: ['computer_lab', 'multimedia'] },
   { id: 'room-tf-310', name: 'TF-310 (3rd Floor IT Lab)', building: 'Academic Tower 3', floor: 3, capacity: 45, room_types: ['computer_lab', 'multimedia'] },
   { id: 'room-tf-311', name: 'TF-311 (3rd Floor Lecture Hall)', building: 'Academic Tower 3', floor: 3, capacity: 55, room_types: ['standard', 'multimedia'] },
+  { id: 'room-c-03', name: 'C-03 (Old Building 2nd Floor)', building: 'Old Building', floor: 2, capacity: 50, room_types: ['standard'] },
 ];
 
 export const INITIAL_FACULTY: Faculty[] = [
@@ -100,20 +101,34 @@ export const INITIAL_FACULTY: Faculty[] = [
   { id: 'fac-ekhlaque-ahmed', name: 'Ekhlaque Ahmed', email: 'ekhlaque.ahmed@shu.edu.pk', department: 'Marketing & Strategy', max_load_per_day: 5 },
   { id: 'fac-zuhair-mohsin', name: 'Zuhair Mohsin', email: 'zuhair.mohsin@shu.edu.pk', department: 'Fintech', max_load_per_day: 3 },
   { id: 'fac-khalid-petiwala', name: 'Khalid Petiwala', email: 'khalid.petiwala@shu.edu.pk', department: 'Advanced Taxation', max_load_per_day: 3 },
-  { id: 'fac-saman', name: 'Saman', email: 'saman@shu.edu.pk', department: 'Marketing', max_load_per_day: 3 },
   { id: 'fac-priyanka-bajaj', name: 'Priyanka Bajaj', email: 'priyanka.bajaj@shu.edu.pk', department: 'HR & Management', max_load_per_day: 4 },
+  { id: 'fac-amna-alvi', name: 'Amna Alvi', email: 'amna.alvi@shu.edu.pk', department: 'Communication & English', max_load_per_day: 4 },
+  { id: 'fac-bina-junaid', name: 'Bina Junaid', email: 'bina.junaid@shu.edu.pk', department: 'Accounting', max_load_per_day: 4 },
+  { id: 'fac-muhammad-yousuf', name: 'Muhammad Yousuf', email: 'muhammad.yousuf@shu.edu.pk', department: 'Social Sciences & Psychology', max_load_per_day: 4 },
+  { id: 'fac-ayesha-rafique', name: 'Ayesha Rafique', email: 'ayesha.rafique@shu.edu.pk', department: 'Computer Science', max_load_per_day: 4 },
+  { id: 'fac-aamir-langh', name: 'Aamir Langh', email: 'aamir.langh@shu.edu.pk', department: 'Communication & English', max_load_per_day: 4 },
+  { id: 'fac-yusra-tarique', name: 'Yusra Tarique Jamal', email: 'yusra.tarique@shu.edu.pk', department: 'Social Sciences & Psychology', max_load_per_day: 4 },
+  { id: 'fac-tehseen-valji', name: 'Tehseen Valji', email: 'tehseen.valji@shu.edu.pk', department: 'Accounting & Finance', max_load_per_day: 4 },
+  { id: 'fac-yahya-rashidi', name: 'Yahya Rashidi', email: 'yahya.rashidi@shu.edu.pk', department: 'Fintech', max_load_per_day: 4 },
   { id: 'fac-asif-shamim', name: 'Asif Shamim', email: 'asif.shamim@shu.edu.pk', department: 'Economics', max_load_per_day: 3 },
   { id: 'fac-hunain', name: 'Hunain', email: 'hunain@shu.edu.pk', department: 'Foreign Languages', max_load_per_day: 3 },
   { id: 'fac-zeeshan-ahmed', name: 'Zeeshan Ahmed', email: 'zeeshan.ahmed@shu.edu.pk', department: 'Project Management', max_load_per_day: 3 },
   { id: 'fac-raheel', name: 'Raheel', email: 'raheel@shu.edu.pk', department: 'Supply Chain Management', max_load_per_day: 4 },
-  { id: 'fac-hassaan-ahmed', name: 'Hassaan Ahmed', email: 'hassaan.ahmed@shu.edu.pk', department: 'Business Simulations', max_load_per_day: 3 },
+  { id: 'fac-hassaan-ahmed', name: 'Dr. Hassaan Ahmed', email: 'hassaan.ahmed@shu.edu.pk', department: 'Business Management', max_load_per_day: 4 },
   { id: 'fac-faisal-shaikh', name: 'Faisal Shaikh', email: 'faisal.shaikh@shu.edu.pk', department: 'Marketing Research', max_load_per_day: 3 },
-  { id: 'fac-fahad-anwar', name: 'Muhammad Fahad Anwar', email: 'muhammad.fahad.anwar@shu.edu.pk', department: 'SCM Sustainability', max_load_per_day: 3 },
+  { id: 'fac-fahad-anwar', name: 'Dr. Muhammad Fahad Anwar', email: 'muhammad.fahad.anwar@shu.edu.pk', department: 'Supply Chain Management', max_load_per_day: 4 },
+  { id: 'fac-saman', name: 'Saman Ismail', email: 'saman.ismail@shu.edu.pk', department: 'Management & Marketing', max_load_per_day: 4 },
 ];
 
 export const INITIAL_MERGE_GROUPS: BatchMergeGroup[] = [];
 
 export const INITIAL_BATCHES: Batch[] = [
+  // Semester 1 Sections
+  { id: 'batch-sec-1a', name: 'Section 1A', program: 'BS (Accounting & Finance)', semester: 1, student_count: 50 },
+  { id: 'batch-sec-1b', name: 'Section 1B', program: 'BS (Business Analytics) & BBA', semester: 1, student_count: 50 },
+  { id: 'batch-sec-1c', name: 'Section 1C', program: 'BBA & BS (Supply Chain)', semester: 1, student_count: 50 },
+  { id: 'batch-sec-1d', name: 'Section 1D', program: 'BS (Accounting & Finance) & BS (Fintech)', semester: 1, student_count: 50 },
+
   // Business Analytics (BAN)
   { id: 'batch-ban-2', name: 'BAN - 2', program: 'BS (Business Analytics)', semester: 2, student_count: 45 },
   { id: 'batch-ban-3', name: 'BAN - 3', program: 'BS (Business Analytics)', semester: 3, student_count: 40 },
@@ -148,6 +163,17 @@ export const INITIAL_BATCHES: Batch[] = [
 ];
 
 export const INITIAL_COURSES: Course[] = [
+  // Semester 1 Core Courses
+  { id: 'crs-acc101', code: 'ACC-101', name: 'Introduction to Accounting', department: 'Accounting', credit_hours: 3, required_room_types: ['standard', 'horseshoe'] },
+  { id: 'crs-csc110', code: 'CSC-110', name: 'Application of ICT', department: 'Computer Science', credit_hours: 3, required_room_types: ['computer_lab', 'standard'] },
+  { id: 'crs-eng104', code: 'ENG-104', name: 'Functional English', department: 'Communication', credit_hours: 3, required_room_types: ['standard'] },
+  { id: 'crs-mgt101', code: 'MGT-101', name: 'Principles of Management and Leadership', department: 'Management', credit_hours: 3, required_room_types: ['standard', 'horseshoe'] },
+  { id: 'crs-psy101', code: 'PSY-101', name: 'Principles of Psychology', department: 'Social Sciences', credit_hours: 3, required_room_types: ['standard'] },
+  { id: 'crs-scm201', code: 'SCM-201', name: 'Introduction to Supply Chain Management', department: 'Supply Chain', credit_hours: 3, required_room_types: ['standard'] },
+  { id: 'crs-ban101', code: 'BAN-101', name: 'Basics of Business Analytics', department: 'Business Analytics', credit_hours: 3, required_room_types: ['computer_lab'] },
+  { id: 'crs-fte202', code: 'FTE-202', name: 'Introduction to Fintech', department: 'Fintech', credit_hours: 3, required_room_types: ['standard'] },
+
+  // Higher Semester Courses
   { id: 'crs-acc106', code: 'ACC-106', name: 'Financial Accounting and Corporate Reporting', department: 'Accounting', credit_hours: 3, required_room_types: ['standard'] },
   { id: 'crs-eco102', code: 'ECO-102', name: 'Microeconomics', department: 'Economics', credit_hours: 3, required_room_types: ['standard'] },
   { id: 'crs-eco103', code: 'ECO-103', name: 'Globalization & Development', department: 'Economics', credit_hours: 3, required_room_types: ['standard'] },
@@ -219,6 +245,10 @@ export const INITIAL_COURSES: Course[] = [
 ];
 
 export const INITIAL_STUDENTS: Student[] = [
+  { id: 'std-1a', roll_number: 'AF-2026-001', name: 'Ayesha Siddiqui', email: 'ayesha.af1@student.shu.edu.pk', batch_id: 'batch-sec-1a', is_irregular: false },
+  { id: 'std-1b', roll_number: 'BAN-2026-015', name: 'Bilal Tariq', email: 'bilal.ban1@student.shu.edu.pk', batch_id: 'batch-sec-1b', is_irregular: false },
+  { id: 'std-1c', roll_number: 'BBA-2026-022', name: 'Zainab Raza', email: 'zainab.bba1@student.shu.edu.pk', batch_id: 'batch-sec-1c', is_irregular: false },
+  { id: 'std-1d', roll_number: 'FT-2026-008', name: 'Hamza Khan', email: 'hamza.ft1@student.shu.edu.pk', batch_id: 'batch-sec-1d', is_irregular: false },
   { id: 'std-1', roll_number: 'BAN-2024-001', name: 'Muhammad Ali', email: 'ali.ban@student.univ.edu', batch_id: 'batch-ban-2', is_irregular: false },
   { id: 'std-2', roll_number: 'AF-2024-045', name: 'Fatima Zahra', email: 'fatima.af@student.univ.edu', batch_id: 'batch-bsaf-2', is_irregular: false },
   { id: 'std-3', roll_number: 'BBA-2024-012', name: 'Usman Ghani', email: 'usman.bba@student.univ.edu', batch_id: 'batch-bba-2', is_irregular: false },
@@ -228,8 +258,54 @@ export const INITIAL_COMPLETED_COURSES: StudentCourseCompleted[] = [
   { id: 'scc-1', student_id: 'std-1', course_id: 'crs-gen111', grade: 'A', semester_completed: 'Spring 2026' },
 ];
 
-// All running timetable sessions extracted from the 4 department schedules
+// All running timetable sessions extracted from the department schedules
 export const INITIAL_SESSIONS: ClassSession[] = [
+  // ==========================================
+  // SEMESTER 1 - SECTION 1A: BS (ACCOUNTING & FINANCE)
+  // ==========================================
+  { id: 'sess-1a-mon-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-acc101', faculty_id: 'fac-ghulam-mustafa', room_id: 'room-tf-302', batch_id: 'batch-sec-1a', day_of_week: 1, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1a-mon-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-csc110', faculty_id: 'fac-yasar-rizwan', room_id: 'room-tf-302', batch_id: 'batch-sec-1a', day_of_week: 1, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1a-tue-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mgt101', faculty_id: 'fac-hassaan-ahmed', room_id: 'room-tf-302', batch_id: 'batch-sec-1a', day_of_week: 2, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1a-tue-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-eng104', faculty_id: 'fac-aamir-langh', room_id: 'room-c-03', batch_id: 'batch-sec-1a', day_of_week: 2, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1a-wed-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-acc101', faculty_id: 'fac-ghulam-mustafa', room_id: 'room-tf-302', batch_id: 'batch-sec-1a', day_of_week: 3, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1a-wed-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-csc110', faculty_id: 'fac-yasar-rizwan', room_id: 'room-tf-308', batch_id: 'batch-sec-1a', day_of_week: 3, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1a-thu-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-psy101', faculty_id: 'fac-rizwan-akram', room_id: 'room-frf-405', batch_id: 'batch-sec-1a', day_of_week: 4, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
+
+  // ==========================================
+  // SEMESTER 1 - SECTION 1B: BS (BUSINESS ANALYTICS) & BBA
+  // ==========================================
+  { id: 'sess-1b-mon-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-csc110', faculty_id: 'fac-ayesha-rafique', room_id: 'room-tf-311', batch_id: 'batch-sec-1b', day_of_week: 1, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1b-mon-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-acc101', faculty_id: 'fac-ghulam-mustafa', room_id: 'room-tf-311', batch_id: 'batch-sec-1b', day_of_week: 1, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1b-tue-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-eng104', faculty_id: 'fac-aamir-langh', room_id: 'room-frf-404', batch_id: 'batch-sec-1b', day_of_week: 2, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1b-tue-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-psy101', faculty_id: 'fac-yusra-tarique', room_id: 'room-tf-311', batch_id: 'batch-sec-1b', day_of_week: 2, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1b-wed-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-csc110', faculty_id: 'fac-ayesha-rafique', room_id: 'room-tf-308', batch_id: 'batch-sec-1b', day_of_week: 3, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1b-wed-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-acc101', faculty_id: 'fac-ghulam-mustafa', room_id: 'room-tf-307', batch_id: 'batch-sec-1b', day_of_week: 3, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1b-thu-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mgt101', faculty_id: 'fac-shamaila-burney', room_id: 'room-tf-311', batch_id: 'batch-sec-1b', day_of_week: 4, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1b-thu-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-ban101', faculty_id: 'fac-musawwir', room_id: 'room-tf-308', batch_id: 'batch-sec-1b', day_of_week: 4, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
+
+  // ==========================================
+  // SEMESTER 1 - SECTION 1C: BBA & BS (SUPPLY CHAIN)
+  // ==========================================
+  { id: 'sess-1c-mon-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mgt101', faculty_id: 'fac-priyanka-bajaj', room_id: 'room-tf-306', batch_id: 'batch-sec-1c', day_of_week: 1, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1c-mon-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-eng104', faculty_id: 'fac-amna-alvi', room_id: 'room-frf-404', batch_id: 'batch-sec-1c', day_of_week: 1, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1c-tue-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-acc101', faculty_id: 'fac-bina-junaid', room_id: 'room-frf-402', batch_id: 'batch-sec-1c', day_of_week: 2, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1c-tue-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-csc110', faculty_id: 'fac-yasar-rizwan', room_id: 'room-frf-402', batch_id: 'batch-sec-1c', day_of_week: 2, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1c-wed-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-psy101', faculty_id: 'fac-muhammad-yousuf', room_id: 'room-frf-405', batch_id: 'batch-sec-1c', day_of_week: 3, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1c-wed-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-scm201', faculty_id: 'fac-fahad-anwar', room_id: 'room-frf-401', batch_id: 'batch-sec-1c', day_of_week: 3, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1c-thu-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-acc101', faculty_id: 'fac-bina-junaid', room_id: 'room-frf-402', batch_id: 'batch-sec-1c', day_of_week: 4, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1c-thu-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-csc110', faculty_id: 'fac-yasar-rizwan', room_id: 'room-tf-309', batch_id: 'batch-sec-1c', day_of_week: 4, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
+
+  // ==========================================
+  // SEMESTER 1 - SECTION 1D: BS (ACCOUNTING & FINANCE) & BS (FINTECH)
+  // ==========================================
+  { id: 'sess-1d-mon-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-eng104', faculty_id: 'fac-amna-alvi', room_id: 'room-frf-405', batch_id: 'batch-sec-1d', day_of_week: 1, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1d-mon-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-psy101', faculty_id: 'fac-yusra-tarique', room_id: 'room-frf-406', batch_id: 'batch-sec-1d', day_of_week: 1, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1d-tue-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-csc110', faculty_id: 'fac-yasar-rizwan', room_id: 'room-frf-401', batch_id: 'batch-sec-1d', day_of_week: 2, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1d-tue-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-acc101', faculty_id: 'fac-tehseen-valji', room_id: 'room-frf-401', batch_id: 'batch-sec-1d', day_of_week: 2, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1d-wed-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mgt101', faculty_id: 'fac-saman', room_id: 'room-frf-401', batch_id: 'batch-sec-1d', day_of_week: 3, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1d-thu-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-csc110', faculty_id: 'fac-yasar-rizwan', room_id: 'room-tf-309', batch_id: 'batch-sec-1d', day_of_week: 4, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1d-thu-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-acc101', faculty_id: 'fac-tehseen-valji', room_id: 'room-frf-401', batch_id: 'batch-sec-1d', day_of_week: 4, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1d-fri-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-fte202', faculty_id: 'fac-yahya-rashidi', room_id: 'room-tf-307', batch_id: 'batch-sec-1d', day_of_week: 5, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
   // ==========================================
   // BS (BUSINESS ANALYTICS) - BAN
   // ==========================================
