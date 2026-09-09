@@ -38,7 +38,7 @@ export const DroppableTimeSlot: React.FC<DroppableTimeSlotProps> = ({
   return (
     <div
       ref={setNodeRef}
-      className={`h-full min-h-[90px] rounded-xl transition-all border border-dashed flex flex-col items-center justify-center relative group/cell ${
+      className={`h-full min-h-[58px] rounded-xl transition-all border border-dashed flex flex-col items-center justify-center relative group/cell ${
         isOver
           ? 'bg-shu-50/90 border-2 border-shu-700 shadow-md scale-[1.02] z-20'
           : 'bg-slate-50/50 border-slate-200/80 hover:bg-slate-100/70 hover:border-slate-300'

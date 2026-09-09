@@ -39,25 +39,25 @@ export const INITIAL_CALENDAR: SemesterCalendarEvent[] = [
 ];
 
 export const INITIAL_ROOMS: Room[] = [
-  { id: 'room-tf-306', name: 'TF-306 (3rd Floor Lecture Hall)', building: 'Academic Tower 3', floor: 3, capacity: 60, room_types: ['standard', 'multimedia'] },
-  { id: 'room-frf-404', name: 'FRF-404 (4th Floor Lecture Hall)', building: 'Faculty Block 4', floor: 4, capacity: 55, room_types: ['standard', 'multimedia'] },
-  { id: 'room-frf-402', name: 'FRF-402 (4th Floor Horseshoe)', building: 'Faculty Block 4', floor: 4, capacity: 75, room_types: ['horseshoe', 'multimedia', 'interactive_lcd'] },
-  { id: 'room-tf-301', name: 'TF-301 (3rd Floor Horseshoe)', building: 'Academic Tower 3', floor: 3, capacity: 75, room_types: ['horseshoe', 'multimedia', 'interactive_lcd'] },
-  { id: 'room-frf-405', name: 'FRF-405 (4th Floor Lecture Hall)', building: 'Faculty Block 4', floor: 4, capacity: 50, room_types: ['standard', 'multimedia'] },
   { id: 'room-a-04', name: 'A-04 (Ground Floor Classroom)', building: 'Block A', floor: 0, capacity: 45, room_types: ['standard'] },
-  { id: 'room-frf-401', name: 'FRF-401 (4th Floor Horseshoe)', building: 'Faculty Block 4', floor: 4, capacity: 75, room_types: ['horseshoe', 'multimedia'] },
-  { id: 'room-tf-308', name: 'TF-308 (3rd Floor Language Lab)', building: 'Academic Tower 3', floor: 3, capacity: 40, room_types: ['computer_lab', 'multimedia'] },
-  { id: 'room-tf-302', name: 'TF-302 (3rd Floor Horseshoe)', building: 'Academic Tower 3', floor: 3, capacity: 70, room_types: ['horseshoe', 'multimedia'] },
-  { id: 'room-sf-209', name: 'SF-209 (2nd Floor Language Lab)', building: 'Science Wing 2', floor: 2, capacity: 40, room_types: ['computer_lab', 'multimedia'] },
-  { id: 'room-sf-206', name: 'SF-206 (2nd Floor Lecture Hall)', building: 'Science Wing 2', floor: 2, capacity: 55, room_types: ['standard', 'multimedia'] },
+  { id: 'room-a-08', name: 'A-08 (Computer Lab 1 Ground Fl)', building: 'Block A', floor: 0, capacity: 45, room_types: ['computer_lab', 'multimedia'] },
   { id: 'room-ff-103', name: 'FF-103 (1st Floor Lecture Hall)', building: 'First Floor Wing', floor: 1, capacity: 50, room_types: ['standard'] },
+  { id: 'room-frf-401', name: 'FRF-401 (4th Floor Horseshoe)', building: 'Faculty Block 4', floor: 4, capacity: 75, room_types: ['horseshoe', 'multimedia'] },
+  { id: 'room-frf-402', name: 'FRF-402 (4th Floor Horseshoe)', building: 'Faculty Block 4', floor: 4, capacity: 75, room_types: ['horseshoe', 'multimedia', 'interactive_lcd'] },
+  { id: 'room-frf-404', name: 'FRF-404 (4th Floor Lecture Hall)', building: 'Faculty Block 4', floor: 4, capacity: 55, room_types: ['standard', 'multimedia'] },
+  { id: 'room-frf-405', name: 'FRF-405 (4th Floor Lecture Hall)', building: 'Faculty Block 4', floor: 4, capacity: 50, room_types: ['standard', 'multimedia'] },
+  { id: 'room-frf-406', name: 'FRF-406 (4th Floor Lecture Hall)', building: 'Faculty Block 4', floor: 4, capacity: 50, room_types: ['standard', 'multimedia'] },
+  { id: 'room-sf-201', name: 'SF-201 (2nd Floor Horseshoe)', building: 'Science Wing 2', floor: 2, capacity: 75, room_types: ['horseshoe', 'multimedia'] },
+  { id: 'room-sf-206', name: 'SF-206 (2nd Floor Lecture Hall)', building: 'Science Wing 2', floor: 2, capacity: 55, room_types: ['standard', 'multimedia'] },
+  { id: 'room-sf-209', name: 'SF-209 (2nd Floor Language Lab)', building: 'Science Wing 2', floor: 2, capacity: 40, room_types: ['computer_lab', 'multimedia'] },
+  { id: 'room-tf-301', name: 'TF-301 (3rd Floor Horseshoe)', building: 'Academic Tower 3', floor: 3, capacity: 75, room_types: ['horseshoe', 'multimedia', 'interactive_lcd'] },
+  { id: 'room-tf-302', name: 'TF-302 (3rd Floor Horseshoe)', building: 'Academic Tower 3', floor: 3, capacity: 70, room_types: ['horseshoe', 'multimedia'] },
+  { id: 'room-tf-306', name: 'TF-306 (3rd Floor Lecture Hall)', building: 'Academic Tower 3', floor: 3, capacity: 60, room_types: ['standard', 'multimedia'] },
   { id: 'room-tf-307', name: 'TF-307 (3rd Floor Horseshoe)', building: 'Academic Tower 3', floor: 3, capacity: 75, room_types: ['horseshoe', 'multimedia', 'interactive_lcd'] },
+  { id: 'room-tf-308', name: 'TF-308 (3rd Floor Language Lab)', building: 'Academic Tower 3', floor: 3, capacity: 40, room_types: ['computer_lab', 'multimedia'] },
   { id: 'room-tf-309', name: 'TF-309 (3rd Floor IT Lab)', building: 'Academic Tower 3', floor: 3, capacity: 45, room_types: ['computer_lab', 'multimedia'] },
   { id: 'room-tf-310', name: 'TF-310 (3rd Floor IT Lab)', building: 'Academic Tower 3', floor: 3, capacity: 45, room_types: ['computer_lab', 'multimedia'] },
   { id: 'room-tf-311', name: 'TF-311 (3rd Floor Lecture Hall)', building: 'Academic Tower 3', floor: 3, capacity: 55, room_types: ['standard', 'multimedia'] },
-  { id: 'room-frf-406', name: 'FRF-406 (4th Floor Lecture Hall)', building: 'Faculty Block 4', floor: 4, capacity: 50, room_types: ['standard', 'multimedia'] },
-  { id: 'room-sf-201', name: 'SF-201 (2nd Floor Horseshoe)', building: 'Science Wing 2', floor: 2, capacity: 75, room_types: ['horseshoe', 'multimedia'] },
-  { id: 'room-a-08', name: 'A-08 (Computer Lab 1 Ground Fl)', building: 'Block A', floor: 0, capacity: 45, room_types: ['computer_lab', 'multimedia'] },
 ];
 
 export const INITIAL_FACULTY: Faculty[] = [

@@ -272,149 +272,167 @@ export const StudentPublicDashboard: React.FC = () => {
           </div>
 
           <div className="overflow-x-auto">
-            <div className="min-w-[1150px]">
-              {/* Header: 13 Equal 30-Minute Interval Columns */}
-              <div className="grid grid-cols-[140px_repeat(13,1fr)] bg-slate-100/90 border-b border-slate-200 text-center text-xs font-bold text-slate-800 select-none py-2.5">
+            <div className="min-w-[950px]">
+              {/* Header: Horizontal Axis with Days of the Week */}
+              <div 
+                className="grid bg-slate-100/90 border-b border-slate-200 text-center text-xs font-bold text-slate-800 select-none py-2.5"
+                style={{
+                  gridTemplateColumns: `110px repeat(7, minmax(130px, 1fr))`,
+                }}
+              >
+                {/* Top-Left Corner: Time Label */}
                 <div className="py-1 px-3 border-r border-slate-200 flex items-center justify-center gap-1.5 text-slate-600 font-bold">
                   <Clock className="w-3.5 h-3.5 text-shu-700" />
-                  <span>Day / Slot</span>
+                  <span>Time \ Day</span>
                 </div>
 
-                {TIME_SLOTS_30MIN.map((slot) => (
-                  <div
-                    key={slot.id}
-                    className="py-1 px-1 border-r border-slate-200/80 last:border-r-0 flex flex-col items-center justify-center"
-                  >
-                    <span className="font-mono text-[11px] text-slate-900 font-bold">
-                      {slot.start}
-                    </span>
-                    <span className="text-[9px] font-mono text-slate-400 font-medium">
-                      {slot.end}
-                    </span>
-                  </div>
-                ))}
+                {/* Day Columns */}
+                {TIMETABLE_DAYS.map((day) => {
+                  const count = batchSessions.filter((s) => s.day_of_week === day.id).length;
+                  return (
+                    <div
+                      key={day.id}
+                      className="py-1 px-2 border-r border-slate-200/80 last:border-r-0 flex items-center justify-center gap-1.5"
+                    >
+                      <span className="font-extrabold text-slate-900 text-xs">
+                        {day.name}
+                      </span>
+                      {day.isWeekend && (
+                        <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
+                          Exc
+                        </span>
+                      )}
+                      <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-slate-200 text-slate-700">
+                        {count}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
 
-              {/* Day Rows */}
-              <div className="divide-y divide-slate-100">
+              {/* Grid Body: Time Slots as Vertical Axis Rows */}
+              <div 
+                className="grid"
+                style={{
+                  gridTemplateColumns: `110px repeat(7, minmax(130px, 1fr))`,
+                }}
+              >
+                {/* Column 1: Vertical Time Slot Labels (13 × 30-min Rows) */}
+                <div className="border-r border-slate-200 bg-slate-50/70 divide-y divide-slate-200/80">
+                  {TIME_SLOTS_30MIN.map((slot) => (
+                    <div
+                      key={slot.id}
+                      className="h-[62px] px-2 flex flex-col items-center justify-center text-center select-none"
+                    >
+                      <span className="font-mono text-[11px] text-slate-900 font-bold">
+                        {slot.start}
+                      </span>
+                      <span className="text-[9px] font-mono text-slate-400 font-medium">
+                        {slot.end}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Day Columns (Each containing 13 equal 30-min vertical row slots) */}
                 {TIMETABLE_DAYS.map((day) => {
                   const daySessions = batchSessions.filter((s) => s.day_of_week === day.id);
-                  // Don't show empty weekend unless there's a class scheduled
-                  if (day.isWeekend && daySessions.length === 0) return null;
 
                   return (
                     <div
                       key={day.id}
-                      className={`grid grid-cols-[140px_repeat(13,1fr)] border-b border-slate-100 last:border-b-0 ${
-                        day.isWeekend ? 'bg-amber-50/20' : 'hover:bg-slate-50/30'
+                      className={`border-r border-slate-200/80 last:border-r-0 relative p-1.5 ${
+                        day.isWeekend ? 'bg-amber-50/20' : 'bg-white'
                       }`}
                     >
-                      {/* Left: Day Label */}
-                      <div className="p-3 border-r border-slate-200 bg-slate-50/70 flex flex-col justify-center items-start space-y-1">
-                        <div className="flex items-center gap-1.5 w-full">
-                          <span className="font-extrabold text-slate-900 text-xs">
-                            {day.name}
-                          </span>
-                          <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-slate-200 text-slate-700 ml-auto">
-                            {daySessions.length}
-                          </span>
-                        </div>
+                      {/* Vertical Grid of 13 Rows */}
+                      <div 
+                        className="relative grid gap-1 w-full"
+                        style={{
+                          gridTemplateRows: `repeat(13, 58px)`,
+                        }}
+                      >
+                        {/* Background 13 Empty 30-min Slots */}
+                        {TIME_SLOTS_30MIN.map((slot) => (
+                          <div
+                            key={slot.id}
+                            style={{ gridRow: `${slot.id + 1} / span 1` }}
+                            className="w-full h-full rounded-xl border border-dashed border-slate-200/60 bg-slate-50/40 flex items-center justify-center"
+                          >
+                            <span className="text-[9px] font-mono text-slate-300 font-medium select-none">
+                              {slot.start}
+                            </span>
+                          </div>
+                        ))}
 
-                        {day.isWeekend ? (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
-                            <span>Weekend Exc.</span>
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-slate-400 font-medium">
-                            Standard Weekday
-                          </span>
-                        )}
-                      </div>
+                        {/* Batch Sessions Positioned Vertically across Exact Span */}
+                        {daySessions.map((s) => {
+                          const crs = courses.find((c) => c.id === s.course_id);
+                          const rm = rooms.find((r) => r.id === s.room_id);
+                          const tch = faculty.find((f) => f.id === s.faculty_id);
+                          const isUnassigned = !s.room_id || !rm;
 
-                      {/* Right: 13-Slot Proportional Grid Container */}
-                      <div className="col-span-13 p-2 relative">
-                        <div className="relative grid grid-cols-13 gap-2 min-h-[95px] w-full">
-                          {/* Background 13 Empty 30-min Slot Grid Cells */}
-                          {TIME_SLOTS_30MIN.map((slot) => (
+                          const { rowStart, rowSpan, boxesCount } = calculateSlotSpan(
+                            s.start_time,
+                            s.end_time
+                          );
+
+                          return (
                             <div
-                              key={slot.id}
-                              className="col-span-1 h-full min-h-[85px] rounded-xl border border-dashed border-slate-200/70 bg-slate-50/40 flex items-center justify-center"
+                              key={s.id}
+                              style={{
+                                gridRow: `${rowStart} / span ${rowSpan}`,
+                              }}
+                              className="absolute inset-x-1 inset-y-0.5 z-10"
                             >
-                              <span className="text-[9px] font-mono text-slate-300 font-medium">
-                                {slot.start}
-                              </span>
-                            </div>
-                          ))}
-
-                          {/* Batch Class Sessions Positioned across their Exact Span */}
-                          {daySessions.map((s) => {
-                            const crs = courses.find((c) => c.id === s.course_id);
-                            const rm = rooms.find((r) => r.id === s.room_id);
-                            const tch = faculty.find((f) => f.id === s.faculty_id);
-                            const isUnassigned = !s.room_id || !rm;
-
-                            const { colStart, colSpan, boxesCount } = calculateSlotSpan(
-                              s.start_time,
-                              s.end_time
-                            );
-
-                            return (
                               <div
-                                key={s.id}
-                                style={{
-                                  gridColumn: `${colStart} / span ${colSpan}`,
-                                }}
-                                className="absolute inset-y-0.5 z-10"
+                                className={`h-full p-2.5 rounded-xl border shadow-2xs flex flex-col justify-between transition-all ${
+                                  isUnassigned
+                                    ? 'bg-amber-50/95 border-amber-300'
+                                    : 'bg-red-50/50 border-red-200/90 hover:border-shu-700 hover:shadow-md'
+                                }`}
                               >
-                                <div
-                                  className={`h-full p-2.5 rounded-xl border shadow-2xs flex flex-col justify-between transition-all ${
-                                    isUnassigned
-                                      ? 'bg-amber-50/95 border-amber-300'
-                                      : 'bg-red-50/50 border-red-200/90 hover:border-shu-700 hover:shadow-md'
-                                  }`}
-                                >
-                                  <div>
-                                    <div className="flex items-center justify-between gap-1 mb-1">
-                                      <div className="flex items-center gap-1 flex-wrap">
-                                        <span className="font-extrabold text-shu-700 font-mono text-[11px] bg-red-100/80 px-1.5 py-0.5 rounded">
-                                          {crs?.code}
-                                        </span>
-                                        <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-white text-slate-600 border border-slate-200">
-                                          {boxesCount} {boxesCount === 1 ? 'box' : 'boxes'}
-                                        </span>
-                                      </div>
-
-                                      <span className="text-[10px] font-mono font-bold text-slate-800">
-                                        {s.start_time} - {s.end_time}
+                                <div>
+                                  <div className="flex items-center justify-between gap-1 mb-1">
+                                    <div className="flex items-center gap-1 flex-wrap">
+                                      <span className="font-extrabold text-shu-700 font-mono text-[11px] bg-red-100/80 px-1.5 py-0.5 rounded">
+                                        {crs?.code}
+                                      </span>
+                                      <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-white text-slate-600 border border-slate-200">
+                                        {boxesCount} {boxesCount === 1 ? 'box' : 'boxes'}
                                       </span>
                                     </div>
 
-                                    <h5 className="font-bold text-slate-900 line-clamp-1 text-xs">
-                                      {crs?.name}
-                                    </h5>
-                                  </div>
-
-                                  <div className="pt-1.5 mt-1 border-t border-red-100/70 flex items-center justify-between gap-1 text-[10px]">
-                                    <span className="font-medium text-slate-700 truncate">
-                                      {tch?.name}
+                                    <span className="text-[10px] font-mono font-bold text-slate-800">
+                                      {s.start_time} - {s.end_time}
                                     </span>
-
-                                    {isUnassigned ? (
-                                      <span className="flex items-center gap-0.5 font-bold text-amber-800 bg-amber-200/80 px-1.5 py-0.5 rounded text-[9px]">
-                                        <AlertTriangle className="w-2.5 h-2.5 text-amber-700 shrink-0" />
-                                        <span>Pending Room</span>
-                                      </span>
-                                    ) : (
-                                      <span className="font-bold text-shu-700 truncate">
-                                        {rm?.name}
-                                      </span>
-                                    )}
                                   </div>
+
+                                  <h5 className="font-bold text-slate-900 line-clamp-1 text-xs">
+                                    {crs?.name}
+                                  </h5>
+                                </div>
+
+                                <div className="pt-1.5 mt-1 border-t border-red-100/70 flex items-center justify-between gap-1 text-[10px]">
+                                  <span className="font-medium text-slate-700 truncate">
+                                    {tch?.name}
+                                  </span>
+
+                                  {isUnassigned ? (
+                                    <span className="flex items-center gap-0.5 font-bold text-amber-800 bg-amber-200/80 px-1.5 py-0.5 rounded text-[9px]">
+                                      <AlertTriangle className="w-2.5 h-2.5 text-amber-700 shrink-0" />
+                                      <span>Pending Room</span>
+                                    </span>
+                                  ) : (
+                                    <span className="font-bold text-shu-700 truncate">
+                                      {rm?.name}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
-                            );
-                          })}
-                        </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );

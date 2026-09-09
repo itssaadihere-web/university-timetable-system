@@ -341,7 +341,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
         </button>
       </div>
 
-      {/* Proportional 30-Minute Timeline Matrix Grid */}
+      {/* Proportional 30-Minute Timeline Matrix Grid: Days on Horizontal, Time Slots on Vertical */}
       <DndContext
         sensors={sensors}
         onDragStart={handleDragStart}
@@ -349,115 +349,141 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
       >
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <div className="min-w-[1150px]">
-              {/* Header: 13 Equal 30-Minute Interval Columns */}
-              <div className="grid grid-cols-[140px_repeat(13,1fr)] bg-slate-100/90 border-b border-slate-200 text-center text-xs font-bold text-slate-800 select-none py-2.5">
+            <div className="min-w-[1000px]">
+              {/* Header: Horizontal Axis with Days of the Week */}
+              <div 
+                className="grid bg-slate-100/90 border-b border-slate-200 text-center text-xs font-bold text-slate-800 select-none py-2.5"
+                style={{
+                  gridTemplateColumns: `110px repeat(${displayDays.length}, minmax(150px, 1fr))`,
+                }}
+              >
+                {/* Top-Left Corner: Time Label */}
                 <div className="py-1 px-3 border-r border-slate-200 flex items-center justify-center gap-1.5 text-slate-600 font-bold">
-                  <CalendarIcon className="w-3.5 h-3.5 text-shu-700" />
-                  <span>Day / Slot</span>
+                  <Clock className="w-3.5 h-3.5 text-shu-700" />
+                  <span>Time \ Day</span>
                 </div>
 
-                {TIME_SLOTS_30MIN.map((slot) => (
-                  <div
-                    key={slot.id}
-                    className="py-1 px-1 border-r border-slate-200/80 last:border-r-0 flex flex-col items-center justify-center"
-                  >
-                    <span className="font-mono text-[11px] text-slate-900 font-bold">
-                      {slot.start}
-                    </span>
-                    <span className="text-[9px] font-mono text-slate-400 font-medium">
-                      {slot.end}
-                    </span>
-                  </div>
-                ))}
+                {/* Day Columns */}
+                {displayDays.map((day) => {
+                  const count = filteredSessions.filter((s) => s.day_of_week === day.id).length;
+                  return (
+                    <div
+                      key={day.id}
+                      className="py-1 px-2 border-r border-slate-200/80 last:border-r-0 flex items-center justify-center gap-2"
+                    >
+                      <span className="font-extrabold text-slate-900 text-xs">
+                        {day.name}
+                      </span>
+                      {day.isWeekend && (
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
+                          Exc
+                        </span>
+                      )}
+                      <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-slate-200 text-slate-700">
+                        {count}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
 
-              {/* Day Rows */}
-              <div className="divide-y divide-slate-100">
+              {/* Grid Body: Time Slots as Vertical Axis Rows */}
+              <div 
+                className="grid"
+                style={{
+                  gridTemplateColumns: `110px repeat(${displayDays.length}, minmax(150px, 1fr))`,
+                }}
+              >
+                {/* Column 1: Vertical Time Slot Labels (13 × 30-min Rows) */}
+                <div className="border-r border-slate-200 bg-slate-50/70 divide-y divide-slate-200/80">
+                  {TIME_SLOTS_30MIN.map((slot) => (
+                    <div
+                      key={slot.id}
+                      className="h-[62px] px-2 flex flex-col items-center justify-center text-center select-none"
+                    >
+                      <span className="font-mono text-[11px] text-slate-900 font-bold">
+                        {slot.start}
+                      </span>
+                      <span className="text-[9px] font-mono text-slate-400 font-medium">
+                        {slot.end}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Day Columns (Each containing 13 equal 30-min vertical row slots) */}
                 {displayDays.map((day) => {
                   const daySessions = filteredSessions.filter((s) => s.day_of_week === day.id);
                   const tracks = organizeDaySessionsIntoTracks(daySessions);
+                  const totalTracks = Math.max(1, tracks.length);
 
                   return (
                     <div
                       key={day.id}
-                      className={`grid grid-cols-[140px_repeat(13,1fr)] border-b border-slate-100 last:border-b-0 transition-colors ${
-                        day.isWeekend ? 'bg-amber-50/20' : 'hover:bg-slate-50/30'
+                      className={`border-r border-slate-200/80 last:border-r-0 relative p-1.5 ${
+                        day.isWeekend ? 'bg-amber-50/20' : 'bg-white'
                       }`}
                     >
-                      {/* Left: Day Label & Exception Tag */}
-                      <div className="p-3 border-r border-slate-200 bg-slate-50/70 flex flex-col justify-center items-start space-y-1">
-                        <div className="flex items-center gap-1.5 w-full">
-                          <span className="font-extrabold text-slate-900 text-xs">
-                            {day.name}
-                          </span>
-                          <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-slate-200 text-slate-700 ml-auto">
-                            {daySessions.length}
-                          </span>
-                        </div>
-
-                        {day.isWeekend ? (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
-                            <span>Weekend Exc.</span>
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-slate-400 font-medium">
-                            Standard Weekday
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Right: 13-Slot Track Container */}
-                      <div className="col-span-13 p-2 flex flex-col gap-2.5 relative">
-                        {tracks.map((track, trackIdx) => (
+                      {/* Vertical Grid of 13 Rows */}
+                      <div 
+                        className="relative grid gap-1 w-full"
+                        style={{
+                          gridTemplateRows: `repeat(13, 58px)`,
+                        }}
+                      >
+                        {/* Background 13 Droppable Target Cells */}
+                        {TIME_SLOTS_30MIN.map((slot) => (
                           <div
-                            key={trackIdx}
-                            className="relative grid grid-cols-13 gap-2 min-h-[105px] w-full"
+                            key={slot.id}
+                            style={{ gridRow: `${slot.id + 1} / span 1` }}
+                            className="w-full h-full"
                           >
-                            {/* Background 13 Equal 30-min Droppable Target Cells */}
-                            {TIME_SLOTS_30MIN.map((slot) => (
-                              <div key={slot.id} className="col-span-1 h-full">
-                                <DroppableTimeSlot
-                                  dayOfWeek={day.id}
-                                  slotIndex={slot.id}
-                                  startTime={slot.start}
-                                  endTime={slot.end}
-                                  onAddSession={(d, start, end) =>
-                                    onOpenNewSessionModal({
-                                      dayOfWeek: d,
-                                      startTime: start,
-                                      endTime: end,
-                                    })
-                                  }
-                                />
-                              </div>
-                            ))}
-
-                            {/* Scheduled Class Session Cards Placed across their Exact Span */}
-                            {track.map((session) => {
-                              const { colStart, colSpan } = calculateSlotSpan(
-                                session.start_time,
-                                session.end_time
-                              );
-
-                              return (
-                                <div
-                                  key={session.id}
-                                  style={{
-                                    gridColumn: `${colStart} / span ${colSpan}`,
-                                  }}
-                                  className="absolute inset-y-0.5 z-10"
-                                >
-                                  <DraggableSessionCard
-                                    session={session}
-                                    onEdit={onOpenEditSessionModal}
-                                    onDelete={handleDeleteSession}
-                                  />
-                                </div>
-                              );
-                            })}
+                            <DroppableTimeSlot
+                              dayOfWeek={day.id}
+                              slotIndex={slot.id}
+                              startTime={slot.start}
+                              endTime={slot.end}
+                              onAddSession={(d, start, end) =>
+                                onOpenNewSessionModal({
+                                  dayOfWeek: d,
+                                  startTime: start,
+                                  endTime: end,
+                                })
+                              }
+                            />
                           </div>
                         ))}
+
+                        {/* Scheduled Sessions Spanning Proportional Vertical Boxes */}
+                        {tracks.map((track, trackIdx) =>
+                          track.map((session) => {
+                            const { rowStart, rowSpan } = calculateSlotSpan(
+                              session.start_time,
+                              session.end_time
+                            );
+
+                            const leftPercent = (trackIdx / totalTracks) * 100;
+                            const widthPercent = 100 / totalTracks;
+
+                            return (
+                              <div
+                                key={session.id}
+                                style={{
+                                  gridRow: `${rowStart} / span ${rowSpan}`,
+                                  left: totalTracks > 1 ? `${leftPercent}%` : '4px',
+                                  width: totalTracks > 1 ? `calc(${widthPercent}% - 4px)` : 'calc(100% - 8px)',
+                                }}
+                                className="absolute inset-y-0.5 z-10"
+                              >
+                                <DraggableSessionCard
+                                  session={session}
+                                  onEdit={onOpenEditSessionModal}
+                                  onDelete={handleDeleteSession}
+                                />
+                              </div>
+                            );
+                          })
+                        )}
                       </div>
                     </div>
                   );
@@ -470,7 +496,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
         {/* Drag Overlay for smooth dragging preview */}
         <DragOverlay>
           {activeSession ? (
-            <div className="w-72 pointer-events-none opacity-90 shadow-2xl scale-105">
+            <div className="w-64 pointer-events-none opacity-90 shadow-2xl scale-105">
               <DraggableSessionCard
                 session={activeSession}
                 onEdit={() => {}}

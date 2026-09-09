@@ -99,6 +99,8 @@ interface TimetableContextType {
   rejectMakeup: (requestId: string, reason?: string) => void;
   cloneSemesterRollover: (targetSemesterName: string, targetAcademicYear: string) => void;
   bulkImportEntities: (type: 'rooms' | 'faculty' | 'batches' | 'courses', items: any[]) => void;
+  updateFaculty: (updated: Faculty) => Promise<{ success: boolean; errors?: string[] }>;
+  updateRoom: (updated: Room) => Promise<{ success: boolean; errors?: string[] }>;
 }
 
 const TimetableContext = createContext<TimetableContextType | null>(null);
@@ -609,11 +611,53 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
   // Bulk Import Helper
   const bulkImportEntities = (type: 'rooms' | 'faculty' | 'batches' | 'courses', items: any[]) => {
-    if (type === 'rooms') setRooms((prev) => [...prev, ...items]);
+    if (type === 'rooms') setRooms((prev) => [...prev, ...items].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })));
     if (type === 'faculty') setFaculty((prev) => [...prev, ...items]);
     if (type === 'batches') setBatches((prev) => [...prev, ...items]);
     if (type === 'courses') setCourses((prev) => [...prev, ...items]);
   };
+
+  // Update Faculty Load Limit & Department
+  const updateFaculty = async (updated: Faculty): Promise<{ success: boolean; errors?: string[] }> => {
+    setFaculty((prev) => prev.map((f) => (f.id === updated.id ? updated : f)));
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('faculty').update(updated).eq('id', updated.id);
+    }
+    const newLog: AuditLogEntry = {
+      id: `log-${Date.now()}`,
+      changed_by: currentUserName,
+      change_type: 'UPDATE',
+      description: `Adjusted faculty load limit for ${updated.name} to Max ${updated.max_load_per_day}h/day`,
+      timestamp: new Date().toISOString(),
+    };
+    setAuditLogs((prev) => [newLog, ...prev]);
+    return { success: true };
+  };
+
+  // Update Room Capacity, Specialty Tags & Details
+  const updateRoom = async (updated: Room): Promise<{ success: boolean; errors?: string[] }> => {
+    setRooms((prev) =>
+      prev
+        .map((r) => (r.id === updated.id ? updated : r))
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
+    );
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('rooms').update(updated).eq('id', updated.id);
+    }
+    const newLog: AuditLogEntry = {
+      id: `log-${Date.now()}`,
+      changed_by: currentUserName,
+      change_type: 'UPDATE',
+      description: `Updated room & capabilities for ${updated.name} (Cap: ${updated.capacity}, Tags: [${updated.room_types.join(', ')}])`,
+      timestamp: new Date().toISOString(),
+    };
+    setAuditLogs((prev) => [newLog, ...prev]);
+    return { success: true };
+  };
+
+  const sortedRooms = [...rooms].sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+  );
 
   return (
     <TimetableContext.Provider
@@ -621,7 +665,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         semesters,
         activeSemester,
         calendarEvents,
-        rooms,
+        rooms: sortedRooms,
         faculty,
         batches,
         mergeGroups,
@@ -655,6 +699,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         rejectMakeup,
         cloneSemesterRollover,
         bulkImportEntities,
+        updateFaculty,
+        updateRoom,
       }}
     >
       {children}

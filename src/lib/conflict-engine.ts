@@ -64,6 +64,8 @@ export const TIMETABLE_DAYS = [
 export function calculateSlotSpan(startTime: string, endTime: string): {
   colStart: number;
   colSpan: number;
+  rowStart: number;
+  rowSpan: number;
   slotIndex: number;
   boxesCount: number;
   startPercent: number;
@@ -79,15 +81,17 @@ export function calculateSlotSpan(startTime: string, endTime: string): {
   const durationMins = Math.max(15, endMins - startMins);
   const boxesCount = Math.max(1, Math.round(durationMins / 30));
 
-  const colStart = slotIndex + 1;
-  const colSpan = Math.min(boxesCount, TOTAL_30MIN_SLOTS - slotIndex);
+  const start1Based = slotIndex + 1;
+  const spanBoxes = Math.min(boxesCount, TOTAL_30MIN_SLOTS - slotIndex);
 
   const startPercent = Math.max(0, Math.min(100, ((startMins - baseStart) / baseTotal) * 100));
   const durationPercent = Math.max(0, Math.min(100 - startPercent, (durationMins / baseTotal) * 100));
 
   return {
-    colStart,
-    colSpan,
+    colStart: start1Based,
+    colSpan: spanBoxes,
+    rowStart: start1Based,
+    rowSpan: spanBoxes,
     slotIndex,
     boxesCount,
     startPercent,
