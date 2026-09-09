@@ -7,6 +7,7 @@ export interface UserAccount {
   role: UserRole;
   department?: string;
   faculty_id?: string;
+  password?: string;
   created_at: string;
   created_by?: string;
 }

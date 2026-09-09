@@ -2,17 +2,12 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { UserRole } from '@/types';
 import { 
   X, 
   Lock, 
   Mail, 
-  ShieldCheck, 
   GraduationCap, 
-  UserCheck, 
   ArrowRight, 
-  Sparkles,
-  CheckCircle2,
   AlertCircle
 } from 'lucide-react';
 
@@ -22,9 +17,9 @@ interface LoginModalProps {
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
-  const { login, quickLogin, userAccounts } = useAuth();
-  const [email, setEmail] = useState<string>('coordinator@univ.edu');
-  const [password, setPassword] = useState<string>('••••••••');
+  const { login } = useAuth();
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
@@ -42,17 +37,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
         setIsSubmitting(false);
         return;
       }
+      setEmail('');
+      setPassword('');
       onClose();
     } catch (err: any) {
       setErrorMsg(err?.message || 'Login failed');
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleQuickLogin = (role: UserRole, userEmail?: string) => {
-    quickLogin(role, userEmail);
-    onClose();
   };
 
   return (
@@ -82,42 +74,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        {/* 1-Click Fast Role Switcher */}
-        <div className="mt-4 p-3 bg-red-50/50 rounded-2xl border border-red-100">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-              Quick 1-Click Demo Login:
-            </span>
-            <span className="text-[10px] text-shu-700 font-bold">Instant Access</span>
-          </div>
-
-          <div className="grid grid-cols-3 gap-1.5">
-            <button
-              onClick={() => handleQuickLogin('admin', 'admin@univ.edu')}
-              className="px-2 py-2 rounded-xl text-xs font-bold bg-white text-slate-800 border border-slate-200 hover:border-shu-700 hover:text-shu-700 hover:shadow-xs transition-all flex flex-col items-center gap-1"
-            >
-              <ShieldCheck className="w-4 h-4 text-shu-700" />
-              <span>Admin</span>
-            </button>
-
-            <button
-              onClick={() => handleQuickLogin('coordinator', 'coordinator@univ.edu')}
-              className="px-2 py-2 rounded-xl text-xs font-bold bg-white text-slate-800 border border-slate-200 hover:border-shu-700 hover:text-shu-700 hover:shadow-xs transition-all flex flex-col items-center gap-1"
-            >
-              <Sparkles className="w-4 h-4 text-shu-700" />
-              <span>Coordinator</span>
-            </button>
-
-            <button
-              onClick={() => handleQuickLogin('faculty', 'alan.turing@univ.edu')}
-              className="px-2 py-2 rounded-xl text-xs font-bold bg-white text-slate-800 border border-slate-200 hover:border-shu-700 hover:text-shu-700 hover:shadow-xs transition-all flex flex-col items-center gap-1"
-            >
-              <UserCheck className="w-4 h-4 text-teal-600" />
-              <span>Faculty</span>
-            </button>
-          </div>
-        </div>
-
         {/* Standard Email / Password Form */}
         <form onSubmit={handleStandardLogin} className="mt-4 space-y-3.5 text-xs">
           <div>
@@ -129,7 +85,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="e.g. coordinator@shu.edu.pk"
+                placeholder="e.g. name@shu.edu.pk"
                 className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-shu-700"
               />
             </div>
@@ -170,7 +126,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
         {/* Public Student Mode Notice */}
         <div className="mt-4 pt-3 border-t border-slate-100 text-center">
           <button
-            onClick={() => handleQuickLogin('student')}
+            onClick={onClose}
             className="text-xs font-semibold text-slate-500 hover:text-shu-700 inline-flex items-center gap-1.5 transition-colors"
           >
             <GraduationCap className="w-4 h-4 text-shu-700" />
@@ -181,4 +137,5 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     </div>
   );
 };
+
 

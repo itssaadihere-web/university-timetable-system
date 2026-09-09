@@ -15,7 +15,8 @@ import {
   AlertCircle,
   Mail,
   User,
-  Building
+  Building,
+  Lock
 } from 'lucide-react';
 
 interface UserManagementModalProps {
@@ -29,8 +30,9 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({ isOpen
 
   const [name, setName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('pass@123');
   const [role, setRole] = useState<UserRole>('faculty');
-  const [department, setDepartment] = useState<string>('Computer Science');
+  const [department, setDepartment] = useState<string>('Management Sciences');
   const [facultyId, setFacultyId] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -62,6 +64,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({ isOpen
       const res = await createAccount({
         name,
         email,
+        password,
         role,
         department,
         faculty_id: role === 'faculty' ? facultyId : undefined,
@@ -153,7 +156,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({ isOpen
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
-                    placeholder="e.g. Dr. Geoffrey Hinton"
+                    placeholder="e.g. Dr. Muhammad Ahmed"
                     className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
@@ -168,7 +171,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({ isOpen
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    placeholder="e.g. hinton@univ.edu"
+                    placeholder="e.g. muhammad.ahmed@shu.edu.pk"
                     className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
@@ -176,6 +179,20 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({ isOpen
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Password</label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    placeholder="e.g. pass@123"
+                    className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Assign User Role</label>
                 <select

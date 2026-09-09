@@ -2,56 +2,44 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserAccount, UserRole } from '@/types';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { INITIAL_FACULTY } from '@/lib/mock-data';
 
 export const INITIAL_USER_ACCOUNTS: UserAccount[] = [
+  // Administrator
   {
-    id: 'usr-admin-01',
-    name: 'Dr. Sarah Jenkins',
-    email: 'admin@univ.edu',
+    id: 'usr-admin-jalbani',
+    name: 'Prof. Dr. Amanat Ali Jalbani',
+    email: 'amanat.jalbani@shu.edu.pk',
     role: 'admin',
-    department: 'Central Administration',
+    password: 'pass@123',
+    department: 'Executive Administration',
     created_at: '2026-09-01T00:00:00Z',
   },
+  // Program Coordinator
   {
-    id: 'usr-coord-01',
-    name: 'Prof. Alice Martin',
-    email: 'coordinator@univ.edu',
+    id: 'usr-coord-bajaj',
+    name: 'Priyanka Bajaj',
+    email: 'Priyanka.Bajaj@shu.edu.pk',
     role: 'coordinator',
-    department: 'Computer Science & Engineering',
+    password: 'pass@123',
+    department: 'HR & Management',
     created_at: '2026-09-01T00:00:00Z',
-    created_by: 'Dr. Sarah Jenkins',
+    created_by: 'Prof. Dr. Amanat Ali Jalbani',
   },
-  {
-    id: 'usr-fac-turing',
-    name: 'Dr. Alan Turing',
-    email: 'alan.turing@univ.edu',
-    role: 'faculty',
-    department: 'Computer Science',
-    faculty_id: 'f0000001-0000-0000-0000-000000000001',
+  // Faculty Accounts (Seeded from all initial faculty with dot-separated SHU emails)
+  ...INITIAL_FACULTY.filter(
+    (f) => f.email.toLowerCase() !== 'priyanka.bajaj@shu.edu.pk'
+  ).map((f) => ({
+    id: `usr-${f.id}`,
+    name: f.name,
+    email: f.email,
+    role: 'faculty' as UserRole,
+    password: 'pass@123',
+    department: f.department,
+    faculty_id: f.id,
     created_at: '2026-09-01T00:00:00Z',
-    created_by: 'Prof. Alice Martin',
-  },
-  {
-    id: 'usr-fac-hopper',
-    name: 'Dr. Grace Hopper',
-    email: 'grace.hopper@univ.edu',
-    role: 'faculty',
-    department: 'Computer Science',
-    faculty_id: 'f0000004-0000-0000-0000-000000000004',
-    created_at: '2026-09-01T00:00:00Z',
-    created_by: 'Prof. Alice Martin',
-  },
-  {
-    id: 'usr-fac-lovelace',
-    name: 'Prof. Ada Lovelace',
-    email: 'ada.lovelace@univ.edu',
-    role: 'faculty',
-    department: 'Software Engineering',
-    faculty_id: 'f0000002-0000-0000-0000-000000000002',
-    created_at: '2026-09-01T00:00:00Z',
-    created_by: 'Prof. Alice Martin',
-  },
+    created_by: 'Priyanka Bajaj',
+  })),
 ];
 
 interface AuthContextType {
@@ -60,12 +48,12 @@ interface AuthContextType {
   isAuthenticated: boolean;
   userAccounts: UserAccount[];
   login: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
-  quickLogin: (role: UserRole, email?: string) => void;
   logout: () => void;
   createAccount: (data: {
     name: string;
     email: string;
     role: UserRole;
+    password?: string;
     department?: string;
     faculty_id?: string;
   }) => Promise<{ success: boolean; error?: string }>;
@@ -76,48 +64,51 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userAccounts, setUserAccounts] = useState<UserAccount[]>(INITIAL_USER_ACCOUNTS);
-  // Default to Coordinator for demo/evaluation convenience, or public student
-  const [currentUser, setCurrentUser] = useState<UserAccount | null>(INITIAL_USER_ACCOUNTS[1]); // Program Coordinator
+  // Default to Public Student view initially until explicit credential login
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
 
   const currentRole: UserRole = currentUser ? currentUser.role : 'student';
   const isAuthenticated = Boolean(currentUser);
 
-  // Login handler
-  const login = async (email: string, _password?: string): Promise<{ success: boolean; error?: string }> => {
+  // Strict Login handler based on credential evaluation
+  const login = async (email: string, password?: string): Promise<{ success: boolean; error?: string }> => {
     const trimmedEmail = email.trim().toLowerCase();
+    const providedPass = password ? password.trim() : '';
+
+    if (!trimmedEmail) {
+      return {
+        success: false,
+        error: 'Please enter your institutional email address.',
+      };
+    }
+
+    if (!providedPass) {
+      return {
+        success: false,
+        error: 'Please enter your account password.',
+      };
+    }
+
     const found = userAccounts.find((u) => u.email.toLowerCase() === trimmedEmail);
 
     if (!found) {
       return {
         success: false,
-        error: `No registered account found for ${email}. Please check credentials or contact an administrator.`,
+        error: `No registered account found for "${email}". Please check credentials or contact an administrator.`,
       };
     }
 
+    const expectedPassword = found.password || 'pass@123';
+    if (providedPass !== expectedPassword) {
+      return {
+        success: false,
+        error: 'Incorrect password. Please verify your credentials and try again.',
+      };
+    }
+
+    // Assign logged in user (determines access & dashboard type strictly by role)
     setCurrentUser(found);
     return { success: true };
-  };
-
-  // Quick 1-click role switcher for evaluating different views
-  const quickLogin = (role: UserRole, specificEmail?: string) => {
-    if (role === 'student') {
-      setCurrentUser(null); // Public Student view
-      return;
-    }
-
-    if (specificEmail) {
-      const match = userAccounts.find((u) => u.email.toLowerCase() === specificEmail.toLowerCase());
-      if (match) {
-        setCurrentUser(match);
-        return;
-      }
-    }
-
-    // Default match by role
-    const match = userAccounts.find((u) => u.role === role);
-    if (match) {
-      setCurrentUser(match);
-    }
   };
 
   // Logout (reverts to Public Student view)
@@ -130,6 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     name: string;
     email: string;
     role: UserRole;
+    password?: string;
     department?: string;
     faculty_id?: string;
   }): Promise<{ success: boolean; error?: string }> => {
@@ -158,8 +150,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const newAccount: UserAccount = {
       id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `usr-${Date.now()}`,
       name: data.name.trim(),
-      email: data.email.trim().toLowerCase(),
+      email: data.email.trim(),
       role: data.role,
+      password: data.password || 'pass@123',
       department: data.department || currentUser.department || 'Academic Department',
       faculty_id: data.faculty_id,
       created_at: new Date().toISOString(),
@@ -192,7 +185,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated,
         userAccounts,
         login,
-        quickLogin,
         logout,
         createAccount,
         deleteAccount,

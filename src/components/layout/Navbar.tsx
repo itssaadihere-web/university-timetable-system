@@ -25,7 +25,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenLoginModal,
   onOpenUserManagement,
 }) => {
-  const { currentUser, currentRole, isAuthenticated, logout, quickLogin } = useAuth();
+  const { currentUser, currentRole, isAuthenticated, logout } = useAuth();
   const { activeSemester, lastSyncTime } = useTimetable();
 
   const getRoleBadge = () => {
@@ -120,7 +120,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </div>
                 </div>
 
-                {/* Switch / User Console (Admin/Coord) */}
+                {/* User Console (Admin/Coord) */}
                 {(currentUser.role === 'admin' || currentUser.role === 'coordinator') && (
                   <button
                     onClick={onOpenUserManagement}
@@ -135,22 +135,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </button>
                 )}
 
-                {/* Switch Role / Login Modal */}
-                <button
-                  onClick={onOpenLoginModal}
-                  className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all"
-                  title="Switch User Profile or Role"
-                >
-                  Switch
-                </button>
-
                 {/* Logout to Student View */}
                 <button
                   onClick={logout}
-                  className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl transition-all"
                   title="Sign Out (Return to Student Public Schedule)"
                 >
-                  <LogOut className="w-4 h-4" />
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Sign Out</span>
                 </button>
               </div>
             ) : (
