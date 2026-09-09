@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useTimetable } from '@/context/TimetableContext';
 import { 
@@ -17,7 +18,7 @@ import {
 } from 'lucide-react';
 
 interface NavbarProps {
-  onOpenLoginModal: () => void;
+  onOpenLoginModal?: () => void;
   onOpenUserManagement: () => void;
 }
 
@@ -152,13 +153,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span>Student Public Portal</span>
                 </span>
 
-                <button
-                  onClick={onOpenLoginModal}
+                <Link
+                  href="/login"
                   className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-shu-700 hover:bg-shu-800 rounded-xl shadow-xs hover:shadow transition-all"
                 >
                   <Lock className="w-3.5 h-3.5" />
                   <span>Staff / Faculty Login</span>
-                </button>
+                </Link>
               </div>
             )}
           </div>

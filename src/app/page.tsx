@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useTimetable } from '@/context/TimetableContext';
 import { Navbar } from '@/components/layout/Navbar';
-import { LoginModal } from '@/components/auth/LoginModal';
 import { UserManagementModal } from '@/components/auth/UserManagementModal';
 import { StudentPublicDashboard } from '@/components/dashboards/StudentPublicDashboard';
 import { FacultyDashboard } from '@/components/dashboards/FacultyDashboard';
@@ -31,7 +30,6 @@ export default function AppMainPage() {
   }, [currentRole, currentUser, setCurrentRole, setCurrentUserName]);
 
   // Modal States
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
   const [isUserManagementOpen, setIsUserManagementOpen] = useState<boolean>(false);
   const [isNewSessionOpen, setIsNewSessionOpen] = useState<boolean>(false);
   const [sessionToEdit, setSessionToEdit] = useState<ClassSession | null>(null);
@@ -56,7 +54,6 @@ export default function AppMainPage() {
     <div className="min-h-screen flex flex-col bg-slate-50">
       {/* Clean Navbar */}
       <Navbar
-        onOpenLoginModal={() => setIsLoginModalOpen(true)}
         onOpenUserManagement={() => setIsUserManagementOpen(true)}
       />
 
@@ -89,11 +86,6 @@ export default function AppMainPage() {
       </main>
 
       {/* Modals */}
-      <LoginModal
-        isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)}
-      />
-
       <UserManagementModal
         isOpen={isUserManagementOpen}
         onClose={() => setIsUserManagementOpen(false)}
