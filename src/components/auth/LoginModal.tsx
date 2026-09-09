@@ -37,8 +37,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
         setIsSubmitting(false);
         return;
       }
-      setEmail('');
-      setPassword('');
       onClose();
     } catch (err: any) {
       setErrorMsg(err?.message || 'Login failed');
@@ -75,13 +73,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Standard Email / Password Form */}
-        <form onSubmit={handleStandardLogin} className="mt-4 space-y-3.5 text-xs">
+        <form onSubmit={handleStandardLogin} method="post" action="#" className="mt-4 space-y-3.5 text-xs">
           <div>
-            <label className="block font-bold text-slate-700 mb-1">Institutional Email</label>
+            <label htmlFor="login-email" className="block font-bold text-slate-700 mb-1">Institutional Email</label>
             <div className="relative">
               <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
+                id="login-email"
+                name="username"
                 type="email"
+                autoComplete="username email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -92,11 +93,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           </div>
 
           <div>
-            <label className="block font-bold text-slate-700 mb-1">Password</label>
+            <label htmlFor="login-password" className="block font-bold text-slate-700 mb-1">Password</label>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
+                id="login-password"
+                name="password"
                 type="password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
