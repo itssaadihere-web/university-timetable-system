@@ -51,8 +51,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
   const pendingMakeupCount = makeupRequests.filter((m) => m.status === 'pending').length;
 
   const unassignedSessions = sessions.filter((s) => {
-    const r = rooms.find((rm) => rm.id === s.room_id);
-    return !r || s.room_id === 'room-unassigned' || s.room_id === 'a0000000-0000-0000-0000-000000000000' || r.name.includes('Pending') || r.name.includes('Not Assigned');
+    return !s.room_id || !rooms.some((rm) => rm.id === s.room_id);
   });
 
   return (

@@ -4,7 +4,12 @@ import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useTimetable } from '@/context/TimetableContext';
 import { exportTimetableToExcel, exportTimetableToPDF } from '@/lib/export-utils';
-import { timeToMinutes } from '@/lib/conflict-engine';
+import { 
+  timeToMinutes,
+  TIME_SLOTS_30MIN,
+  TIMETABLE_DAYS,
+  calculateSlotSpan
+} from '@/lib/conflict-engine';
 import { 
   UserCheck, 
   Calendar, 
@@ -19,24 +24,6 @@ import {
   Layers,
   AlertTriangle
 } from 'lucide-react';
-
-const DAYS = [
-  { id: 1, name: 'Monday' },
-  { id: 2, name: 'Tuesday' },
-  { id: 3, name: 'Wednesday' },
-  { id: 4, name: 'Thursday' },
-  { id: 5, name: 'Friday' },
-  { id: 6, name: 'Saturday' },
-];
-
-const TIME_SLOTS = [
-  '08:30 - 10:00',
-  '10:15 - 11:45',
-  '12:00 - 13:30',
-  '13:30 - 15:00',
-  '15:15 - 16:45',
-  '17:00 - 18:30',
-];
 
 export const FacultyDashboard: React.FC = () => {
   const { currentUser } = useAuth();
@@ -159,82 +146,163 @@ export const FacultyDashboard: React.FC = () => {
 
       {/* Tab 1: Weekly Matrix */}
       {activeSubTab === 'schedule' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-shu-700" />
+              <span className="font-bold text-slate-900 text-sm">
+                Faculty Weekly Lecture Schedule (08:30 AM – 03:00 PM)
+              </span>
+            </div>
+            <span className="text-xs font-semibold text-slate-500">
+              13 × 30-min Units • {teacherSessions.length} Total Lecture Sections
+            </span>
+          </div>
+
           <div className="overflow-x-auto">
-            <div className="min-w-[800px]">
-              {/* Header */}
-              <div className="grid grid-cols-[120px_repeat(6,1fr)] bg-slate-50 border-b border-slate-200 text-center text-xs font-bold text-slate-700 py-3">
-                <div className="text-slate-500">Time Slot</div>
-                {DAYS.map((d) => (
-                  <div key={d.id}>{d.name}</div>
+            <div className="min-w-[1150px]">
+              {/* Header: 13 Equal 30-Minute Interval Columns */}
+              <div className="grid grid-cols-[140px_repeat(13,1fr)] bg-slate-100/90 border-b border-slate-200 text-center text-xs font-bold text-slate-800 select-none py-2.5">
+                <div className="py-1 px-3 border-r border-slate-200 flex items-center justify-center gap-1.5 text-slate-600 font-bold">
+                  <Clock className="w-3.5 h-3.5 text-shu-700" />
+                  <span>Day / Slot</span>
+                </div>
+
+                {TIME_SLOTS_30MIN.map((slot) => (
+                  <div
+                    key={slot.id}
+                    className="py-1 px-1 border-r border-slate-200/80 last:border-r-0 flex flex-col items-center justify-center"
+                  >
+                    <span className="font-mono text-[11px] text-slate-900 font-bold">
+                      {slot.start}
+                    </span>
+                    <span className="text-[9px] font-mono text-slate-400 font-medium">
+                      {slot.end}
+                    </span>
+                  </div>
                 ))}
               </div>
 
-              {/* Rows */}
-              <div className="divide-y divide-slate-100 text-xs">
-                {TIME_SLOTS.map((slot) => {
-                  const [slotStart] = slot.split(' - ').map((s) => s.trim());
+              {/* Day Rows */}
+              <div className="divide-y divide-slate-100">
+                {TIMETABLE_DAYS.map((day) => {
+                  const daySessions = teacherSessions.filter((s) => s.day_of_week === day.id);
+                  if (day.isWeekend && daySessions.length === 0) return null; // Only show weekend if classes exist
 
                   return (
-                    <div key={slot} className="grid grid-cols-[120px_repeat(6,1fr)] min-h-[90px] items-stretch">
-                      <div className="p-3 bg-slate-50/60 border-r border-slate-200 font-mono font-bold text-slate-700 flex items-center justify-center text-center">
-                        {slot}
+                    <div
+                      key={day.id}
+                      className={`grid grid-cols-[140px_repeat(13,1fr)] border-b border-slate-100 last:border-b-0 ${
+                        day.isWeekend ? 'bg-amber-50/20' : 'hover:bg-slate-50/30'
+                      }`}
+                    >
+                      {/* Left: Day Label */}
+                      <div className="p-3 border-r border-slate-200 bg-slate-50/70 flex flex-col justify-center items-start space-y-1">
+                        <div className="flex items-center gap-1.5 w-full">
+                          <span className="font-extrabold text-slate-900 text-xs">
+                            {day.name}
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-slate-200 text-slate-700 ml-auto">
+                            {daySessions.length}
+                          </span>
+                        </div>
+
+                        {day.isWeekend ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
+                            <span>Weekend Exc.</span>
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 font-medium">
+                            Standard Weekday
+                          </span>
+                        )}
                       </div>
 
-                      {DAYS.map((day) => {
-                        const matched = teacherSessions.filter(
-                          (s) => s.day_of_week === day.id && s.start_time.startsWith(slotStart)
-                        );
+                      {/* Right: 13-Slot Proportional Grid Container */}
+                      <div className="col-span-13 p-2 relative">
+                        <div className="relative grid grid-cols-13 gap-2 min-h-[95px] w-full">
+                          {/* Background 13 Empty 30-min Slot Grid Cells */}
+                          {TIME_SLOTS_30MIN.map((slot) => (
+                            <div
+                              key={slot.id}
+                              className="col-span-1 h-full min-h-[85px] rounded-xl border border-dashed border-slate-200/70 bg-slate-50/40 flex items-center justify-center"
+                            >
+                              <span className="text-[9px] font-mono text-slate-300 font-medium">
+                                {slot.start}
+                              </span>
+                            </div>
+                          ))}
 
-                        return (
-                          <div key={day.id} className="p-1.5 border-r border-slate-100 last:border-r-0">
-                            {matched.map((s) => {
-                              const crs = courses.find((c) => c.id === s.course_id);
-                              const rm = rooms.find((r) => r.id === s.room_id);
-                              const bth = batches.find((b) => b.id === s.batch_id);
-                              const isUnassigned =
-                                !rm ||
-                                s.room_id === 'room-unassigned' ||
-                                s.room_id === 'a0000000-0000-0000-0000-000000000000' ||
-                                rm.name.includes('Pending') ||
-                                rm.name.includes('Not Assigned');
+                          {/* Faculty Class Sessions Positioned across their Exact Span */}
+                          {daySessions.map((s) => {
+                            const crs = courses.find((c) => c.id === s.course_id);
+                            const rm = rooms.find((r) => r.id === s.room_id);
+                            const bth = batches.find((b) => b.id === s.batch_id);
+                            const isUnassigned = !s.room_id || !rm;
 
-                              return (
+                            const { colStart, colSpan, boxesCount } = calculateSlotSpan(
+                              s.start_time,
+                              s.end_time
+                            );
+
+                            return (
+                              <div
+                                key={s.id}
+                                style={{
+                                  gridColumn: `${colStart} / span ${colSpan}`,
+                                }}
+                                className="absolute inset-y-0.5 z-10"
+                              >
                                 <div
-                                  key={s.id}
-                                  className={`p-2.5 rounded-xl border space-y-1 shadow-2xs ${
+                                  className={`h-full p-2.5 rounded-xl border shadow-2xs flex flex-col justify-between transition-all ${
                                     isUnassigned
-                                      ? 'bg-amber-50 border-amber-300'
-                                      : 'bg-teal-50 border-teal-200'
+                                      ? 'bg-amber-50/95 border-amber-300'
+                                      : 'bg-teal-50/95 border-teal-200 hover:border-teal-400 hover:shadow-md'
                                   }`}
                                 >
-                                  <div className="flex items-center justify-between">
-                                    <span className="font-bold text-teal-900 font-mono text-[11px]">
-                                      {crs?.code}
+                                  <div>
+                                    <div className="flex items-center justify-between gap-1 mb-1">
+                                      <div className="flex items-center gap-1 flex-wrap">
+                                        <span className="font-extrabold text-teal-950 font-mono text-[11px] bg-teal-100/90 px-1.5 py-0.5 rounded">
+                                          {crs?.code}
+                                        </span>
+                                        <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-white text-slate-600 border border-slate-200">
+                                          {boxesCount} {boxesCount === 1 ? 'box' : 'boxes'}
+                                        </span>
+                                      </div>
+
+                                      <span className="text-[10px] font-mono font-bold text-teal-900">
+                                        {s.start_time} - {s.end_time}
+                                      </span>
+                                    </div>
+
+                                    <h5 className="font-bold text-slate-900 line-clamp-1 text-xs">
+                                      {crs?.name}
+                                    </h5>
+                                  </div>
+
+                                  <div className="pt-1.5 mt-1 border-t border-teal-100/80 flex items-center justify-between gap-1 text-[10px]">
+                                    <span className="font-semibold text-slate-700 truncate">
+                                      Batch: {bth?.name}
                                     </span>
+
                                     {isUnassigned ? (
-                                      <span className="flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-200/80 px-1.5 py-0.5 rounded">
-                                        <AlertTriangle className="w-2.5 h-2.5 text-amber-700" />
+                                      <span className="flex items-center gap-0.5 font-bold text-amber-800 bg-amber-200/80 px-1.5 py-0.5 rounded text-[9px]">
+                                        <AlertTriangle className="w-2.5 h-2.5 text-amber-700 shrink-0" />
                                         <span>Pending Room</span>
                                       </span>
                                     ) : (
-                                      <span className="text-[10px] font-semibold text-teal-700">
+                                      <span className="font-bold text-teal-800 truncate">
                                         {rm?.name}
                                       </span>
                                     )}
                                   </div>
-                                  <h5 className="font-bold text-slate-900 line-clamp-1 text-[11px]">
-                                    {crs?.name}
-                                  </h5>
-                                  <div className="text-[10px] text-slate-500 font-medium">
-                                    Batch: {bth?.name}
-                                  </div>
                                 </div>
-                              );
-                            })}
-                          </div>
-                        );
-                      })}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
                   );
                 })}

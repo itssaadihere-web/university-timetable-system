@@ -21,23 +21,11 @@ import {
   AlertTriangle
 } from 'lucide-react';
 
-const DAYS = [
-  { id: 1, name: 'Monday', short: 'Mon' },
-  { id: 2, name: 'Tuesday', short: 'Tue' },
-  { id: 3, name: 'Wednesday', short: 'Wed' },
-  { id: 4, name: 'Thursday', short: 'Thu' },
-  { id: 5, name: 'Friday', short: 'Fri' },
-  { id: 6, name: 'Saturday', short: 'Sat' },
-];
-
-const TIME_SLOTS = [
-  '08:30 - 10:00',
-  '10:15 - 11:45',
-  '12:00 - 13:30',
-  '13:30 - 15:00',
-  '15:15 - 16:45',
-  '17:00 - 18:30',
-];
+import { 
+  TIME_SLOTS_30MIN, 
+  TIMETABLE_DAYS, 
+  calculateSlotSpan 
+} from '@/lib/conflict-engine';
 
 export const StudentPublicDashboard: React.FC = () => {
   const { batches, sessions, courses, faculty, rooms, activeSemester } = useTimetable();
@@ -75,8 +63,7 @@ export const StudentPublicDashboard: React.FC = () => {
 
   // Count unassigned rooms for the selected batch
   const unassignedInBatchCount = batchSessions.filter((s) => {
-    const r = rooms.find((room) => room.id === s.room_id);
-    return !r || s.room_id === 'room-unassigned' || s.room_id === 'a0000000-0000-0000-0000-000000000000' || r.name.includes('Pending') || r.name.includes('Not Assigned');
+    return !s.room_id || !rooms.some((room) => room.id === s.room_id);
   }).length;
 
   const handleExport = (type: 'excel' | 'pdf') => {
@@ -238,7 +225,7 @@ export const StudentPublicDashboard: React.FC = () => {
         {viewLayout === 'day_list' && (
           <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 overflow-x-auto">
             <div className="flex items-center gap-1.5">
-              {DAYS.map((day) => {
+              {TIMETABLE_DAYS.map((day) => {
                 const count = batchSessions.filter((s) => s.day_of_week === day.id).length;
                 const isSelected = selectedDay === day.id;
 
@@ -253,6 +240,7 @@ export const StudentPublicDashboard: React.FC = () => {
                     }`}
                   >
                     <span>{day.name}</span>
+                    {day.isWeekend && <span className="text-[9px] opacity-75">(Exc)</span>}
                     <span
                       className={`px-1.5 py-0.2 rounded-full text-[10px] ${
                         isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
@@ -270,121 +258,164 @@ export const StudentPublicDashboard: React.FC = () => {
 
       {/* VIEW 1: Weekly Timetable Matrix (DEFAULT) */}
       {viewLayout === 'weekly_grid' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-shu-700" />
               <span className="font-bold text-slate-900 text-sm">
-                Weekly Timetable Matrix: {selectedBatch?.name} — {selectedBatch?.program}
+                Weekly Timetable Matrix: {selectedBatch?.name} — {selectedBatch?.program} (08:30 AM – 03:00 PM)
               </span>
             </div>
-            <span className="text-xs font-medium text-slate-500">
-              {batchSessions.length} Total Lecture Sections Scheduled
+            <span className="text-xs font-semibold text-slate-500">
+              13 × 30-min Units • {batchSessions.length} Total Lecture Sections
             </span>
           </div>
 
           <div className="overflow-x-auto">
-            <div className="min-w-[950px]">
-              {/* Day Headers */}
-              <div className="grid grid-cols-[110px_repeat(6,1fr)] bg-slate-100/80 border-b border-slate-200 text-center text-xs font-bold text-slate-800 py-3">
-                <div className="text-slate-500 font-semibold">Time Slot</div>
-                {DAYS.map((d) => (
-                  <div key={d.id} className="tracking-wide">
-                    {d.name}
+            <div className="min-w-[1150px]">
+              {/* Header: 13 Equal 30-Minute Interval Columns */}
+              <div className="grid grid-cols-[140px_repeat(13,1fr)] bg-slate-100/90 border-b border-slate-200 text-center text-xs font-bold text-slate-800 select-none py-2.5">
+                <div className="py-1 px-3 border-r border-slate-200 flex items-center justify-center gap-1.5 text-slate-600 font-bold">
+                  <Clock className="w-3.5 h-3.5 text-shu-700" />
+                  <span>Day / Slot</span>
+                </div>
+
+                {TIME_SLOTS_30MIN.map((slot) => (
+                  <div
+                    key={slot.id}
+                    className="py-1 px-1 border-r border-slate-200/80 last:border-r-0 flex flex-col items-center justify-center"
+                  >
+                    <span className="font-mono text-[11px] text-slate-900 font-bold">
+                      {slot.start}
+                    </span>
+                    <span className="text-[9px] font-mono text-slate-400 font-medium">
+                      {slot.end}
+                    </span>
                   </div>
                 ))}
               </div>
 
-              {/* Rows for each Time Slot */}
-              <div className="divide-y divide-slate-100 text-xs">
-                {TIME_SLOTS.map((slot) => {
-                  const [slotStart] = slot.split(' - ').map((s) => s.trim());
+              {/* Day Rows */}
+              <div className="divide-y divide-slate-100">
+                {TIMETABLE_DAYS.map((day) => {
+                  const daySessions = batchSessions.filter((s) => s.day_of_week === day.id);
+                  // Don't show empty weekend unless there's a class scheduled
+                  if (day.isWeekend && daySessions.length === 0) return null;
 
                   return (
-                    <div key={slot} className="grid grid-cols-[110px_repeat(6,1fr)] min-h-[110px] items-stretch">
-                      {/* Time Slot Label */}
-                      <div className="p-3 bg-slate-50/70 border-r border-slate-200 font-mono font-bold text-slate-700 flex items-center justify-center text-center text-[11px]">
-                        {slot}
+                    <div
+                      key={day.id}
+                      className={`grid grid-cols-[140px_repeat(13,1fr)] border-b border-slate-100 last:border-b-0 ${
+                        day.isWeekend ? 'bg-amber-50/20' : 'hover:bg-slate-50/30'
+                      }`}
+                    >
+                      {/* Left: Day Label */}
+                      <div className="p-3 border-r border-slate-200 bg-slate-50/70 flex flex-col justify-center items-start space-y-1">
+                        <div className="flex items-center gap-1.5 w-full">
+                          <span className="font-extrabold text-slate-900 text-xs">
+                            {day.name}
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-slate-200 text-slate-700 ml-auto">
+                            {daySessions.length}
+                          </span>
+                        </div>
+
+                        {day.isWeekend ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
+                            <span>Weekend Exc.</span>
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 font-medium">
+                            Standard Weekday
+                          </span>
+                        )}
                       </div>
 
-                      {/* Day Columns */}
-                      {DAYS.map((day) => {
-                        // Find sessions that start in or match this slot
-                        const matched = batchSessions.filter((s) => {
-                          if (s.day_of_week !== day.id) return false;
-                          // Exact match or start match
-                          if (s.start_time.startsWith(slotStart)) return true;
-                          // Special handling for 9:00 start (matches morning slot)
-                          if (slotStart === '08:30' && s.start_time === '09:00') return true;
-                          // Special handling for 1:00 PM start
-                          if (slotStart === '12:00' && s.start_time === '13:00') return false;
-                          if (slotStart === '13:30' && s.start_time === '13:00') return true;
-                          return false;
-                        });
+                      {/* Right: 13-Slot Proportional Grid Container */}
+                      <div className="col-span-13 p-2 relative">
+                        <div className="relative grid grid-cols-13 gap-2 min-h-[95px] w-full">
+                          {/* Background 13 Empty 30-min Slot Grid Cells */}
+                          {TIME_SLOTS_30MIN.map((slot) => (
+                            <div
+                              key={slot.id}
+                              className="col-span-1 h-full min-h-[85px] rounded-xl border border-dashed border-slate-200/70 bg-slate-50/40 flex items-center justify-center"
+                            >
+                              <span className="text-[9px] font-mono text-slate-300 font-medium">
+                                {slot.start}
+                              </span>
+                            </div>
+                          ))}
 
-                        return (
-                          <div key={day.id} className="p-1.5 border-r border-slate-100 last:border-r-0 space-y-1.5">
-                            {matched.map((s) => {
-                              const crs = courses.find((c) => c.id === s.course_id);
-                              const rm = rooms.find((r) => r.id === s.room_id);
-                              const tch = faculty.find((f) => f.id === s.faculty_id);
-                              const isUnassigned =
-                                !rm ||
-                                s.room_id === 'room-unassigned' ||
-                                s.room_id === 'a0000000-0000-0000-0000-000000000000' ||
-                                rm.name.includes('Pending') ||
-                                rm.name.includes('Not Assigned');
+                          {/* Batch Class Sessions Positioned across their Exact Span */}
+                          {daySessions.map((s) => {
+                            const crs = courses.find((c) => c.id === s.course_id);
+                            const rm = rooms.find((r) => r.id === s.room_id);
+                            const tch = faculty.find((f) => f.id === s.faculty_id);
+                            const isUnassigned = !s.room_id || !rm;
 
-                              return (
+                            const { colStart, colSpan, boxesCount } = calculateSlotSpan(
+                              s.start_time,
+                              s.end_time
+                            );
+
+                            return (
+                              <div
+                                key={s.id}
+                                style={{
+                                  gridColumn: `${colStart} / span ${colSpan}`,
+                                }}
+                                className="absolute inset-y-0.5 z-10"
+                              >
                                 <div
-                                  key={s.id}
-                                  className={`p-2.5 rounded-xl border space-y-1.5 transition-all shadow-2xs ${
+                                  className={`h-full p-2.5 rounded-xl border shadow-2xs flex flex-col justify-between transition-all ${
                                     isUnassigned
-                                      ? 'bg-amber-50/90 border-amber-300'
-                                      : 'bg-red-50/40 border-red-200/80 hover:border-shu-700 hover:shadow-xs'
+                                      ? 'bg-amber-50/95 border-amber-300'
+                                      : 'bg-red-50/50 border-red-200/90 hover:border-shu-700 hover:shadow-md'
                                   }`}
                                 >
-                                  {/* Code & Timing */}
-                                  <div className="flex items-center justify-between gap-1">
-                                    <span className="font-extrabold text-shu-700 font-mono text-[11px]">
-                                      {crs?.code}
-                                    </span>
-                                    <span className="text-[10px] font-semibold text-slate-500 font-mono">
-                                      {s.start_time} - {s.end_time}
-                                    </span>
+                                  <div>
+                                    <div className="flex items-center justify-between gap-1 mb-1">
+                                      <div className="flex items-center gap-1 flex-wrap">
+                                        <span className="font-extrabold text-shu-700 font-mono text-[11px] bg-red-100/80 px-1.5 py-0.5 rounded">
+                                          {crs?.code}
+                                        </span>
+                                        <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-white text-slate-600 border border-slate-200">
+                                          {boxesCount} {boxesCount === 1 ? 'box' : 'boxes'}
+                                        </span>
+                                      </div>
+
+                                      <span className="text-[10px] font-mono font-bold text-slate-800">
+                                        {s.start_time} - {s.end_time}
+                                      </span>
+                                    </div>
+
+                                    <h5 className="font-bold text-slate-900 line-clamp-1 text-xs">
+                                      {crs?.name}
+                                    </h5>
                                   </div>
 
-                                  {/* Title */}
-                                  <h5 className="font-bold text-slate-900 line-clamp-2 text-[11px] leading-tight">
-                                    {crs?.name}
-                                  </h5>
+                                  <div className="pt-1.5 mt-1 border-t border-red-100/70 flex items-center justify-between gap-1 text-[10px]">
+                                    <span className="font-medium text-slate-700 truncate">
+                                      {tch?.name}
+                                    </span>
 
-                                  {/* Room */}
-                                  <div>
                                     {isUnassigned ? (
-                                      <div className="flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-200/80 px-1.5 py-0.5 rounded">
+                                      <span className="flex items-center gap-0.5 font-bold text-amber-800 bg-amber-200/80 px-1.5 py-0.5 rounded text-[9px]">
                                         <AlertTriangle className="w-2.5 h-2.5 text-amber-700 shrink-0" />
-                                        <span className="truncate">⚠️ Room Pending</span>
-                                      </div>
+                                        <span>Pending Room</span>
+                                      </span>
                                     ) : (
-                                      <div className="flex items-center gap-1 text-[10px] font-semibold text-slate-800 truncate">
-                                        <MapPin className="w-2.5 h-2.5 text-shu-700 shrink-0" />
-                                        <span className="truncate">{rm?.name}</span>
-                                      </div>
+                                      <span className="font-bold text-shu-700 truncate">
+                                        {rm?.name}
+                                      </span>
                                     )}
                                   </div>
-
-                                  {/* Teacher */}
-                                  <div className="flex items-center gap-1 text-[10px] text-slate-600 truncate pt-0.5 border-t border-slate-100">
-                                    <User className="w-2.5 h-2.5 text-slate-400 shrink-0" />
-                                    <span className="truncate">{tch?.name}</span>
-                                  </div>
                                 </div>
-                              );
-                            })}
-                          </div>
-                        );
-                      })}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
@@ -401,7 +432,7 @@ export const StudentPublicDashboard: React.FC = () => {
             <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <Calendar className="w-4 h-4 text-shu-700" />
               <span>
-                Schedule for {DAYS.find((d) => d.id === selectedDay)?.name} ({selectedBatch?.name})
+                Schedule for {TIMETABLE_DAYS.find((d) => d.id === selectedDay)?.name} ({selectedBatch?.name})
               </span>
             </h3>
             <span className="text-xs text-slate-500 font-medium">
@@ -423,12 +454,7 @@ export const StudentPublicDashboard: React.FC = () => {
                 const course = courses.find((c) => c.id === session.course_id);
                 const teacher = faculty.find((f) => f.id === session.faculty_id);
                 const room = rooms.find((r) => r.id === session.room_id);
-                const isUnassigned =
-                  !room ||
-                  session.room_id === 'room-unassigned' ||
-                  session.room_id === 'a0000000-0000-0000-0000-000000000000' ||
-                  room.name.includes('Pending') ||
-                  room.name.includes('Not Assigned');
+                const isUnassigned = !session.room_id || !room;
 
                 return (
                   <div

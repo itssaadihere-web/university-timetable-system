@@ -135,7 +135,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     viewMode: 'batch',
     selectedBatchId: INITIAL_BATCHES[0]?.id,
     selectedFacultyId: INITIAL_FACULTY[0]?.id,
-    selectedRoomId: INITIAL_ROOMS.find((r) => r.id !== 'room-unassigned')?.id || INITIAL_ROOMS[0]?.id,
+    selectedRoomId: INITIAL_ROOMS[0]?.id || '',
     selectedRoomTypes: [],
     departmentFilter: 'ALL',
     showDrafts: true,

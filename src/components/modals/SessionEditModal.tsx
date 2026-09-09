@@ -16,6 +16,7 @@ import {
   BookOpen, 
   Users 
 } from 'lucide-react';
+import { TIMETABLE_DAYS } from '@/lib/conflict-engine';
 
 interface SessionEditModalProps {
   isOpen: boolean;
@@ -24,14 +25,10 @@ interface SessionEditModalProps {
   presetData?: { dayOfWeek: number; startTime: string; endTime: string } | null;
 }
 
-const DAYS = [
-  { id: 1, name: 'Monday' },
-  { id: 2, name: 'Tuesday' },
-  { id: 3, name: 'Wednesday' },
-  { id: 4, name: 'Thursday' },
-  { id: 5, name: 'Friday' },
-  { id: 6, name: 'Saturday' },
-];
+const DAYS = TIMETABLE_DAYS.map((d) => ({
+  id: d.id,
+  name: d.isWeekend ? `${d.name} (Exception)` : d.name,
+}));
 
 export const SessionEditModal: React.FC<SessionEditModalProps> = ({
   isOpen,
@@ -71,7 +68,7 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
     if (sessionToEdit) {
       setCourseId(sessionToEdit.course_id);
       setFacultyId(sessionToEdit.faculty_id);
-      setRoomId(sessionToEdit.room_id);
+      setRoomId(sessionToEdit.room_id || '');
       setBatchId(sessionToEdit.batch_id);
       setBatchGroupId(sessionToEdit.batch_group_id || '');
       setDayOfWeek(sessionToEdit.day_of_week);
@@ -104,7 +101,7 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
     semester_id: activeSemester?.id || 'sem-fall-2026',
     course_id: courseId,
     faculty_id: facultyId,
-    room_id: roomId,
+    room_id: roomId || null,
     batch_id: batchId,
     batch_group_id: batchGroupId || null,
     day_of_week: dayOfWeek,
@@ -136,7 +133,7 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
           ...sessionToEdit,
           course_id: courseId,
           faculty_id: facultyId,
-          room_id: roomId,
+          room_id: roomId || null,
           batch_id: batchId,
           batch_group_id: batchGroupId || null,
           day_of_week: dayOfWeek,
@@ -156,7 +153,7 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
           semester_id: activeSemester?.id || 'sem-fall-2026',
           course_id: courseId,
           faculty_id: facultyId,
-          room_id: roomId,
+          room_id: roomId || null,
           batch_id: batchId,
           batch_group_id: batchGroupId || null,
           day_of_week: dayOfWeek,
@@ -280,11 +277,11 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
                 <span>Room / Venue</span>
               </label>
               <select
-                value={roomId}
+                value={roomId || ''}
                 onChange={(e) => setRoomId(e.target.value)}
-                required
                 className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               >
+                <option value="">-- No Room Assigned (Pending) --</option>
                 {rooms.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.name} ({r.building}, Cap: {r.capacity}) [{r.room_types.join(', ')}]

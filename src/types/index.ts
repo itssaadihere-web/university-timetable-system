@@ -89,10 +89,10 @@ export interface ClassSession {
   semester_id: string;
   course_id: string;
   faculty_id: string;
-  room_id: string;
+  room_id?: string | null;
   batch_id: string;
   batch_group_id?: string | null;
-  day_of_week: number; // 1 = Mon, 2 = Tue, ..., 6 = Sat
+  day_of_week: number; // 1 = Mon, 2 = Tue, ..., 6 = Sat, 7 = Sun
   start_time: string; // "08:30" or "08:30:00"
   end_time: string; // "10:00" or "10:00:00"
   session_type: SessionType;

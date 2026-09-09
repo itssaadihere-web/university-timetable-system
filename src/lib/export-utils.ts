@@ -3,15 +3,10 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { ClassSession, Room, Faculty, Batch, Course } from '@/types';
 
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const TIME_SLOTS = [
-  '08:30 - 10:00',
-  '10:15 - 11:45',
-  '12:00 - 13:30',
-  '13:30 - 15:00',
-  '15:15 - 16:45',
-  '17:00 - 18:30',
-];
+import { TIMETABLE_DAYS, TIME_SLOTS_30MIN } from '@/lib/conflict-engine';
+
+const DAYS = TIMETABLE_DAYS.map((d) => d.name);
+const TIME_SLOTS = TIME_SLOTS_30MIN.map((s) => s.label);
 
 interface ExportDataParams {
   sessions: ClassSession[];
@@ -40,7 +35,7 @@ export function exportTimetableToExcel(params: ExportDataParams): void {
       'Course Title': course?.name || 'N/A',
       'Student Batch': batch?.name || 'N/A',
       'Faculty / Instructor': teacher?.name || 'N/A',
-      'Room / Venue': room?.name || 'N/A',
+      'Room / Venue': room?.name || 'Unassigned',
       'Day': DAYS[s.day_of_week - 1] || `Day ${s.day_of_week}`,
       'Start Time': s.start_time,
       'End Time': s.end_time,
@@ -69,7 +64,7 @@ export function exportTimetableToExcel(params: ExportDataParams): void {
         row[dayName] = matched
           .map((s) => {
             const crs = courses.find((c) => c.id === s.course_id)?.code || 'Course';
-            const rm = rooms.find((r) => r.id === s.room_id)?.name || 'Room';
+            const rm = rooms.find((r) => r.id === s.room_id)?.name || 'Unassigned';
             const tch = faculty.find((f) => f.id === s.faculty_id)?.name || 'Faculty';
             const bth = batches.find((b) => b.id === s.batch_id)?.name || 'Batch';
             return `${crs} (${rm}) [${bth}] - ${tch}`;
@@ -117,7 +112,7 @@ export function exportTimetableToPDF(params: ExportDataParams): void {
   doc.text(`Schedule: ${filterTitle} | Generated on: ${new Date().toLocaleDateString()}`, 14, 25);
 
   // Prepare table columns and body
-  const tableColumns = ['Time Slot', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const tableColumns = ['Time Slot', ...DAYS];
 
   const tableRows = TIME_SLOTS.map((slot) => {
     const [slotStart] = slot.split(' - ');
@@ -133,7 +128,7 @@ export function exportTimetableToPDF(params: ExportDataParams): void {
         const text = matched
           .map((s) => {
             const crs = courses.find((c) => c.id === s.course_id)?.code || 'Course';
-            const rm = rooms.find((r) => r.id === s.room_id)?.name || 'Room';
+            const rm = rooms.find((r) => r.id === s.room_id)?.name || 'Unassigned';
             const bth = batches.find((b) => b.id === s.batch_id)?.name || '';
             return `${crs}\n${rm} | ${bth}`;
           })
@@ -159,18 +154,19 @@ export function exportTimetableToPDF(params: ExportDataParams): void {
       halign: 'center',
     },
     styles: {
-      fontSize: 8,
-      cellPadding: 2,
+      fontSize: 7.5,
+      cellPadding: 1.5,
       valign: 'middle',
     },
     columnStyles: {
-      0: { fontStyle: 'bold', cellWidth: 26 },
-      1: { cellWidth: 40 },
-      2: { cellWidth: 40 },
-      3: { cellWidth: 40 },
-      4: { cellWidth: 40 },
-      5: { cellWidth: 40 },
-      6: { cellWidth: 40 },
+      0: { fontStyle: 'bold', cellWidth: 24 },
+      1: { cellWidth: 34 },
+      2: { cellWidth: 34 },
+      3: { cellWidth: 34 },
+      4: { cellWidth: 34 },
+      5: { cellWidth: 34 },
+      6: { cellWidth: 34 },
+      7: { cellWidth: 34 },
     },
   });
 
