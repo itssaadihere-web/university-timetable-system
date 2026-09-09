@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useTimetable } from '@/context/TimetableContext';
 import { RoomType, ClassSession } from '@/types';
-import { timeToMinutes } from '@/lib/conflict-engine';
+import { timeToMinutes, formatTo12Hour, formatTimeRange } from '@/lib/conflict-engine';
 import { 
   Calendar as CalendarIcon, 
   Clock, 
@@ -18,13 +18,13 @@ import {
   AlertCircle 
 } from 'lucide-react';
 
-const TIME_SLOTS = [
-  '08:30 - 10:00',
-  '10:15 - 11:45',
-  '12:00 - 13:30',
-  '13:30 - 15:00',
-  '15:15 - 16:45',
-  '17:00 - 18:30',
+const MAKEUP_TIME_SLOTS = [
+  { start: '08:30', end: '10:00', label: '08:30 AM – 10:00 AM' },
+  { start: '10:15', end: '11:45', label: '10:15 AM – 11:45 AM' },
+  { start: '12:00', end: '13:30', label: '12:00 PM – 01:30 PM' },
+  { start: '13:30', end: '15:00', label: '01:30 PM – 03:00 PM' },
+  { start: '15:15', end: '16:45', label: '03:15 PM – 04:45 PM' },
+  { start: '17:00', end: '18:30', label: '05:00 PM – 06:30 PM' },
 ];
 
 export const MakeupClassManager: React.FC = () => {
@@ -48,7 +48,7 @@ export const MakeupClassManager: React.FC = () => {
   const [selectedFacultyId, setSelectedFacultyId] = useState<string>(faculty[0]?.id || '');
   const [selectedRoomId, setSelectedRoomId] = useState<string>(rooms[0]?.id || '');
   const [selectedBatchId, setSelectedBatchId] = useState<string>(batches[0]?.id || '');
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>(TIME_SLOTS[0]);
+  const [selectedTimeSlotIdx, setSelectedTimeSlotIdx] = useState<number>(0);
   const [reason, setReason] = useState<string>('Adjustment class for missed session');
   const [requiredTag, setRequiredTag] = useState<string>('ALL');
 
@@ -79,7 +79,7 @@ export const MakeupClassManager: React.FC = () => {
 
   const handleDirectSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
-    const [start, end] = selectedTimeSlot.split(' - ').map((s) => s.trim());
+    const slot = MAKEUP_TIME_SLOTS[selectedTimeSlotIdx] || MAKEUP_TIME_SLOTS[0];
     const targetDay = new Date(targetDate).getDay() === 0 ? 7 : new Date(targetDate).getDay();
 
     const res = await addSession({
@@ -89,8 +89,8 @@ export const MakeupClassManager: React.FC = () => {
       room_id: selectedRoomId,
       batch_id: selectedBatchId,
       day_of_week: targetDay,
-      start_time: start,
-      end_time: end,
+      start_time: slot.start,
+      end_time: slot.end,
       session_type: 'makeup',
       status: 'published',
       specific_date: targetDate,
@@ -159,13 +159,13 @@ export const MakeupClassManager: React.FC = () => {
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Time Slot</label>
                 <select
-                  value={selectedTimeSlot}
-                  onChange={(e) => setSelectedTimeSlot(e.target.value)}
+                  value={selectedTimeSlotIdx}
+                  onChange={(e) => setSelectedTimeSlotIdx(parseInt(e.target.value, 10))}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-medium text-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 >
-                  {TIME_SLOTS.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
+                  {MAKEUP_TIME_SLOTS.map((t, idx) => (
+                    <option key={idx} value={idx}>
+                      {t.label}
                     </option>
                   ))}
                 </select>
@@ -281,7 +281,7 @@ export const MakeupClassManager: React.FC = () => {
                     <p className="text-slate-600 text-[11px]">{req.reason}</p>
                     <div className="text-[10px] text-slate-500">
                       Instructor: <span className="font-medium text-slate-700">{tch?.name}</span> •{' '}
-                      Slot: {req.start_time} - {req.end_time} • Room: {rm?.name}
+                      Slot: {formatTimeRange(req.start_time, req.end_time)} • Room: {rm?.name}
                     </div>
 
                     {req.status === 'pending' && isCoordinator && (
@@ -348,14 +348,11 @@ export const MakeupClassManager: React.FC = () => {
               {/* Table Header */}
               <div className="grid grid-cols-[160px_repeat(6,1fr)] bg-slate-50 border-b border-slate-200 text-center text-xs font-bold text-slate-700 py-2.5 px-2">
                 <div className="text-left font-semibold text-slate-500">Room / Tags</div>
-                {TIME_SLOTS.map((t) => {
-                  const [start] = t.split(' - ');
-                  return (
-                    <div key={t} className="font-mono text-[11px]">
-                      {start}
-                    </div>
-                  );
-                })}
+                {MAKEUP_TIME_SLOTS.map((slot) => (
+                  <div key={slot.start} className="font-mono text-[10px] tracking-tight">
+                    {formatTo12Hour(slot.start)}
+                  </div>
+                ))}
               </div>
 
               {/* Rows */}
@@ -377,8 +374,7 @@ export const MakeupClassManager: React.FC = () => {
                       </div>
 
                       {/* Time Slots */}
-                      {TIME_SLOTS.map((timeSlot) => {
-                        const [slotStart, slotEnd] = timeSlot.split(' - ').map((s) => s.trim());
+                      {MAKEUP_TIME_SLOTS.map((slot) => {
                         const targetDay =
                           new Date(finderDate).getDay() === 0
                             ? 7
@@ -390,11 +386,11 @@ export const MakeupClassManager: React.FC = () => {
                           const isSameContext =
                             (s.specific_date && s.specific_date === finderDate) ||
                             (!s.specific_date && s.day_of_week === targetDay);
-                          return isSameContext && s.start_time.startsWith(slotStart);
+                          return isSameContext && s.start_time.startsWith(slot.start);
                         });
 
                         return (
-                          <div key={timeSlot} className="px-1 text-center">
+                          <div key={slot.start} className="px-1 text-center">
                             {isBooked ? (
                               <span className="inline-block w-full py-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 font-bold text-[10px]">
                                 Booked

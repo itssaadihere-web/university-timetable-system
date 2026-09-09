@@ -16,7 +16,7 @@ import {
   BookOpen, 
   Users 
 } from 'lucide-react';
-import { TIMETABLE_DAYS } from '@/lib/conflict-engine';
+import { TIMETABLE_DAYS, formatTo12Hour } from '@/lib/conflict-engine';
 
 interface SessionEditModalProps {
   isOpen: boolean;
@@ -351,7 +351,10 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Start Time</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                <span>Start Time</span>
+                <span className="text-[11px] font-mono font-bold text-shu-700 bg-red-50 px-1.5 py-0.2 rounded border border-red-200">{formatTo12Hour(startTime)}</span>
+              </label>
               <input
                 type="time"
                 value={startTime}
@@ -362,7 +365,10 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">End Time</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                <span>End Time</span>
+                <span className="text-[11px] font-mono font-bold text-shu-700 bg-red-50 px-1.5 py-0.2 rounded border border-red-200">{formatTo12Hour(endTime)}</span>
+              </label>
               <input
                 type="time"
                 value={endTime}

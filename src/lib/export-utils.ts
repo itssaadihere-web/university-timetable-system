@@ -3,10 +3,9 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { ClassSession, Room, Faculty, Batch, Course } from '@/types';
 
-import { TIMETABLE_DAYS, TIME_SLOTS_30MIN } from '@/lib/conflict-engine';
+import { TIMETABLE_DAYS, TIME_SLOTS_30MIN, formatTo12Hour } from '@/lib/conflict-engine';
 
 const DAYS = TIMETABLE_DAYS.map((d) => d.name);
-const TIME_SLOTS = TIME_SLOTS_30MIN.map((s) => s.label);
 
 interface ExportDataParams {
   sessions: ClassSession[];
@@ -37,8 +36,8 @@ export function exportTimetableToExcel(params: ExportDataParams): void {
       'Faculty / Instructor': teacher?.name || 'N/A',
       'Room / Venue': room?.name || 'Unassigned',
       'Day': DAYS[s.day_of_week - 1] || `Day ${s.day_of_week}`,
-      'Start Time': s.start_time,
-      'End Time': s.end_time,
+      'Start Time': formatTo12Hour(s.start_time),
+      'End Time': formatTo12Hour(s.end_time),
       'Session Type': s.session_type.toUpperCase(),
       'Status': s.status.toUpperCase(),
       'Specific Date': s.specific_date || 'Recurring',
@@ -50,14 +49,13 @@ export function exportTimetableToExcel(params: ExportDataParams): void {
   XLSX.utils.book_append_sheet(wb, wsDetailed, 'Class Sessions');
 
   // 2. Timetable Grid Sheet
-  const gridData: Record<string, string>[] = TIME_SLOTS.map((slot) => {
-    const row: Record<string, string> = { 'Time Slot': slot };
-    const [slotStart] = slot.split(' - ');
+  const gridData: Record<string, string>[] = TIME_SLOTS_30MIN.map((slot) => {
+    const row: Record<string, string> = { 'Time Slot': slot.label };
 
     DAYS.forEach((dayName, idx) => {
       const dayNum = idx + 1;
       const matched = sessions.filter((s) => {
-        return s.day_of_week === dayNum && s.start_time.startsWith(slotStart.trim());
+        return s.day_of_week === dayNum && s.start_time.startsWith(slot.start);
       });
 
       if (matched.length > 0) {
@@ -114,14 +112,13 @@ export function exportTimetableToPDF(params: ExportDataParams): void {
   // Prepare table columns and body
   const tableColumns = ['Time Slot', ...DAYS];
 
-  const tableRows = TIME_SLOTS.map((slot) => {
-    const [slotStart] = slot.split(' - ');
-    const row = [slot];
+  const tableRows = TIME_SLOTS_30MIN.map((slot) => {
+    const row = [slot.label];
 
     DAYS.forEach((_, idx) => {
       const dayNum = idx + 1;
       const matched = sessions.filter(
-        (s) => s.day_of_week === dayNum && s.start_time.startsWith(slotStart.trim())
+        (s) => s.day_of_week === dayNum && s.start_time.startsWith(slot.start)
       );
 
       if (matched.length > 0) {

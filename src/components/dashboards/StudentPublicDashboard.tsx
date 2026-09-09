@@ -24,7 +24,9 @@ import {
 import { 
   TIME_SLOTS_30MIN, 
   TIMETABLE_DAYS, 
-  calculateSlotSpan 
+  calculateSlotSpan,
+  formatTo12Hour,
+  formatTimeRange
 } from '@/lib/conflict-engine';
 
 export const StudentPublicDashboard: React.FC = () => {
@@ -322,13 +324,13 @@ export const StudentPublicDashboard: React.FC = () => {
                   {TIME_SLOTS_30MIN.map((slot) => (
                     <div
                       key={slot.id}
-                      className="h-[62px] px-2 flex flex-col items-center justify-center text-center select-none"
+                      className="h-[62px] px-1 flex flex-col items-center justify-center text-center select-none"
                     >
-                      <span className="font-mono text-[11px] text-slate-900 font-bold">
-                        {slot.start}
+                      <span className="font-mono text-[10px] text-slate-900 font-bold tracking-tight">
+                        {slot.start12}
                       </span>
-                      <span className="text-[9px] font-mono text-slate-400 font-medium">
-                        {slot.end}
+                      <span className="text-[9px] font-mono text-slate-400 font-medium tracking-tight">
+                        {slot.end12}
                       </span>
                     </div>
                   ))}
@@ -360,7 +362,7 @@ export const StudentPublicDashboard: React.FC = () => {
                             className="w-full h-full rounded-xl border border-dashed border-slate-200/60 bg-slate-50/40 flex items-center justify-center"
                           >
                             <span className="text-[9px] font-mono text-slate-300 font-medium select-none">
-                              {slot.start}
+                              {slot.start12}
                             </span>
                           </div>
                         ))}
@@ -404,7 +406,7 @@ export const StudentPublicDashboard: React.FC = () => {
                                     </div>
 
                                     <span className="text-[10px] font-mono font-bold text-slate-800">
-                                      {s.start_time} - {s.end_time}
+                                      {formatTimeRange(s.start_time, s.end_time)}
                                     </span>
                                   </div>
 
@@ -490,7 +492,7 @@ export const StudentPublicDashboard: React.FC = () => {
                       </span>
                       <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg">
                         <Clock className="w-3.5 h-3.5 text-slate-500" />
-                        <span>{session.start_time} - {session.end_time}</span>
+                        <span>{formatTimeRange(session.start_time, session.end_time)}</span>
                       </div>
                     </div>
 

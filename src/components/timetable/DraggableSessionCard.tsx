@@ -20,6 +20,7 @@ import {
   Cpu,
   AlertTriangle
 } from 'lucide-react';
+import { formatTimeRange } from '@/lib/conflict-engine';
 
 interface DraggableSessionCardProps {
   session: ClassSession;
@@ -173,7 +174,7 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
         <div className="flex items-center justify-between gap-1">
           <div className="flex items-center gap-1 font-mono font-bold text-slate-800">
             <Clock className="w-3 h-3 text-slate-400 shrink-0" />
-            <span>{session.start_time} - {session.end_time}</span>
+            <span className="text-[10px]">{formatTimeRange(session.start_time, session.end_time)}</span>
           </div>
 
           {isUnassignedRoom ? (

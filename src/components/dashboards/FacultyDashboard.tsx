@@ -8,7 +8,9 @@ import {
   timeToMinutes,
   TIME_SLOTS_30MIN,
   TIMETABLE_DAYS,
-  calculateSlotSpan
+  calculateSlotSpan,
+  formatTo12Hour,
+  formatTimeRange
 } from '@/lib/conflict-engine';
 import { 
   UserCheck, 
@@ -210,13 +212,13 @@ export const FacultyDashboard: React.FC = () => {
                   {TIME_SLOTS_30MIN.map((slot) => (
                     <div
                       key={slot.id}
-                      className="h-[62px] px-2 flex flex-col items-center justify-center text-center select-none"
+                      className="h-[62px] px-1 flex flex-col items-center justify-center text-center select-none"
                     >
-                      <span className="font-mono text-[11px] text-slate-900 font-bold">
-                        {slot.start}
+                      <span className="font-mono text-[10px] text-slate-900 font-bold tracking-tight">
+                        {slot.start12}
                       </span>
-                      <span className="text-[9px] font-mono text-slate-400 font-medium">
-                        {slot.end}
+                      <span className="text-[9px] font-mono text-slate-400 font-medium tracking-tight">
+                        {slot.end12}
                       </span>
                     </div>
                   ))}
@@ -248,7 +250,7 @@ export const FacultyDashboard: React.FC = () => {
                             className="w-full h-full rounded-xl border border-dashed border-slate-200/60 bg-slate-50/40 flex items-center justify-center"
                           >
                             <span className="text-[9px] font-mono text-slate-300 font-medium select-none">
-                              {slot.start}
+                              {slot.start12}
                             </span>
                           </div>
                         ))}
@@ -292,7 +294,7 @@ export const FacultyDashboard: React.FC = () => {
                                     </div>
 
                                     <span className="text-[10px] font-mono font-bold text-teal-900">
-                                      {s.start_time} - {s.end_time}
+                                      {formatTimeRange(s.start_time, s.end_time)}
                                     </span>
                                   </div>
 

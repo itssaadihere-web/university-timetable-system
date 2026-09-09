@@ -14,13 +14,14 @@ import {
   ArrowRight, 
   History 
 } from 'lucide-react';
+import { formatTimeRange } from '@/lib/conflict-engine';
 
 interface VersionDiffModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export const VersionDiffModal: React.FC<VersionDiffModalProps> = ({ isOpen, onClose }) => {
   const {
@@ -183,7 +184,7 @@ export const VersionDiffModal: React.FC<VersionDiffModalProps> = ({ isOpen, onCl
 
                             <div className="text-right">
                               <span className="font-bold text-slate-800 font-mono text-xs">
-                                {DAYS[draft.day_of_week - 1]} {draft.start_time} - {draft.end_time}
+                                {DAYS[draft.day_of_week - 1]} {formatTimeRange(draft.start_time, draft.end_time)}
                               </span>
                               <span className="block text-[10px] text-amber-600 font-semibold">
                                 Draft Staged

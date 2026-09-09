@@ -20,6 +20,29 @@ export function timeToMinutes(timeStr: string): number {
 }
 
 /**
+ * Convert 24-hour time string ("08:30" or "13:00") to 12-hour format ("08:30 AM" or "01:00 PM")
+ */
+export function formatTo12Hour(timeStr: string): string {
+  if (!timeStr) return '';
+  const parts = timeStr.split(':');
+  let hours = parseInt(parts[0], 10);
+  const minutes = parts[1] || '00';
+  if (isNaN(hours)) return timeStr;
+  const period = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  const paddedHours = hours < 10 ? `0${hours}` : `${hours}`;
+  return `${paddedHours}:${minutes} ${period}`;
+}
+
+/**
+ * Convert time range to 12-hour format ("08:30 AM – 10:00 AM")
+ */
+export function formatTimeRange(startTime: string, endTime: string): string {
+  if (!startTime || !endTime) return '';
+  return `${formatTo12Hour(startTime)} – ${formatTo12Hour(endTime)}`;
+}
+
+/**
  * Standard Institutional Teachable Time Window (08:30 AM - 03:00 PM)
  * 13 equal 30-minute intervals = 6.5 hours = 390 minutes.
  */
@@ -29,20 +52,20 @@ export const TEACHABLE_START_MINUTES = 510; // 08:30
 export const TEACHABLE_END_MINUTES = 900;   // 15:00
 export const TOTAL_30MIN_SLOTS = 13;
 
-export const TIME_SLOTS_30MIN: { id: number; start: string; end: string; label: string }[] = [
-  { id: 0, start: '08:30', end: '09:00', label: '08:30 - 09:00' },
-  { id: 1, start: '09:00', end: '09:30', label: '09:00 - 09:30' },
-  { id: 2, start: '09:30', end: '10:00', label: '09:30 - 10:00' },
-  { id: 3, start: '10:00', end: '10:30', label: '10:00 - 10:30' },
-  { id: 4, start: '10:30', end: '11:00', label: '10:30 - 11:00' },
-  { id: 5, start: '11:00', end: '11:30', label: '11:00 - 11:30' },
-  { id: 6, start: '11:30', end: '12:00', label: '11:30 - 12:00' },
-  { id: 7, start: '12:00', end: '12:30', label: '12:00 - 12:30' },
-  { id: 8, start: '12:30', end: '13:00', label: '12:30 - 13:00' },
-  { id: 9, start: '13:00', end: '13:30', label: '13:00 - 13:30' },
-  { id: 10, start: '13:30', end: '14:00', label: '13:30 - 14:00' },
-  { id: 11, start: '14:00', end: '14:30', label: '14:00 - 14:30' },
-  { id: 12, start: '14:30', end: '15:00', label: '14:30 - 15:00' },
+export const TIME_SLOTS_30MIN: { id: number; start: string; end: string; label: string; start12: string; end12: string }[] = [
+  { id: 0, start: '08:30', end: '09:00', label: '08:30 AM – 09:00 AM', start12: '08:30 AM', end12: '09:00 AM' },
+  { id: 1, start: '09:00', end: '09:30', label: '09:00 AM – 09:30 AM', start12: '09:00 AM', end12: '09:30 AM' },
+  { id: 2, start: '09:30', end: '10:00', label: '09:30 AM – 10:00 AM', start12: '09:30 AM', end12: '10:00 AM' },
+  { id: 3, start: '10:00', end: '10:30', label: '10:00 AM – 10:30 AM', start12: '10:00 AM', end12: '10:30 AM' },
+  { id: 4, start: '10:30', end: '11:00', label: '10:30 AM – 11:00 AM', start12: '10:30 AM', end12: '11:00 AM' },
+  { id: 5, start: '11:00', end: '11:30', label: '11:00 AM – 11:30 AM', start12: '11:00 AM', end12: '11:30 AM' },
+  { id: 6, start: '11:30', end: '12:00', label: '11:30 AM – 12:00 PM', start12: '11:30 AM', end12: '12:00 PM' },
+  { id: 7, start: '12:00', end: '12:30', label: '12:00 PM – 12:30 PM', start12: '12:00 PM', end12: '12:30 PM' },
+  { id: 8, start: '12:30', end: '13:00', label: '12:30 PM – 01:00 PM', start12: '12:30 PM', end12: '01:00 PM' },
+  { id: 9, start: '13:00', end: '13:30', label: '01:00 PM – 01:30 PM', start12: '01:00 PM', end12: '01:30 PM' },
+  { id: 10, start: '13:30', end: '14:00', label: '01:30 PM – 02:00 PM', start12: '01:30 PM', end12: '02:00 PM' },
+  { id: 11, start: '14:00', end: '14:30', label: '02:00 PM – 02:30 PM', start12: '02:00 PM', end12: '02:30 PM' },
+  { id: 12, start: '14:30', end: '15:00', label: '02:30 PM – 03:00 PM', start12: '02:30 PM', end12: '03:00 PM' },
 ];
 
 export const TIMETABLE_DAYS = [

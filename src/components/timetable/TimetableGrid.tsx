@@ -399,13 +399,13 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                   {TIME_SLOTS_30MIN.map((slot) => (
                     <div
                       key={slot.id}
-                      className="h-[62px] px-2 flex flex-col items-center justify-center text-center select-none"
+                      className="h-[62px] px-1 flex flex-col items-center justify-center text-center select-none"
                     >
-                      <span className="font-mono text-[11px] text-slate-900 font-bold">
-                        {slot.start}
+                      <span className="font-mono text-[10px] text-slate-900 font-bold tracking-tight">
+                        {slot.start12}
                       </span>
-                      <span className="text-[9px] font-mono text-slate-400 font-medium">
-                        {slot.end}
+                      <span className="text-[9px] font-mono text-slate-400 font-medium tracking-tight">
+                        {slot.end12}
                       </span>
                     </div>
                   ))}
