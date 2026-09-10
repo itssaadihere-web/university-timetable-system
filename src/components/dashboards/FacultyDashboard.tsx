@@ -284,6 +284,7 @@ export const FacultyDashboard: React.FC = () => {
                             s.start_time,
                             s.end_time
                           );
+                          const isShortDuration = boxesCount <= 2; // 30m or 60m
 
                           return (
                             <div
@@ -294,45 +295,61 @@ export const FacultyDashboard: React.FC = () => {
                               className="absolute inset-x-1 inset-y-0.5 z-10"
                             >
                               <div
-                                className={`h-full p-2.5 rounded-xl border shadow-2xs flex flex-col justify-between transition-all duration-150 border-l-4 ${colorPalette.leftBorder} ${
+                                className={`group h-full p-2.5 rounded-xl border shadow-xs flex flex-col justify-between transition-all duration-200 border-l-4 ${colorPalette.leftBorder} ${
+                                  isShortDuration
+                                    ? 'overflow-hidden hover:overflow-visible hover:z-50 hover:h-auto hover:min-h-full hover:shadow-2xl hover:scale-[1.02]'
+                                    : 'overflow-hidden hover:shadow-md'
+                                } ${
                                   isUnassigned
-                                    ? `${colorPalette.cardBg} border-amber-300 hover:border-amber-400 hover:shadow-md`
-                                    : `${colorPalette.cardBg} ${colorPalette.cardBorder} hover:shadow-md ${colorPalette.shadowHover}`
+                                    ? `${colorPalette.cardBg} border-amber-300 hover:border-amber-400`
+                                    : `${colorPalette.cardBg} ${colorPalette.cardBorder} ${colorPalette.shadowHover}`
                                 }`}
                               >
                                 <div>
                                   <div className="flex items-center justify-between gap-1 mb-1">
                                     <div className="flex items-center gap-1 flex-wrap">
-                                      <span className={`font-bold font-mono text-[11px] px-1.5 py-0.5 rounded shadow-2xs ${colorPalette.badgeBg}`}>
+                                      <span className={`font-bold font-mono text-[10px] px-1.5 py-0.5 rounded shadow-2xs ${colorPalette.badgeBg}`}>
                                         {crs?.code}
                                       </span>
-                                      <span className="px-1 py-0.2 rounded text-[9px] font-medium bg-white/80 text-slate-700 border border-slate-200/60">
+                                      <span className="px-1 py-0.2 rounded text-[9px] font-medium bg-white/90 text-slate-800 border border-slate-200/80">
                                         {boxesCount * 30}m
                                       </span>
                                     </div>
 
-                                    <span className="text-[10px] font-mono font-semibold text-slate-700">
+                                    <span className="text-[10px] font-mono font-semibold text-slate-800">
                                       {formatTimeRange(s.start_time, s.end_time)}
                                     </span>
                                   </div>
 
-                                  <h5 className={`font-bold text-xs break-words leading-tight ${colorPalette.titleText}`}>
+                                  <h5
+                                    className={`font-bold text-xs leading-tight ${colorPalette.titleText} ${
+                                      isShortDuration
+                                        ? 'line-clamp-1 group-hover:line-clamp-none break-words'
+                                        : 'break-words leading-snug'
+                                    }`}
+                                  >
                                     {crs?.name}
                                   </h5>
                                 </div>
 
-                                <div className={`pt-1.5 mt-1 border-t ${colorPalette.subtleBorder} flex flex-wrap items-center justify-between gap-1 text-[10px]`}>
-                                  <span className={`font-semibold px-1.5 py-0.5 rounded break-words text-[9px] ${colorPalette.pillBg}`}>
+                                <div className={`pt-1 mt-1 border-t ${colorPalette.subtleBorder} flex flex-wrap items-center justify-between gap-1 text-[10px]`}>
+                                  <span className={`font-semibold px-1.5 py-0.5 rounded text-[9px] ${colorPalette.pillBg}`}>
                                     Batch: {bth?.name}
                                   </span>
 
                                   {isUnassigned ? (
-                                    <span className="flex items-center gap-0.5 font-bold text-amber-900 bg-amber-200/90 px-1.5 py-0.5 rounded text-[9px] break-words border border-amber-300">
+                                    <span className="flex items-center gap-0.5 font-bold text-amber-950 bg-amber-200/90 px-1.5 py-0.5 rounded text-[9px] break-words border border-amber-300">
                                       <AlertTriangle className="w-2.5 h-2.5 text-amber-700 shrink-0" />
-                                      <span>Pending Room</span>
+                                      <span>Pending</span>
                                     </span>
                                   ) : (
-                                    <span className="font-semibold text-slate-800 break-words flex items-center gap-1">
+                                    <span
+                                      className={`font-semibold text-slate-800 flex items-center gap-1 ${
+                                        isShortDuration
+                                          ? 'truncate max-w-[120px] group-hover:max-w-none group-hover:whitespace-normal'
+                                          : 'break-words'
+                                      }`}
+                                    >
                                       <MapPin className={`w-2.5 h-2.5 ${colorPalette.accentText} shrink-0`} />
                                       <span>{rm?.name}</span>
                                     </span>
