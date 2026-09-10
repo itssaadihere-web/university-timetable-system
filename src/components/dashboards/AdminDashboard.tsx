@@ -26,8 +26,7 @@ import {
   History,
   Building2,
   ArrowRight,
-  TrendingUp,
-  RefreshCw
+  TrendingUp
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -46,27 +45,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onOpenEditSession,
 }) => {
   const { currentUser, userAccounts } = useAuth();
-  const { sessions, rooms, faculty, courses, batches, activeSemester, syncAllToSupabase } = useTimetable();
+  const { sessions, rooms, faculty, courses, batches, activeSemester } = useTimetable();
 
   const [adminTab, setAdminTab] = useState<'overview' | 'matrix' | 'analytics' | 'audit'>('overview');
   const [isRoomAllocationOpen, setIsRoomAllocationOpen] = useState<boolean>(false);
-  const [isSyncing, setIsSyncing] = useState<boolean>(false);
-  const [syncStatusMessage, setSyncStatusMessage] = useState<string | null>(null);
-
-  const handleSyncToSupabase = async () => {
-    setIsSyncing(true);
-    setSyncStatusMessage(null);
-    try {
-      const result = await syncAllToSupabase();
-      setSyncStatusMessage(result.message);
-      setTimeout(() => setSyncStatusMessage(null), 6000);
-    } catch (err: any) {
-      setSyncStatusMessage(`Sync failed: ${err.message}`);
-      setTimeout(() => setSyncStatusMessage(null), 6000);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
 
   const publishedCount = sessions.filter((s) => s.status === 'published').length;
   const draftCount = sessions.filter((s) => s.status === 'draft').length;
@@ -120,16 +102,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             )}
 
             <button
-              onClick={handleSyncToSupabase}
-              disabled={isSyncing}
-              className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold bg-emerald-700/80 hover:bg-emerald-600 active:bg-emerald-800 text-white rounded-xl shadow-sm hover:shadow transition-all cursor-pointer border border-emerald-500/40 disabled:opacity-50"
-              title="Push & Seed all system timetables and masters directly into Supabase"
-            >
-              <RefreshCw className={`w-4 h-4 text-emerald-200 ${isSyncing ? 'animate-spin' : ''}`} />
-              <span>{isSyncing ? 'Syncing...' : 'Sync Supabase'}</span>
-            </button>
-
-            <button
               onClick={onOpenRollover}
               className="flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all cursor-pointer border border-white/10"
             >
@@ -147,14 +119,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Supabase Sync Feedback Banner */}
-      {syncStatusMessage && (
-        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold flex items-center gap-2 shadow-2xs animate-fadeIn">
-          <RefreshCw className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>{syncStatusMessage}</span>
-        </div>
-      )}
 
       {/* Unassigned Rooms Alert Notification for Admin */}
       {unassignedSessions.length > 0 && (
