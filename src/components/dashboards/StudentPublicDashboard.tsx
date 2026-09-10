@@ -410,23 +410,23 @@ export const StudentPublicDashboard: React.FC = () => {
                                     </span>
                                   </div>
 
-                                  <h5 className="font-bold text-slate-900 line-clamp-1 text-xs">
+                                  <h5 className="font-bold text-slate-900 text-xs break-words leading-tight">
                                     {crs?.name}
                                   </h5>
                                 </div>
 
-                                <div className="pt-1.5 mt-1 border-t border-slate-100 flex items-center justify-between gap-1 text-[10px]">
-                                  <span className="font-medium text-slate-600 truncate">
+                                <div className="pt-1.5 mt-1 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1 text-[10px]">
+                                  <span className="font-medium text-slate-600 break-words">
                                     {tch?.name}
                                   </span>
 
                                   {isUnassigned ? (
-                                    <span className="flex items-center gap-0.5 font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded text-[9px]">
+                                    <span className="flex items-center gap-0.5 font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded text-[9px] break-words">
                                       <AlertTriangle className="w-2.5 h-2.5 text-amber-700 shrink-0" />
                                       <span>Pending Room</span>
                                     </span>
                                   ) : (
-                                    <span className="font-semibold text-slate-800 truncate">
+                                    <span className="font-semibold text-slate-800 break-words">
                                       {rm?.name}
                                     </span>
                                   )}
@@ -496,35 +496,35 @@ export const StudentPublicDashboard: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Course Title */}
-                    <h4 className="font-bold text-slate-900 text-sm line-clamp-1">
+                    {/* Course Title - Wraps to next line */}
+                    <h4 className="font-bold text-slate-900 text-sm break-words leading-snug">
                       {course?.name || 'Class Session'}
                     </h4>
 
                     {/* Room & Instructor */}
                     <div className="pt-2 border-t border-slate-100 space-y-2 text-xs text-slate-600">
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-wrap items-center justify-between gap-1.5">
                         {isUnassigned ? (
-                          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-100 text-amber-900 font-semibold text-[11px] border border-amber-200">
-                            <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
-                            <span>Room Not Assigned (Pending)</span>
+                          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-100 text-amber-900 font-semibold text-[11px] border border-amber-200 break-words">
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                            <span className="break-words">Room Not Assigned (Pending)</span>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-1.5 font-semibold text-slate-800">
-                            <MapPin className="w-3.5 h-3.5 text-shu-700" />
-                            <span>{room?.name}</span>
+                          <div className="flex items-center gap-1.5 font-semibold text-slate-800 break-words">
+                            <MapPin className="w-3.5 h-3.5 text-shu-700 shrink-0" />
+                            <span className="break-words">{room?.name}</span>
                           </div>
                         )}
                         {!isUnassigned && room && (
-                          <span className="text-[11px] text-slate-400">
+                          <span className="text-[11px] text-slate-400 break-words">
                             {room.building} (Fl {room.floor})
                           </span>
                         )}
                       </div>
 
                       <div className="flex items-center gap-1.5">
-                        <User className="w-3.5 h-3.5 text-slate-400" />
-                        <span className="text-slate-600">{teacher?.name || 'Instructor'}</span>
+                        <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="text-slate-600 break-words">{teacher?.name || 'Instructor'}</span>
                       </div>
                     </div>
                   </div>

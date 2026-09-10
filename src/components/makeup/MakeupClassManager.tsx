@@ -365,10 +365,10 @@ export const MakeupClassManager: React.FC = () => {
                     >
                       {/* Room Details */}
                       <div className="text-xs">
-                        <span className="font-bold text-slate-800 block truncate">
+                        <span className="font-bold text-slate-800 block break-words">
                           {room.name}
                         </span>
-                        <span className="text-[10px] text-slate-400 block truncate">
+                        <span className="text-[10px] text-slate-400 block break-words">
                           Cap: {room.capacity} • {room.room_types.join(', ')}
                         </span>
                       </div>

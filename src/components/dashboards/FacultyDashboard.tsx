@@ -298,23 +298,23 @@ export const FacultyDashboard: React.FC = () => {
                                     </span>
                                   </div>
 
-                                  <h5 className="font-bold text-slate-900 line-clamp-1 text-xs">
+                                  <h5 className="font-bold text-slate-900 text-xs break-words leading-tight">
                                     {crs?.name}
                                   </h5>
                                 </div>
 
-                                <div className="pt-1.5 mt-1 border-t border-teal-100/80 flex items-center justify-between gap-1 text-[10px]">
-                                  <span className="font-medium text-slate-700 truncate">
+                                <div className="pt-1.5 mt-1 border-t border-teal-100/80 flex flex-wrap items-center justify-between gap-1 text-[10px]">
+                                  <span className="font-medium text-slate-700 break-words">
                                     Batch: {bth?.name}
                                   </span>
 
                                   {isUnassigned ? (
-                                    <span className="flex items-center gap-0.5 font-bold text-amber-800 bg-amber-200/80 px-1.5 py-0.5 rounded text-[9px]">
+                                    <span className="flex items-center gap-0.5 font-bold text-amber-800 bg-amber-200/80 px-1.5 py-0.5 rounded text-[9px] break-words">
                                       <AlertTriangle className="w-2.5 h-2.5 text-amber-700 shrink-0" />
                                       <span>Pending Room</span>
                                     </span>
                                   ) : (
-                                    <span className="font-bold text-teal-800 truncate">
+                                    <span className="font-bold text-teal-800 break-words">
                                       {rm?.name}
                                     </span>
                                   )}

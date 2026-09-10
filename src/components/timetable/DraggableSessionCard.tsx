@@ -162,8 +162,8 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
           )}
         </div>
 
-        {/* Course Title */}
-        <h4 className="font-bold text-slate-900 line-clamp-1 text-xs">
+        {/* Course Title - Wraps to next line when long */}
+        <h4 className="font-bold text-slate-900 text-xs break-words leading-tight">
           {course?.name || 'Class Session'}
         </h4>
       </div>
@@ -171,31 +171,31 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
       {/* Details Footer */}
       <div className="pt-1.5 mt-1 border-t border-slate-100 space-y-1 text-slate-600 text-[10px]">
         {/* Time & Room Row */}
-        <div className="flex items-center justify-between gap-1">
+        <div className="flex flex-wrap items-center justify-between gap-1">
           <div className="flex items-center gap-1 font-mono font-medium text-slate-700">
             <Clock className="w-3 h-3 text-slate-400 shrink-0" />
-            <span className="text-[10px]">{formatTimeRange(session.start_time, session.end_time)}</span>
+            <span className="text-[10px] break-words">{formatTimeRange(session.start_time, session.end_time)}</span>
           </div>
 
           {isUnassignedRoom ? (
-            <span className="flex items-center gap-0.5 font-bold text-amber-800 bg-amber-100/90 px-1.5 py-0.2 rounded text-[9px]">
-              <AlertTriangle className="w-2.5 h-2.5 text-amber-600" />
+            <span className="flex items-center gap-0.5 font-bold text-amber-800 bg-amber-100/90 px-1.5 py-0.5 rounded text-[9px] break-words">
+              <AlertTriangle className="w-2.5 h-2.5 text-amber-600 shrink-0" />
               <span>Pending</span>
             </span>
           ) : (
-            <span className="flex items-center gap-1 font-semibold text-slate-700 truncate max-w-[120px]">
+            <span className="flex items-center gap-1 font-semibold text-slate-700 break-words">
               <MapPin className="w-2.5 h-2.5 text-shu-700 shrink-0" />
-              <span className="truncate">{room?.name}</span>
+              <span className="break-words">{room?.name}</span>
             </span>
           )}
         </div>
 
         {/* Teacher & Batch Row */}
-        <div className="flex items-center justify-between gap-1 text-[10px] text-slate-500">
-          <span className="truncate font-medium text-slate-600">
+        <div className="flex flex-wrap items-center justify-between gap-1 text-[10px] text-slate-500">
+          <span className="break-words font-medium text-slate-600">
             {teacher?.name || 'Instructor'}
           </span>
-          <span className="font-semibold text-shu-700 bg-red-50/80 px-1 py-0.2 rounded truncate">
+          <span className="font-semibold text-shu-700 bg-red-50/80 px-1 py-0.5 rounded break-words">
             {batch?.name || 'Batch'}
           </span>
         </div>
