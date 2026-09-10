@@ -10,6 +10,7 @@ interface DroppableTimeSlotProps {
   slotIndex: number;
   startTime: string; // e.g. "08:30"
   endTime: string;   // e.g. "09:00"
+  isOccupied?: boolean;
   onAddSession?: (dayOfWeek: number, startTime: string, endTime: string) => void;
 }
 
@@ -18,6 +19,7 @@ export const DroppableTimeSlot: React.FC<DroppableTimeSlotProps> = ({
   slotIndex,
   startTime,
   endTime,
+  isOccupied = false,
   onAddSession,
 }) => {
   const droppableId = `slot-${dayOfWeek}-${startTime}`;
@@ -38,17 +40,25 @@ export const DroppableTimeSlot: React.FC<DroppableTimeSlotProps> = ({
   return (
     <div
       ref={setNodeRef}
-      className={`h-full min-h-[58px] rounded-xl transition-all duration-150 border border-dashed flex flex-col items-center justify-center relative group/cell ${
+      className={`h-full min-h-[58px] rounded-xl transition-all duration-150 flex flex-col items-center justify-center relative group/cell ${
         isOver
-          ? 'bg-red-50/90 border-2 border-shu-700 shadow-sm scale-[1.01] z-20'
-          : 'bg-slate-50/40 border-slate-200/60 hover:bg-slate-100/60 hover:border-slate-300'
+          ? 'bg-emerald-100/95 border-2 border-emerald-600 ring-4 ring-emerald-500/30 shadow-xl scale-[1.03] z-30'
+          : isOccupied
+          ? 'border-transparent bg-transparent'
+          : 'border border-dashed border-slate-200/70 bg-slate-50/40 hover:bg-slate-100/70 hover:border-slate-300'
       }`}
     >
-      <span className="text-[10px] font-mono text-slate-300 font-medium select-none group-hover/cell:opacity-0 transition-opacity">
-        {startTime}
-      </span>
+      {isOver ? (
+        <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-700 text-white font-bold text-[10px] shadow-md animate-pulse z-40">
+          <span>Drop: {startTime}</span>
+        </div>
+      ) : !isOccupied ? (
+        <span className="text-[10px] font-mono text-slate-300 font-medium select-none group-hover/cell:opacity-0 transition-opacity">
+          {startTime}
+        </span>
+      ) : null}
 
-      {isCoordinator && onAddSession && (
+      {isCoordinator && onAddSession && !isOccupied && !isOver && (
         <button
           onClick={(e) => {
             e.stopPropagation();

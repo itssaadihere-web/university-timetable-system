@@ -432,27 +432,38 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                         }}
                       >
                         {/* Background 13 Droppable Target Cells */}
-                        {TIME_SLOTS_30MIN.map((slot) => (
-                          <div
-                            key={slot.id}
-                            style={{ gridRow: `${slot.id + 1} / span 1` }}
-                            className="w-full h-full"
-                          >
-                            <DroppableTimeSlot
-                              dayOfWeek={day.id}
-                              slotIndex={slot.id}
-                              startTime={slot.start}
-                              endTime={slot.end}
-                              onAddSession={(d, start, end) =>
-                                onOpenNewSessionModal({
-                                  dayOfWeek: d,
-                                  startTime: start,
-                                  endTime: end,
-                                })
-                              }
-                            />
-                          </div>
-                        ))}
+                        {TIME_SLOTS_30MIN.map((slot) => {
+                          const slotStartMins = timeToMinutes(slot.start);
+                          const slotEndMins = timeToMinutes(slot.end);
+                          const isOccupied = daySessions.some((s) => {
+                            const sStart = timeToMinutes(s.start_time);
+                            const sEnd = timeToMinutes(s.end_time);
+                            return slotStartMins < sEnd && slotEndMins > sStart;
+                          });
+
+                          return (
+                            <div
+                              key={slot.id}
+                              style={{ gridRow: `${slot.id + 1} / span 1` }}
+                              className="w-full h-full"
+                            >
+                              <DroppableTimeSlot
+                                dayOfWeek={day.id}
+                                slotIndex={slot.id}
+                                startTime={slot.start}
+                                endTime={slot.end}
+                                isOccupied={isOccupied}
+                                onAddSession={(d, start, end) =>
+                                  onOpenNewSessionModal({
+                                    dayOfWeek: d,
+                                    startTime: start,
+                                    endTime: end,
+                                  })
+                                }
+                              />
+                            </div>
+                          );
+                        })}
 
                         {/* Scheduled Sessions Spanning Proportional Vertical Boxes */}
                         {tracks.map((track, trackIdx) =>
@@ -493,15 +504,21 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
           </div>
         </div>
 
-        {/* Drag Overlay for smooth dragging preview */}
-        <DragOverlay>
+        {/* Lightweight Semi-Transparent Drag Overlay */}
+        <DragOverlay dropAnimation={null}>
           {activeSession ? (
-            <div className="w-64 pointer-events-none opacity-90 shadow-2xl scale-105">
-              <DraggableSessionCard
-                session={activeSession}
-                onEdit={() => {}}
-                onDelete={() => {}}
-              />
+            <div className="w-56 pointer-events-none opacity-60 backdrop-blur-xs bg-white/90 shadow-xl rounded-xl p-2.5 border-2 border-dashed border-emerald-500 ring-4 ring-emerald-500/20 scale-95 transition-all">
+              <div className="flex items-center justify-between gap-1 mb-1">
+                <span className="font-mono font-bold text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-300">
+                  {courses.find((c) => c.id === activeSession.course_id)?.code || 'CRS'}
+                </span>
+                <span className="text-[9px] font-bold text-emerald-700 uppercase tracking-wider">
+                  Moving...
+                </span>
+              </div>
+              <p className="font-bold text-xs text-slate-800 line-clamp-1">
+                {courses.find((c) => c.id === activeSession.course_id)?.name || 'Class Session'}
+              </p>
             </div>
           ) : null}
         </DragOverlay>

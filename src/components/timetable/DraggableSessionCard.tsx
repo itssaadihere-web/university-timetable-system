@@ -89,9 +89,9 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
       style={style}
       {...(isCoordinator ? attributes : {})}
       {...(isCoordinator ? listeners : {})}
-      className={`group relative rounded-xl p-2.5 text-xs transition-all duration-150 select-none h-full flex flex-col justify-between border-l-4 ${colorPalette.leftBorder} ${
+      className={`group relative rounded-xl p-2.5 text-xs transition-all duration-150 select-none h-full flex flex-col justify-between border-l-4 ${colorPalette.leftBorder} shadow-xs ${
         isDragging
-          ? 'opacity-95 scale-105 shadow-2xl ring-2 ring-shu-700 bg-white cursor-grabbing z-50'
+          ? 'opacity-20 grayscale border-2 border-dashed border-slate-400 bg-slate-100 scale-95 shadow-none pointer-events-none'
           : isDraft
           ? `${colorPalette.cardBg} border-2 border-dashed border-amber-400 hover:border-amber-500 hover:shadow-md`
           : isMakeup

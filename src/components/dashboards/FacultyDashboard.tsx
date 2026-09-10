@@ -243,18 +243,34 @@ export const FacultyDashboard: React.FC = () => {
                           gridTemplateRows: `repeat(13, 58px)`,
                         }}
                       >
-                        {/* Background 13 Empty 30-min Slots */}
-                        {TIME_SLOTS_30MIN.map((slot) => (
-                          <div
-                            key={slot.id}
-                            style={{ gridRow: `${slot.id + 1} / span 1` }}
-                            className="w-full h-full rounded-xl border border-dashed border-slate-200/50 bg-slate-50/30 flex items-center justify-center"
-                          >
-                            <span className="text-[9px] font-mono text-slate-300 font-medium select-none">
-                              {slot.start12}
-                            </span>
-                          </div>
-                        ))}
+                        {/* Background 13 Empty 30-min Slots (Only display time in unoccupied slots) */}
+                        {TIME_SLOTS_30MIN.map((slot) => {
+                          const slotStartMins = timeToMinutes(slot.start);
+                          const slotEndMins = timeToMinutes(slot.end);
+                          const isOccupied = daySessions.some((s) => {
+                            const sStart = timeToMinutes(s.start_time);
+                            const sEnd = timeToMinutes(s.end_time);
+                            return slotStartMins < sEnd && slotEndMins > sStart;
+                          });
+
+                          return (
+                            <div
+                              key={slot.id}
+                              style={{ gridRow: `${slot.id + 1} / span 1` }}
+                              className={`w-full h-full rounded-xl flex items-center justify-center ${
+                                isOccupied
+                                  ? 'border-transparent bg-transparent'
+                                  : 'border border-dashed border-slate-200/50 bg-slate-50/30'
+                              }`}
+                            >
+                              {!isOccupied && (
+                                <span className="text-[9px] font-mono text-slate-300 font-medium select-none">
+                                  {slot.start12}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
 
                         {/* Faculty Sessions Positioned Vertically across Exact Span */}
                         {daySessions.map((s) => {
