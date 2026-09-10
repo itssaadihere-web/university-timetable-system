@@ -32,15 +32,62 @@ export const FacultyDashboard: React.FC = () => {
   const { currentUser } = useAuth();
   const { faculty, sessions, courses, rooms, batches, activeSemester } = useTimetable();
 
-  // Find linked faculty profile
-  const teacherProfile =
-    faculty.find((f) => f.email.toLowerCase() === currentUser?.email.toLowerCase()) ||
-    faculty.find((f) => f.id === currentUser?.faculty_id) ||
-    faculty[0];
+  const userEmail = (currentUser?.email || '').trim().toLowerCase();
+  const userName = (currentUser?.name || '').trim().toLowerCase();
+  const userFacultyId = (currentUser?.faculty_id || '').trim();
+  const userId = (currentUser?.id || '').trim();
 
-  const teacherSessions = sessions.filter(
-    (s) => s.faculty_id === teacherProfile?.id && s.status !== 'cancelled'
-  );
+  // Comprehensive Faculty Profile Matching (never falls back to an unrelated teacher)
+  const teacherProfile =
+    // 1. Direct email match (case-insensitive & trimmed)
+    (userEmail ? faculty.find((f) => f.email && f.email.trim().toLowerCase() === userEmail) : null) ||
+    // 2. Direct faculty_id match
+    (userFacultyId ? faculty.find((f) => f.id === userFacultyId) : null) ||
+    // 3. Direct full name match (case-insensitive)
+    (userName ? faculty.find((f) => f.name && f.name.trim().toLowerCase() === userName) : null) ||
+    // 4. User ID match (handling usr- prefix)
+    (userId ? faculty.find((f) => f.id === userId || f.id === userId.replace(/^usr-/, '')) : null) ||
+    // 5. Email username prefix match (e.g. ghulam.mustafa)
+    (userEmail ? faculty.find((f) => f.email && f.email.trim().toLowerCase().split('@')[0] === userEmail.split('@')[0]) : null) ||
+    // 6. Name partial match (e.g. "Ghulam Mustafa" in "Prof. Ghulam Mustafa" or vice versa)
+    (userName ? faculty.find((f) => f.name && (f.name.toLowerCase().includes(userName) || userName.includes(f.name.toLowerCase()))) : null) ||
+    // 7. Fallback to currentUser's own data (NEVER fall back to another random faculty member!)
+    (currentUser
+      ? {
+          id: currentUser.faculty_id || currentUser.id,
+          name: currentUser.name,
+          email: currentUser.email,
+          department: currentUser.department || 'Academic Department',
+          max_load_per_day: 4,
+        }
+      : faculty[0]);
+
+  const teacherProfileId = teacherProfile?.id;
+  const teacherName = (teacherProfile?.name || currentUser?.name || '').trim().toLowerCase();
+
+  // Find all faculty IDs associated with this teacher (in case of aliases/duplicates across syncs)
+  const matchingFacultyIds = new Set<string>();
+  if (teacherProfileId) matchingFacultyIds.add(teacherProfileId);
+  if (userFacultyId) matchingFacultyIds.add(userFacultyId);
+  if (userId) {
+    matchingFacultyIds.add(userId);
+    matchingFacultyIds.add(userId.replace(/^usr-/, ''));
+  }
+  faculty.forEach((f) => {
+    if (
+      (userEmail && f.email && f.email.trim().toLowerCase() === userEmail) ||
+      (userName && f.name && f.name.trim().toLowerCase() === userName) ||
+      (teacherName && f.name && f.name.trim().toLowerCase() === teacherName)
+    ) {
+      matchingFacultyIds.add(f.id);
+    }
+  });
+
+  const teacherSessions = sessions.filter((s) => {
+    if (s.status === 'cancelled') return false;
+    if (s.faculty_id && matchingFacultyIds.has(s.faculty_id)) return true;
+    return false;
+  });
 
   // Weekly hours math
   const totalWeeklyMinutes = teacherSessions.reduce((acc, s) => {

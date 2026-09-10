@@ -46,6 +46,7 @@ interface AuthContextType {
   currentUser: UserAccount | null; // null means Public Student View
   currentRole: UserRole;
   isAuthenticated: boolean;
+  isInitialized: boolean;
   userAccounts: UserAccount[];
   login: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
@@ -62,15 +63,67 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+const AUTH_USER_STORAGE_KEY = 'shu_timetable_active_user_v1';
+const AUTH_ACCOUNTS_STORAGE_KEY = 'shu_timetable_user_accounts_v1';
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userAccounts, setUserAccounts] = useState<UserAccount[]>(INITIAL_USER_ACCOUNTS);
-  // Default to Public Student view initially until explicit credential login
+  // Default to Public Student view initially until explicit credential login or localStorage recovery
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
+
+  // Restore authenticated user and accounts from localStorage on client mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      // 1. Hydrate user accounts
+      const storedAccountsRaw = localStorage.getItem(AUTH_ACCOUNTS_STORAGE_KEY);
+      let currentAccounts = INITIAL_USER_ACCOUNTS;
+
+      if (storedAccountsRaw) {
+        const parsedAccounts = JSON.parse(storedAccountsRaw);
+        if (Array.isArray(parsedAccounts) && parsedAccounts.length > 0) {
+          // Merge initial system accounts to ensure default admin & coordinator are always available
+          const existingIds = new Set(parsedAccounts.map((a: UserAccount) => a.id));
+          const missingDefaults = INITIAL_USER_ACCOUNTS.filter((a) => !existingIds.has(a.id));
+          currentAccounts = [...parsedAccounts, ...missingDefaults];
+          setUserAccounts(currentAccounts);
+        }
+      } else {
+        localStorage.setItem(AUTH_ACCOUNTS_STORAGE_KEY, JSON.stringify(INITIAL_USER_ACCOUNTS));
+      }
+
+      // 2. Hydrate active logged-in session
+      const storedUserRaw = localStorage.getItem(AUTH_USER_STORAGE_KEY);
+      if (storedUserRaw) {
+        const parsedUser = JSON.parse(storedUserRaw) as UserAccount;
+        if (parsedUser && parsedUser.id) {
+          // Re-validate against current accounts to get fresh details/permissions
+          const matchedUser = currentAccounts.find(
+            (u) => u.id === parsedUser.id || u.email.toLowerCase() === parsedUser.email.toLowerCase()
+          );
+          if (matchedUser) {
+            setCurrentUser(matchedUser);
+            // Refresh stored snapshot
+            localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(matchedUser));
+          } else {
+            // Keep stored user if custom
+            setCurrentUser(parsedUser);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Failed to restore authentication session from localStorage:', e);
+    } finally {
+      setIsInitialized(true);
+    }
+  }, []);
 
   const currentRole: UserRole = currentUser ? currentUser.role : 'student';
   const isAuthenticated = Boolean(currentUser);
 
-  // Strict Login handler based on credential evaluation
+  // Strict Login handler based on credential evaluation with localStorage persistence
   const login = async (email: string, password?: string): Promise<{ success: boolean; error?: string }> => {
     const trimmedEmail = email.trim().toLowerCase();
     const providedPass = password ? password.trim() : '';
@@ -108,15 +161,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Assign logged in user (determines access & dashboard type strictly by role)
     setCurrentUser(found);
+
+    // Save active session in localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(found));
+      } catch (e) {
+        console.error('Failed to save user session to localStorage:', e);
+      }
+    }
+
     return { success: true };
   };
 
-  // Logout (reverts to Public Student view)
+  // Logout (reverts to Public Student view and removes stored session)
   const logout = () => {
     setCurrentUser(null);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(AUTH_USER_STORAGE_KEY);
+      } catch (e) {
+        console.error('Failed to clear user session from localStorage:', e);
+      }
+    }
   };
 
-  // Role-based Account Creation
+  // Role-based Account Creation with storage persistence
   const createAccount = async (data: {
     name: string;
     email: string;
@@ -159,11 +229,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       created_by: currentUser.name,
     };
 
-    setUserAccounts((prev) => [...prev, newAccount]);
+    const updated = [...userAccounts, newAccount];
+    setUserAccounts(updated);
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(AUTH_ACCOUNTS_STORAGE_KEY, JSON.stringify(updated));
+      } catch (e) {
+        console.error('Failed to persist accounts to localStorage:', e);
+      }
+    }
+
     return { success: true };
   };
 
-  // Delete Account (Admin only)
+  // Delete Account (Admin only) with storage persistence
   const deleteAccount = async (userId: string): Promise<{ success: boolean; error?: string }> => {
     if (currentUser?.role !== 'admin') {
       return { success: false, error: 'Only Administrators can remove user accounts.' };
@@ -173,7 +253,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: false, error: 'You cannot delete your own active admin account.' };
     }
 
-    setUserAccounts((prev) => prev.filter((u) => u.id !== userId));
+    const updated = userAccounts.filter((u) => u.id !== userId);
+    setUserAccounts(updated);
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(AUTH_ACCOUNTS_STORAGE_KEY, JSON.stringify(updated));
+      } catch (e) {
+        console.error('Failed to persist accounts to localStorage:', e);
+      }
+    }
+
     return { success: true };
   };
 
@@ -183,6 +273,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         currentUser,
         currentRole,
         isAuthenticated,
+        isInitialized,
         userAccounts,
         login,
         logout,

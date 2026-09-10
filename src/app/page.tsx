@@ -16,7 +16,7 @@ import { BulkCsvImportModal } from '@/components/modals/BulkCsvImportModal';
 import { ClassSession } from '@/types';
 
 export default function AppMainPage() {
-  const { currentRole, currentUser } = useAuth();
+  const { currentRole, currentUser, isInitialized } = useAuth();
   const { setCurrentRole, setCurrentUserName } = useTimetable();
 
   // Sync auth state with timetable context
@@ -49,6 +49,17 @@ export default function AppMainPage() {
     setSlotPreset(null);
     setIsNewSessionOpen(true);
   };
+
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-9 h-9 border-3 border-shu-700 border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-xs font-semibold text-slate-500">Loading Academic Portal...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">

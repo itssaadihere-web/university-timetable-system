@@ -23,7 +23,7 @@ import {
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, currentUser, isAuthenticated, logout } = useAuth();
+  const { login, currentUser, isAuthenticated, logout, isInitialized } = useAuth();
 
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
@@ -58,6 +58,17 @@ export default function LoginPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-9 h-9 border-3 border-shu-700 border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-xs font-semibold text-slate-500">Checking Authentication Session...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-between">
