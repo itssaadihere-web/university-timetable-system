@@ -241,11 +241,11 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
     <div className="space-y-4">
       {/* Conflict Alert Banner */}
       {conflictAlert && (
-        <div className="bg-rose-50 border border-rose-300 rounded-2xl p-4 shadow-sm animate-shake">
+        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 shadow-sm animate-shake">
           <div className="flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
             <div className="flex-1 text-sm text-rose-900">
-              <h5 className="font-bold mb-1">Conflict Prevented (Rescheduling Reverted)</h5>
+              <h5 className="font-bold mb-1">Scheduling Conflict Prevented</h5>
               <ul className="list-disc list-inside space-y-1 text-rose-800 text-xs font-medium">
                 {conflictAlert.map((err, i) => (
                   <li key={i}>{err}</li>
@@ -254,7 +254,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
             </div>
             <button
               onClick={() => setConflictAlert(null)}
-              className="text-xs font-semibold text-rose-600 hover:text-rose-800"
+              className="text-xs font-bold text-rose-600 hover:text-rose-800 px-2 py-1 rounded-lg hover:bg-rose-100 transition-colors cursor-pointer"
             >
               Dismiss
             </button>
@@ -263,36 +263,36 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
       )}
 
       {/* Grid Sub-Header & Controls */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-3.5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 sm:p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 flex-wrap">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-red-50 text-shu-700 font-bold text-xs border border-red-200">
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-red-50 text-shu-700 font-bold text-xs border border-red-200/70">
             <Clock className="w-3.5 h-3.5 text-shu-700" />
-            <span>Teachable Hours: 08:30 AM – 03:00 PM</span>
+            <span>08:30 AM – 03:00 PM</span>
           </div>
           <span className="text-slate-300 hidden sm:inline">|</span>
-          <span className="text-xs text-slate-500 font-medium">
-            13 × 30-min Equal Sizing Units • Total {filteredSessions.length} Active Sessions
+          <span className="text-xs text-slate-500 font-medium font-mono">
+            13 × 30-min Equal Slots • {filteredSessions.length} Active Sessions
           </span>
         </div>
 
         {/* Day Scope Filter: Priority Mon-Fri vs Weekend Exceptions */}
         <div className="flex items-center gap-2">
-          <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-bold">
+          <div className="inline-flex p-1 bg-slate-100/90 rounded-xl border border-slate-200/80 text-xs font-bold">
             <button
               onClick={() => setShowWeekendExceptions(false)}
-              className={`px-3 py-1 rounded-lg transition-all ${
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
                 !showWeekendExceptions && !hasWeekendSessions
-                  ? 'bg-white text-shu-700 shadow-xs'
+                  ? 'bg-white text-shu-700 shadow-2xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Mon – Fri (Primary)
+              Mon – Fri
             </button>
             <button
               onClick={() => setShowWeekendExceptions(true)}
-              className={`flex items-center gap-1 px-3 py-1 rounded-lg transition-all ${
+              className={`flex items-center gap-1 px-3 py-1 rounded-lg transition-all cursor-pointer ${
                 showWeekendExceptions || hasWeekendSessions
-                  ? 'bg-white text-shu-700 shadow-xs'
+                  ? 'bg-white text-shu-700 shadow-2xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -306,11 +306,11 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
       </div>
 
       {/* Mobile Day Selector Tabs */}
-      <div className="lg:hidden flex items-center justify-between bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
+      <div className="lg:hidden flex items-center justify-between bg-white p-2 rounded-2xl border border-slate-200/80 shadow-2xs">
         <button
           onClick={() => setMobileActiveDay((d) => Math.max(1, d - 1))}
           disabled={mobileActiveDay === 1}
-          className="p-2 text-slate-600 disabled:opacity-30 rounded-lg hover:bg-slate-100"
+          className="p-2 text-slate-600 disabled:opacity-30 rounded-lg hover:bg-slate-100 cursor-pointer"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
@@ -320,14 +320,14 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
             <button
               key={d.id}
               onClick={() => setMobileActiveDay(d.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
                 mobileActiveDay === d.id
-                  ? 'bg-shu-700 text-white shadow-sm'
+                  ? 'bg-shu-700 text-white shadow-2xs'
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
               <span>{d.short}</span>
-              {d.isWeekend && <span className="text-[9px] font-bold opacity-80">(Exc)</span>}
+              {d.isWeekend && <span className="text-[9px] opacity-80">(Exc)</span>}
             </button>
           ))}
         </div>
@@ -335,7 +335,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
         <button
           onClick={() => setMobileActiveDay((d) => Math.min(displayDays.length, d + 1))}
           disabled={mobileActiveDay === displayDays.length}
-          className="p-2 text-slate-600 disabled:opacity-30 rounded-lg hover:bg-slate-100"
+          className="p-2 text-slate-600 disabled:opacity-30 rounded-lg hover:bg-slate-100 cursor-pointer"
         >
           <ChevronRight className="w-5 h-5" />
         </button>
@@ -347,19 +347,19 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-2xs overflow-hidden">
           <div className="overflow-x-auto">
             <div className="min-w-[1000px]">
               {/* Header: Horizontal Axis with Days of the Week */}
               <div 
-                className="grid bg-slate-100/90 border-b border-slate-200 text-center text-xs font-bold text-slate-800 select-none py-2.5"
+                className="grid bg-slate-100/75 border-b border-slate-200 text-center text-xs font-bold text-slate-800 select-none py-2.5"
                 style={{
                   gridTemplateColumns: `110px repeat(${displayDays.length}, minmax(150px, 1fr))`,
                 }}
               >
                 {/* Top-Left Corner: Time Label */}
-                <div className="py-1 px-3 border-r border-slate-200 flex items-center justify-center gap-1.5 text-slate-600 font-bold">
-                  <Clock className="w-3.5 h-3.5 text-shu-700" />
+                <div className="py-1 px-3 border-r border-slate-200 flex items-center justify-center gap-1.5 text-slate-500 font-semibold">
+                  <Clock className="w-3.5 h-3.5 text-slate-400" />
                   <span>Time \ Day</span>
                 </div>
 
@@ -369,9 +369,9 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                   return (
                     <div
                       key={day.id}
-                      className="py-1 px-2 border-r border-slate-200/80 last:border-r-0 flex items-center justify-center gap-2"
+                      className="py-1 px-2 border-r border-slate-200/70 last:border-r-0 flex items-center justify-center gap-2"
                     >
-                      <span className="font-extrabold text-slate-900 text-xs">
+                      <span className="font-bold text-slate-900 text-xs">
                         {day.name}
                       </span>
                       {day.isWeekend && (
@@ -395,16 +395,16 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                 }}
               >
                 {/* Column 1: Vertical Time Slot Labels (13 × 30-min Rows) */}
-                <div className="border-r border-slate-200 bg-slate-50/70 divide-y divide-slate-200/80">
+                <div className="border-r border-slate-200 bg-slate-50/50 divide-y divide-slate-200/60">
                   {TIME_SLOTS_30MIN.map((slot) => (
                     <div
                       key={slot.id}
                       className="h-[62px] px-1 flex flex-col items-center justify-center text-center select-none"
                     >
-                      <span className="font-mono text-[10px] text-slate-900 font-bold tracking-tight">
+                      <span className="font-mono text-[10px] text-slate-800 font-semibold tracking-tight">
                         {slot.start12}
                       </span>
-                      <span className="text-[9px] font-mono text-slate-400 font-medium tracking-tight">
+                      <span className="text-[9px] font-mono text-slate-400 font-normal tracking-tight">
                         {slot.end12}
                       </span>
                     </div>
@@ -420,8 +420,8 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                   return (
                     <div
                       key={day.id}
-                      className={`border-r border-slate-200/80 last:border-r-0 relative p-1.5 ${
-                        day.isWeekend ? 'bg-amber-50/20' : 'bg-white'
+                      className={`border-r border-slate-200/60 last:border-r-0 relative p-1.5 ${
+                        day.isWeekend ? 'bg-amber-50/15' : 'bg-white'
                       }`}
                     >
                       {/* Vertical Grid of 13 Rows */}

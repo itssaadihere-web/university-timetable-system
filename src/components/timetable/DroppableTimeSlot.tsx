@@ -38,13 +38,13 @@ export const DroppableTimeSlot: React.FC<DroppableTimeSlotProps> = ({
   return (
     <div
       ref={setNodeRef}
-      className={`h-full min-h-[58px] rounded-xl transition-all border border-dashed flex flex-col items-center justify-center relative group/cell ${
+      className={`h-full min-h-[58px] rounded-xl transition-all duration-150 border border-dashed flex flex-col items-center justify-center relative group/cell ${
         isOver
-          ? 'bg-shu-50/90 border-2 border-shu-700 shadow-md scale-[1.02] z-20'
-          : 'bg-slate-50/50 border-slate-200/80 hover:bg-slate-100/70 hover:border-slate-300'
+          ? 'bg-red-50/90 border-2 border-shu-700 shadow-sm scale-[1.01] z-20'
+          : 'bg-slate-50/40 border-slate-200/60 hover:bg-slate-100/60 hover:border-slate-300'
       }`}
     >
-      <span className="text-[10px] font-mono text-slate-400 font-medium select-none group-hover/cell:opacity-0 transition-opacity">
+      <span className="text-[10px] font-mono text-slate-300 font-medium select-none group-hover/cell:opacity-0 transition-opacity">
         {startTime}
       </span>
 
@@ -55,7 +55,7 @@ export const DroppableTimeSlot: React.FC<DroppableTimeSlotProps> = ({
             onAddSession(dayOfWeek, startTime, endTime);
           }}
           title={`Schedule new class at ${startTime}`}
-          className="absolute inset-2 hidden group-hover/cell:flex items-center justify-center gap-1 rounded-lg bg-white/95 text-shu-700 font-bold text-[10px] shadow-xs border border-red-200 hover:bg-red-50 transition-all z-10"
+          className="absolute inset-1.5 hidden group-hover/cell:flex items-center justify-center gap-1 rounded-lg bg-white/95 text-shu-700 font-bold text-[10px] shadow-xs border border-red-200/80 hover:bg-red-50 transition-all z-10 cursor-pointer"
         >
           <Plus className="w-3 h-3 text-shu-700 shrink-0" />
           <span>Add</span>

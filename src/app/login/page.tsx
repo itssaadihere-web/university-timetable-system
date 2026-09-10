@@ -83,10 +83,10 @@ export default function LoginPage() {
 
       {/* Main Login Content Area */}
       <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8">
-        <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-12 bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
+        <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-12 bg-white rounded-3xl shadow-xl border border-slate-200/80 overflow-hidden">
           
           {/* Left Hero / Branding Panel */}
-          <div className="lg:col-span-5 bg-gradient-to-br from-slate-900 via-slate-800 to-shu-950 p-8 text-white flex flex-col justify-between relative overflow-hidden">
+          <div className="lg:col-span-5 bg-gradient-to-br from-slate-900 via-slate-900 to-shu-950 p-8 text-white flex flex-col justify-between relative overflow-hidden">
             {/* Background Decorative Glows */}
             <div className="absolute -top-16 -right-16 w-56 h-56 bg-shu-700/20 rounded-full blur-3xl pointer-events-none"></div>
             <div className="absolute -bottom-16 -left-16 w-56 h-56 bg-red-600/20 rounded-full blur-3xl pointer-events-none"></div>
@@ -97,7 +97,7 @@ export default function LoginPage() {
                 <span>Academic Portal</span>
               </div>
 
-              <div className="h-16 w-auto flex items-center mb-4 bg-white/95 p-2 rounded-2xl w-fit shadow-sm">
+              <div className="h-16 w-auto flex items-center mb-4 bg-white/95 p-2.5 rounded-2xl w-fit shadow-sm">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/fbs-logo.png"
@@ -118,14 +118,14 @@ export default function LoginPage() {
               </p>
             </div>
 
-            <div className="relative z-10 mt-8 pt-6 border-t border-white/10 space-y-3">
+            <div className="relative z-10 mt-8 pt-6 border-t border-white/10 space-y-2.5">
               <div className="flex items-center gap-2.5 text-xs text-slate-300">
                 <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>Zero-Cost Server-Side Architecture</span>
+                <span>Automated 3D Conflict Engine</span>
               </div>
               <div className="flex items-center gap-2.5 text-xs text-slate-300">
                 <Calendar className="w-4 h-4 text-shu-300 shrink-0" />
-                <span>Role-Based Operational Access</span>
+                <span>Role-Based Access Control</span>
               </div>
             </div>
           </div>
@@ -134,18 +134,18 @@ export default function LoginPage() {
           <div className="lg:col-span-7 p-6 sm:p-10 flex flex-col justify-between">
             {isAuthenticated && currentUser ? (
               <div className="my-auto text-center py-6">
-                <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto mb-4">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center mx-auto mb-4">
                   <CheckCircle2 className="w-8 h-8" />
                 </div>
-                <h2 className="text-xl font-bold text-slate-900">Already Signed In</h2>
+                <h2 className="text-xl font-bold text-slate-900">Signed In Successfully</h2>
                 <p className="text-xs text-slate-500 mt-1">
-                  You are currently logged in as <span className="font-bold text-slate-800">{currentUser.name}</span> ({currentUser.role}).
+                  You are signed in as <span className="font-bold text-slate-800">{currentUser.name}</span> ({currentUser.role}).
                 </p>
 
                 <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
                   <button
                     onClick={() => router.push('/')}
-                    className="px-5 py-2.5 bg-shu-700 hover:bg-shu-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    className="px-5 py-2.5 bg-shu-700 hover:bg-shu-800 active:bg-shu-900 text-white text-xs font-bold rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <span>Go to Dashboard</span>
                     <ArrowRight className="w-4 h-4" />
@@ -162,7 +162,7 @@ export default function LoginPage() {
               <div>
                 <div className="mb-6">
                   <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                    Institutional Login
+                    Faculty & Staff Login
                   </h2>
                   <p className="text-xs text-slate-500 mt-1">
                     Sign in with your Salim Habib University staff or faculty credentials.
@@ -185,7 +185,7 @@ export default function LoginPage() {
                         onChange={(e) => setEmail(e.target.value)}
                         required
                         placeholder="e.g. name@shu.edu.pk"
-                        className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-shu-700 transition-all"
+                        className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-shu-700/20 focus:border-shu-700 transition-all"
                       />
                     </div>
                   </div>
@@ -208,7 +208,7 @@ export default function LoginPage() {
                         onChange={(e) => setPassword(e.target.value)}
                         required
                         placeholder="Enter your account password"
-                        className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-shu-700 transition-all"
+                        className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-shu-700/20 focus:border-shu-700 transition-all"
                       />
                       <button
                         type="button"
@@ -240,14 +240,14 @@ export default function LoginPage() {
 
                 {/* Quick Role Fill Credentials Bar */}
                 <div className="mt-6 pt-5 border-t border-slate-100">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[11px] font-bold text-slate-600">Quick Test Accounts:</span>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <span className="text-[11px] font-bold text-slate-600">Quick Test Credentials:</span>
                     <button
                       type="button"
                       onClick={() => setShowQuickHints(!showQuickHints)}
                       className="text-[11px] text-shu-700 hover:underline font-semibold cursor-pointer"
                     >
-                      {showQuickHints ? 'Hide Hints' : 'Show All Accounts'}
+                      {showQuickHints ? 'Hide Details' : 'Show Details'}
                     </button>
                   </div>
 
@@ -255,27 +255,27 @@ export default function LoginPage() {
                     <button
                       type="button"
                       onClick={() => handleQuickFill('amanat.jalbani@shu.edu.pk')}
-                      className="p-2 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-900 text-[11px] font-semibold transition-all flex flex-col items-center text-center gap-1 cursor-pointer"
+                      className="p-2.5 rounded-xl bg-purple-50/80 hover:bg-purple-100/80 border border-purple-200/80 text-purple-900 text-[11px] font-semibold transition-all flex flex-col items-center text-center gap-1 cursor-pointer"
                     >
-                      <ShieldCheck className="w-3.5 h-3.5 text-purple-700" />
+                      <ShieldCheck className="w-4 h-4 text-purple-700" />
                       <span>Admin</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => handleQuickFill('Priyanka.Bajaj@shu.edu.pk')}
-                      className="p-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-900 text-[11px] font-semibold transition-all flex flex-col items-center text-center gap-1 cursor-pointer"
+                      className="p-2.5 rounded-xl bg-indigo-50/80 hover:bg-indigo-100/80 border border-indigo-200/80 text-indigo-900 text-[11px] font-semibold transition-all flex flex-col items-center text-center gap-1 cursor-pointer"
                     >
-                      <Sparkles className="w-3.5 h-3.5 text-indigo-700" />
+                      <Sparkles className="w-4 h-4 text-indigo-700" />
                       <span>Coordinator</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => handleQuickFill('ghulam.mustafa@shu.edu.pk')}
-                      className="p-2 rounded-xl bg-teal-50 hover:bg-teal-100 border border-teal-200 text-teal-900 text-[11px] font-semibold transition-all flex flex-col items-center text-center gap-1 cursor-pointer"
+                      className="p-2.5 rounded-xl bg-teal-50/80 hover:bg-teal-100/80 border border-teal-200/80 text-teal-900 text-[11px] font-semibold transition-all flex flex-col items-center text-center gap-1 cursor-pointer"
                     >
-                      <UserCheck className="w-3.5 h-3.5 text-teal-700" />
+                      <UserCheck className="w-4 h-4 text-teal-700" />
                       <span>Faculty</span>
                     </button>
                   </div>
@@ -284,8 +284,8 @@ export default function LoginPage() {
                     <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-600 space-y-1">
                       <p><strong>Admin:</strong> <code className="text-slate-800 font-mono">amanat.jalbani@shu.edu.pk</code></p>
                       <p><strong>Coordinator:</strong> <code className="text-slate-800 font-mono">Priyanka.Bajaj@shu.edu.pk</code></p>
-                      <p><strong>Faculty:</strong> <code className="text-slate-800 font-mono">ghulam.mustafa@shu.edu.pk</code>, <code className="text-slate-800 font-mono">yasar.rizwan@shu.edu.pk</code>, <code className="text-slate-800 font-mono">amna.alvi@shu.edu.pk</code></p>
-                      <p className="text-[10px] text-slate-400 mt-1">All accounts use default password: <code className="font-mono">pass@123</code></p>
+                      <p><strong>Faculty:</strong> <code className="text-slate-800 font-mono">ghulam.mustafa@shu.edu.pk</code>, <code className="text-slate-800 font-mono">yasar.rizwan@shu.edu.pk</code></p>
+                      <p className="text-[10px] text-slate-400 mt-1">Default Password: <code className="font-mono">pass@123</code></p>
                     </div>
                   )}
                 </div>
@@ -297,14 +297,14 @@ export default function LoginPage() {
                     className="text-xs font-semibold text-slate-500 hover:text-shu-700 inline-flex items-center gap-1.5 transition-colors"
                   >
                     <GraduationCap className="w-4 h-4 text-shu-700" />
-                    <span>Are you a Student? No login required. View Public Timetable &rarr;</span>
+                    <span>Public Student Timetable &rarr;</span>
                   </Link>
                 </div>
               </div>
             )}
 
             <div className="mt-6 pt-4 border-t border-slate-100 text-center text-[11px] text-slate-400">
-              Salim Habib University • Fatima Business School Timetable Portal
+              Salim Habib University • Fatima Business School
             </div>
           </div>
 
@@ -314,8 +314,8 @@ export default function LoginPage() {
       {/* Clean Footer */}
       <footer className="border-t border-slate-200 bg-white py-3 text-center text-xs text-slate-500">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-1">
-          <span>Salim Habib University Academic Timetable System</span>
-          <span className="text-[11px] text-slate-400">Secure Institutional Authentication</span>
+          <span>Salim Habib University Academic Timetable Portal</span>
+          <span className="text-[11px] text-slate-400">Secure Institutional Access</span>
         </div>
       </footer>
     </div>

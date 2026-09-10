@@ -77,56 +77,56 @@ export const FacultyDashboard: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Faculty Welcome Header */}
-      <div className="bg-gradient-to-r from-red-950 via-slate-900 to-red-900 text-white rounded-3xl p-6 sm:p-8 shadow-sm border border-red-900/40 relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-96 h-96 bg-red-600/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-shu-950 text-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-800 relative overflow-hidden">
+        <div className="absolute right-0 top-0 w-96 h-96 bg-shu-600/10 rounded-full blur-3xl pointer-events-none"></div>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div>
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/20 text-white">
+            <div className="flex items-center gap-2 mb-2.5 flex-wrap">
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-white backdrop-blur border border-white/10">
                 Fatima Business School
               </span>
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-600/60 text-white">
-                Salim Habib University
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-teal-600 text-white shadow-2xs">
+                Faculty Portal
               </span>
-              <span className="text-xs text-red-200">
+              <span className="text-xs font-medium text-slate-300">
                 {teacherProfile?.department} • Max {teacherProfile?.max_load_per_day}h/day
               </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
               {teacherProfile?.name || currentUser?.name}
             </h1>
-            <p className="text-xs sm:text-sm text-red-100/90 mt-1 max-w-xl">
-              Welcome back to Fatima Business School faculty portal. You have <span className="font-bold text-white">{teacherSessions.length} lecture sections</span> ({totalWeeklyHours.toFixed(1)} hours/week) allocated this term.
+            <p className="text-xs sm:text-sm text-slate-300 mt-1.5 max-w-xl leading-relaxed">
+              Welcome back. You have <span className="font-semibold text-white">{teacherSessions.length} lecture sections</span> ({totalWeeklyHours.toFixed(1)} hours/week) scheduled for the active academic term.
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 self-start md:self-auto">
+          <div className="flex items-center gap-2.5 self-start md:self-auto shrink-0">
             <button
               onClick={() => handleExport('excel')}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-white text-slate-800 hover:bg-red-50 rounded-xl shadow-xs transition-all"
+              className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold bg-white text-slate-800 hover:bg-slate-50 rounded-xl shadow-sm hover:shadow transition-all cursor-pointer"
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
               <span>Export Schedule</span>
             </button>
             <button
               onClick={() => handleExport('pdf')}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-white text-slate-800 hover:bg-red-50 rounded-xl shadow-xs transition-all"
+              className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold bg-white text-slate-800 hover:bg-slate-50 rounded-xl shadow-sm hover:shadow transition-all cursor-pointer"
             >
               <FileText className="w-4 h-4 text-rose-600" />
-              <span>PDF Copy</span>
+              <span>Download PDF</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200">
+      {/* Navigation Sub-Tabs */}
+      <div className="bg-white p-1.5 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-1 overflow-x-auto">
         <button
           onClick={() => setActiveSubTab('schedule')}
-          className={`flex items-center gap-2 pb-3 px-4 text-xs font-bold border-b-2 transition-all ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             activeSubTab === 'schedule'
-              ? 'border-shu-700 text-shu-700'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
+              ? 'bg-shu-700 text-white shadow-2xs'
+              : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
           <Calendar className="w-4 h-4" />
@@ -135,29 +135,29 @@ export const FacultyDashboard: React.FC = () => {
 
         <button
           onClick={() => setActiveSubTab('room_lookup')}
-          className={`flex items-center gap-2 pb-3 px-4 text-xs font-bold border-b-2 transition-all ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             activeSubTab === 'room_lookup'
-              ? 'border-shu-700 text-shu-700'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
+              ? 'bg-shu-700 text-white shadow-2xs'
+              : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
           <DoorOpen className="w-4 h-4" />
-          <span>Room & Resource Availability Finder</span>
+          <span>Campus Room Availability Finder</span>
         </button>
       </div>
 
       {/* Tab 1: Weekly Matrix */}
       {activeSubTab === 'schedule' && (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-2xs overflow-hidden">
+          <div className="p-4 sm:p-5 bg-slate-50/70 border-b border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-shu-700" />
               <span className="font-bold text-slate-900 text-sm">
-                Faculty Weekly Lecture Schedule (08:30 AM – 03:00 PM)
+                Teaching Schedule: {teacherProfile?.name} (08:30 AM – 03:00 PM)
               </span>
             </div>
-            <span className="text-xs font-semibold text-slate-500">
-              13 × 30-min Units • {teacherSessions.length} Total Lecture Sections
+            <span className="text-xs font-medium text-slate-500 font-mono">
+              13 × 30-min Units • {teacherSessions.length} Total Sections ({totalWeeklyHours.toFixed(1)}h/wk)
             </span>
           </div>
 
@@ -165,14 +165,14 @@ export const FacultyDashboard: React.FC = () => {
             <div className="min-w-[950px]">
               {/* Header: Horizontal Axis with Days of the Week */}
               <div 
-                className="grid bg-slate-100/90 border-b border-slate-200 text-center text-xs font-bold text-slate-800 select-none py-2.5"
+                className="grid bg-slate-100/75 border-b border-slate-200 text-center text-xs font-bold text-slate-800 select-none py-2.5"
                 style={{
                   gridTemplateColumns: `110px repeat(7, minmax(130px, 1fr))`,
                 }}
               >
                 {/* Top-Left Corner: Time Label */}
-                <div className="py-1 px-3 border-r border-slate-200 flex items-center justify-center gap-1.5 text-slate-600 font-bold">
-                  <Clock className="w-3.5 h-3.5 text-shu-700" />
+                <div className="py-1 px-3 border-r border-slate-200 flex items-center justify-center gap-1.5 text-slate-500 font-semibold">
+                  <Clock className="w-3.5 h-3.5 text-slate-400" />
                   <span>Time \ Day</span>
                 </div>
 
@@ -182,9 +182,9 @@ export const FacultyDashboard: React.FC = () => {
                   return (
                     <div
                       key={day.id}
-                      className="py-1 px-2 border-r border-slate-200/80 last:border-r-0 flex items-center justify-center gap-1.5"
+                      className="py-1 px-2 border-r border-slate-200/70 last:border-r-0 flex items-center justify-center gap-1.5"
                     >
-                      <span className="font-extrabold text-slate-900 text-xs">
+                      <span className="font-bold text-slate-900 text-xs">
                         {day.name}
                       </span>
                       {day.isWeekend && (
@@ -208,16 +208,16 @@ export const FacultyDashboard: React.FC = () => {
                 }}
               >
                 {/* Column 1: Vertical Time Slot Labels (13 × 30-min Rows) */}
-                <div className="border-r border-slate-200 bg-slate-50/70 divide-y divide-slate-200/80">
+                <div className="border-r border-slate-200 bg-slate-50/50 divide-y divide-slate-200/60">
                   {TIME_SLOTS_30MIN.map((slot) => (
                     <div
                       key={slot.id}
                       className="h-[62px] px-1 flex flex-col items-center justify-center text-center select-none"
                     >
-                      <span className="font-mono text-[10px] text-slate-900 font-bold tracking-tight">
+                      <span className="font-mono text-[10px] text-slate-800 font-semibold tracking-tight">
                         {slot.start12}
                       </span>
-                      <span className="text-[9px] font-mono text-slate-400 font-medium tracking-tight">
+                      <span className="text-[9px] font-mono text-slate-400 font-normal tracking-tight">
                         {slot.end12}
                       </span>
                     </div>
@@ -231,8 +231,8 @@ export const FacultyDashboard: React.FC = () => {
                   return (
                     <div
                       key={day.id}
-                      className={`border-r border-slate-200/80 last:border-r-0 relative p-1.5 ${
-                        day.isWeekend ? 'bg-amber-50/20' : 'bg-white'
+                      className={`border-r border-slate-200/60 last:border-r-0 relative p-1.5 ${
+                        day.isWeekend ? 'bg-amber-50/15' : 'bg-white'
                       }`}
                     >
                       {/* Vertical Grid of 13 Rows */}
@@ -247,7 +247,7 @@ export const FacultyDashboard: React.FC = () => {
                           <div
                             key={slot.id}
                             style={{ gridRow: `${slot.id + 1} / span 1` }}
-                            className="w-full h-full rounded-xl border border-dashed border-slate-200/60 bg-slate-50/40 flex items-center justify-center"
+                            className="w-full h-full rounded-xl border border-dashed border-slate-200/50 bg-slate-50/30 flex items-center justify-center"
                           >
                             <span className="text-[9px] font-mono text-slate-300 font-medium select-none">
                               {slot.start12}
@@ -276,24 +276,24 @@ export const FacultyDashboard: React.FC = () => {
                               className="absolute inset-x-1 inset-y-0.5 z-10"
                             >
                               <div
-                                className={`h-full p-2.5 rounded-xl border shadow-2xs flex flex-col justify-between transition-all ${
+                                className={`h-full p-2.5 rounded-xl border shadow-2xs flex flex-col justify-between transition-all duration-150 ${
                                   isUnassigned
-                                    ? 'bg-amber-50/95 border-amber-300'
-                                    : 'bg-teal-50/95 border-teal-200 hover:border-teal-400 hover:shadow-md'
+                                    ? 'bg-amber-50/95 border-amber-300 hover:border-amber-400 hover:shadow-sm'
+                                    : 'bg-teal-50/90 border-teal-200/90 hover:border-teal-400 hover:shadow-md'
                                 }`}
                               >
                                 <div>
                                   <div className="flex items-center justify-between gap-1 mb-1">
                                     <div className="flex items-center gap-1 flex-wrap">
-                                      <span className="font-extrabold text-teal-950 font-mono text-[11px] bg-teal-100/90 px-1.5 py-0.5 rounded">
+                                      <span className="font-bold text-teal-900 font-mono text-[11px] bg-teal-100/90 px-1.5 py-0.5 rounded">
                                         {crs?.code}
                                       </span>
-                                      <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-white text-slate-600 border border-slate-200">
-                                        {boxesCount} {boxesCount === 1 ? 'box' : 'boxes'}
+                                      <span className="px-1 py-0.2 rounded text-[9px] font-medium bg-white text-teal-800 border border-teal-200/80">
+                                        {boxesCount * 30}m
                                       </span>
                                     </div>
 
-                                    <span className="text-[10px] font-mono font-bold text-teal-900">
+                                    <span className="text-[10px] font-mono font-semibold text-teal-900">
                                       {formatTimeRange(s.start_time, s.end_time)}
                                     </span>
                                   </div>
@@ -304,7 +304,7 @@ export const FacultyDashboard: React.FC = () => {
                                 </div>
 
                                 <div className="pt-1.5 mt-1 border-t border-teal-100/80 flex items-center justify-between gap-1 text-[10px]">
-                                  <span className="font-semibold text-slate-700 truncate">
+                                  <span className="font-medium text-slate-700 truncate">
                                     Batch: {bth?.name}
                                   </span>
 
@@ -335,36 +335,36 @@ export const FacultyDashboard: React.FC = () => {
 
       {/* Tab 2: Free Room Finder */}
       {activeSubTab === 'room_lookup' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-          <div className="flex items-center justify-between">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Campus Venue Availability Finder</h3>
-              <p className="text-xs text-slate-500">Query available lecture halls and labs for ad-hoc sessions</p>
+              <h3 className="text-sm font-bold text-slate-900">Campus Venue & Lab Availability</h3>
+              <p className="text-xs text-slate-500">Query available lecture halls and computer labs for classes or makeup sessions</p>
             </div>
             <input
               type="date"
               value={lookupDate}
               onChange={(e) => setLookupDate(e.target.value)}
-              className="px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className="px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-shu-700/20 focus:border-shu-700 transition-all cursor-pointer"
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 text-xs">
             {rooms.map((r) => (
-              <div key={r.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1.5">
+              <div key={r.id} className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-slate-300 hover:shadow-2xs transition-all space-y-2">
                 <div className="flex items-center justify-between">
                   <h4 className="font-bold text-slate-900">{r.name}</h4>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-bold">
                     Available
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-500">
-                  {r.building} • Cap: {r.capacity}
+                  {r.building} • Floor {r.floor} • Capacity {r.capacity}
                 </p>
-                <div className="flex items-center gap-1 flex-wrap pt-1">
+                <div className="flex items-center gap-1 flex-wrap pt-1 border-t border-slate-200/60">
                   {r.room_types.map((t) => (
-                    <span key={t} className="px-1.5 py-0.2 rounded bg-white text-slate-700 text-[10px] border border-slate-200">
-                      {t}
+                    <span key={t} className="px-1.5 py-0.2 rounded-md bg-white text-slate-600 text-[10px] font-medium border border-slate-200">
+                      {t.replace('_', ' ')}
                     </span>
                   ))}
                 </div>

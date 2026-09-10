@@ -86,13 +86,13 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
       style={style}
       {...(isCoordinator ? attributes : {})}
       {...(isCoordinator ? listeners : {})}
-      className={`group relative rounded-xl p-2.5 text-xs transition-all shadow-2xs select-none h-full flex flex-col justify-between ${
+      className={`group relative rounded-xl p-2.5 text-xs transition-all duration-150 select-none h-full flex flex-col justify-between ${
         isDragging
-          ? 'opacity-80 scale-105 shadow-xl ring-2 ring-shu-700 bg-red-50 cursor-grabbing z-50'
+          ? 'opacity-90 scale-105 shadow-xl ring-2 ring-shu-700 bg-red-50/90 cursor-grabbing z-50'
           : isDraft
-          ? 'bg-amber-50/90 border-2 border-dashed border-amber-300 hover:border-amber-400 hover:shadow-md'
+          ? 'bg-amber-50/80 border border-dashed border-amber-300 hover:border-amber-400 hover:shadow-md'
           : isMakeup
-          ? 'bg-teal-50/95 border border-teal-300 hover:border-teal-400 hover:shadow-md'
+          ? 'bg-teal-50/80 border border-teal-200 hover:border-teal-400 hover:shadow-md'
           : 'bg-white border border-slate-200/90 hover:border-shu-700 hover:shadow-md'
       } ${isCoordinator ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
     >
@@ -101,50 +101,50 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
         <div className="flex items-center justify-between gap-1 mb-1">
           <div className="flex items-center gap-1 flex-wrap">
             <span
-              className={`font-extrabold px-1.5 py-0.5 rounded text-[10px] font-mono ${
+              className={`font-bold px-1.5 py-0.5 rounded text-[10px] font-mono ${
                 isDraft
                   ? 'bg-amber-200/80 text-amber-900'
                   : isMakeup
                   ? 'bg-teal-200/80 text-teal-900'
-                  : 'bg-red-50 text-shu-700 border border-red-200'
+                  : 'bg-red-50 text-shu-700 border border-red-100'
               }`}
             >
               {course?.code || 'CRS-000'}
             </span>
 
-            <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-slate-100 text-slate-600">
-              {durationHours}h ({boxesCount} {boxesCount === 1 ? 'box' : 'boxes'})
+            <span className="px-1 py-0.2 rounded text-[9px] font-medium bg-slate-100 text-slate-600 font-mono">
+              {boxesCount * 30}m
             </span>
 
             {isDraft && (
-              <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-amber-500 text-white">
+              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500 text-white shadow-2xs">
                 Draft
               </span>
             )}
 
             {isMakeup && (
-              <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-teal-600 text-white">
+              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-teal-600 text-white shadow-2xs">
                 Makeup
               </span>
             )}
 
             {isMerged && (
-              <span className="px-1 py-0.2 rounded text-[9px] font-medium bg-purple-100 text-purple-700 border border-purple-200">
-                Merged
+              <span className="px-1 py-0.2 rounded text-[9px] font-semibold bg-purple-100 text-purple-700 border border-purple-200">
+                Joint
               </span>
             )}
           </div>
 
           {/* Action icons for coordinator */}
           {isCoordinator && !isDragging && (
-            <div className="hidden group-hover:flex items-center gap-0.5 bg-white/95 backdrop-blur rounded px-1 shadow-xs border border-slate-200">
+            <div className="hidden group-hover:flex items-center gap-0.5 bg-white/95 backdrop-blur rounded-lg px-1 py-0.5 shadow-2xs border border-slate-200">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onEdit(session);
                 }}
                 title="Edit Class Details"
-                className="p-1 text-slate-500 hover:text-shu-700 hover:bg-red-50 rounded"
+                className="p-1 text-slate-500 hover:text-shu-700 hover:bg-red-50 rounded transition-colors cursor-pointer"
               >
                 <Edit3 className="w-3 h-3" />
               </button>
@@ -154,7 +154,7 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
                   onDelete(session.id);
                 }}
                 title="Cancel / Delete Session"
-                className="p-1 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded"
+                className="p-1 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
               >
                 <Trash2 className="w-3 h-3" />
               </button>
@@ -172,13 +172,13 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
       <div className="pt-1.5 mt-1 border-t border-slate-100 space-y-1 text-slate-600 text-[10px]">
         {/* Time & Room Row */}
         <div className="flex items-center justify-between gap-1">
-          <div className="flex items-center gap-1 font-mono font-bold text-slate-800">
+          <div className="flex items-center gap-1 font-mono font-medium text-slate-700">
             <Clock className="w-3 h-3 text-slate-400 shrink-0" />
             <span className="text-[10px]">{formatTimeRange(session.start_time, session.end_time)}</span>
           </div>
 
           {isUnassignedRoom ? (
-            <span className="flex items-center gap-0.5 font-bold text-amber-800 bg-amber-100/90 px-1 py-0.2 rounded text-[9px]">
+            <span className="flex items-center gap-0.5 font-bold text-amber-800 bg-amber-100/90 px-1.5 py-0.2 rounded text-[9px]">
               <AlertTriangle className="w-2.5 h-2.5 text-amber-600" />
               <span>Pending</span>
             </span>
@@ -192,10 +192,10 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
 
         {/* Teacher & Batch Row */}
         <div className="flex items-center justify-between gap-1 text-[10px] text-slate-500">
-          <span className="truncate font-medium text-slate-700">
+          <span className="truncate font-medium text-slate-600">
             {teacher?.name || 'Instructor'}
           </span>
-          <span className="font-bold text-shu-700 bg-red-50/80 px-1 rounded truncate">
+          <span className="font-semibold text-shu-700 bg-red-50/80 px-1 py-0.2 rounded truncate">
             {batch?.name || 'Batch'}
           </span>
         </div>

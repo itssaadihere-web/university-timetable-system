@@ -114,19 +114,17 @@ export default function AppMainPage() {
       />
 
       {/* Footer */}
-      <footer className="mt-auto border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <footer className="mt-auto border-t border-slate-200/80 bg-white py-5 text-center text-xs text-slate-500">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-700">University Timetable System</span>
-            <span>•</span>
-            <span>Zero-Cost Server-Side Postgres Architecture</span>
+            <span className="font-bold text-slate-800">Fatima Business School</span>
+            <span className="text-slate-300">•</span>
+            <span className="text-slate-600">Salim Habib University</span>
           </div>
-          <div className="flex items-center gap-3 font-mono text-[11px] text-slate-400">
-            <span>Supabase Realtime</span>
-            <span>•</span>
-            <span>Role-Based Access Control</span>
-            <span>•</span>
-            <span>Public Student View</span>
+          <div className="flex items-center gap-3 text-[11px] text-slate-400">
+            <span>Faculty of Management Sciences</span>
+            <span className="text-slate-300">•</span>
+            <span>Faculty of Computer Science</span>
           </div>
         </div>
       </footer>

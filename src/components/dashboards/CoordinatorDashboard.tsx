@@ -61,26 +61,26 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Banner */}
-      <div className="bg-gradient-to-r from-red-950 via-slate-900 to-red-900 text-white rounded-3xl p-6 sm:p-7 shadow-sm border border-red-900/40 relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-96 h-96 bg-red-600/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-shu-950 text-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-800 relative overflow-hidden">
+        <div className="absolute right-0 top-0 w-96 h-96 bg-shu-600/10 rounded-full blur-3xl pointer-events-none"></div>
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 relative z-10">
           <div>
             <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/20 text-white">
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-white backdrop-blur border border-white/10">
                 Fatima Business School
               </span>
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-600/60 text-white">
-                Salim Habib University
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-shu-700 text-white shadow-2xs">
+                Coordinator Console
               </span>
-              <span className="text-xs text-red-200">
-                {activeSemester?.name || 'Fall 2026'} Coordinator Console
+              <span className="text-xs font-medium text-slate-300">
+                {activeSemester?.name || 'Fall 2026'}
               </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
               {currentUser?.name || 'Program Coordinator'}
             </h1>
-            <p className="text-xs sm:text-sm text-red-100/90 mt-1 max-w-xl">
-              Centralized timetable management for Faculty of Management Sciences and Faculty of Computer Science with automated 3D conflict prevention.
+            <p className="text-xs sm:text-sm text-slate-300 mt-1.5 max-w-xl leading-relaxed">
+              Centralized timetable management with automated 3D conflict prevention for Management Sciences & Computer Science.
             </p>
           </div>
 
@@ -88,7 +88,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => onOpenNewSession()}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-shu-700 hover:bg-shu-800 text-white rounded-xl shadow-xs transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-shu-700 hover:bg-shu-800 active:bg-shu-900 text-white rounded-xl shadow-sm hover:shadow transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Schedule Class</span>
@@ -97,17 +97,17 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             {draftSessionsCount > 0 && (
               <button
                 onClick={onOpenPublishModal}
-                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-xs transition-all animate-pulse cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-sm transition-all cursor-pointer"
               >
                 <UploadCloud className="w-4 h-4" />
-                <span>Review & Publish ({draftSessionsCount})</span>
+                <span>Publish ({draftSessionsCount})</span>
               </button>
             )}
 
             {unassignedSessions.length > 0 && (
               <button
                 onClick={() => setIsRoomAllocationOpen(true)}
-                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white rounded-xl shadow-xs transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white rounded-xl shadow-sm transition-all cursor-pointer"
               >
                 <DoorOpen className="w-4 h-4" />
                 <span>Assign Rooms ({unassignedSessions.length})</span>
@@ -116,25 +116,25 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
             <button
               onClick={onOpenUserManagement}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all cursor-pointer border border-white/10"
             >
-              <UserPlus className="w-4 h-4 text-red-300" />
-              <span>Faculty Accounts</span>
+              <UserPlus className="w-4 h-4 text-slate-300" />
+              <span>Faculty</span>
             </button>
 
             <button
               onClick={onOpenRollover}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all cursor-pointer border border-white/10"
             >
-              <Copy className="w-3.5 h-3.5 text-red-300" />
+              <Copy className="w-3.5 h-3.5 text-slate-300" />
               <span>Rollover</span>
             </button>
 
             <button
               onClick={onOpenImport}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all cursor-pointer border border-white/10"
             >
-              <Upload className="w-3.5 h-3.5 text-red-300" />
+              <Upload className="w-3.5 h-3.5 text-slate-300" />
               <span>CSV</span>
             </button>
           </div>
@@ -145,30 +145,30 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
       {unassignedSessions.length > 0 && (
         <div 
           onClick={() => setIsRoomAllocationOpen(true)}
-          className="bg-amber-50 hover:bg-amber-100/80 border border-amber-300/80 text-amber-900 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs hover:shadow-md transition-all cursor-pointer group"
+          className="bg-amber-50/90 hover:bg-amber-100/90 border border-amber-200 text-amber-900 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs hover:shadow-md transition-all cursor-pointer group"
           role="button"
           tabIndex={0}
           title="Click to view all unassigned classes and allocate classrooms"
         >
           <div className="flex items-start gap-3">
-            <div className="p-2 rounded-xl bg-amber-200/70 text-amber-800 group-hover:scale-110 transition-transform">
+            <div className="p-2 rounded-xl bg-amber-200 text-amber-900 group-hover:scale-105 transition-transform">
               <AlertTriangle className="w-5 h-5 text-amber-700 shrink-0" />
             </div>
             <div className="text-xs">
               <p className="font-extrabold text-amber-950 text-xs sm:text-sm flex items-center gap-2">
-                <span>⚠️ Room Allocation Alert: {unassignedSessions.length} Scheduled Class Sessions Have No Room Assigned</span>
+                <span>Room Allocation Notice: {unassignedSessions.length} Scheduled Sessions Have Pending Room Allocation</span>
               </p>
-              <p className="text-amber-800/90 mt-0.5">
-                From the uploaded department schedules, some courses (e.g. BAN-202 Fri, PST-101, ARM-5/6 RM courses, BS(AF)-3 HUS-202, BBA-6 electives) currently have pending room numbers.
+              <p className="text-amber-800 mt-0.5">
+                Click here to launch the Classroom & Venue Allocator and assign lecture halls.
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-            <span className="px-3.5 py-1.5 rounded-xl bg-amber-200 group-hover:bg-amber-300 text-amber-950 font-black text-xs transition-colors flex items-center gap-1.5">
+            <span className="px-3.5 py-1.5 rounded-xl bg-amber-200 group-hover:bg-amber-300/90 text-amber-950 font-bold text-xs transition-colors flex items-center gap-1.5">
               <DoorOpen className="w-3.5 h-3.5" />
-              <span>{unassignedSessions.length} Venues Pending</span>
+              <span>{unassignedSessions.length} Pending</span>
             </span>
-            <span className="px-3 py-1.5 rounded-xl bg-shu-700 group-hover:bg-shu-800 text-white font-bold text-xs shadow-xs flex items-center gap-1 transition-all">
+            <span className="px-3.5 py-1.5 rounded-xl bg-shu-700 group-hover:bg-shu-800 text-white font-bold text-xs shadow-2xs flex items-center gap-1 transition-all">
               <span>Assign Rooms</span>
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
             </span>
@@ -177,29 +177,29 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
       )}
 
       {/* Navigation Sub-Tabs */}
-      <div className="bg-white p-1.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-1 overflow-x-auto">
+      <div className="bg-white p-1.5 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-1 overflow-x-auto">
         <button
           onClick={() => setActiveTab('matrix')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             activeTab === 'matrix'
-              ? 'bg-shu-700 text-white shadow-xs'
+              ? 'bg-shu-700 text-white shadow-2xs'
               : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
           <Calendar className="w-4 h-4" />
-          <span>Timetable Matrix (D&D)</span>
+          <span>Timetable Matrix</span>
         </button>
 
         <button
           onClick={() => setActiveTab('advising')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             activeTab === 'advising'
-              ? 'bg-shu-700 text-white shadow-xs'
+              ? 'bg-shu-700 text-white shadow-2xs'
               : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
           <GraduationCap className="w-4 h-4" />
-          <span>Student Advising & Prereqs</span>
+          <span>Student Advising</span>
           {pendingAdvisingCount > 0 && (
             <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-400 text-slate-900 font-bold">
               {pendingAdvisingCount}
@@ -209,14 +209,14 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
         <button
           onClick={() => setActiveTab('makeup')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             activeTab === 'makeup'
-              ? 'bg-shu-700 text-white shadow-xs'
+              ? 'bg-shu-700 text-white shadow-2xs'
               : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
           <Clock className="w-4 h-4" />
-          <span>Makeup Approvals & Venues</span>
+          <span>Makeup Approvals</span>
           {pendingMakeupCount > 0 && (
             <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-teal-500 text-white font-bold">
               {pendingMakeupCount}
@@ -226,9 +226,9 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
         <button
           onClick={() => setActiveTab('analytics')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             activeTab === 'analytics'
-              ? 'bg-shu-700 text-white shadow-xs'
+              ? 'bg-shu-700 text-white shadow-2xs'
               : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
