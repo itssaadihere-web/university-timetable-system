@@ -59,6 +59,7 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
   const room = rooms.find((r) => r.id === session.room_id);
   const batch = batches.find((b) => b.id === session.batch_id);
 
+  const colorPalette = getCourseColor(course?.code, session.course_id || session.id);
   const isUnassignedRoom = !session.room_id || !room;
 
   // Check if another coordinator has a soft lock on this session
@@ -82,45 +83,48 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
   const boxesCount = Math.max(1, Math.round(durationMinutes / 30));
   const isShortDuration = boxesCount <= 2; // 30m or 60m
 
-  const colorPalette = getCourseColor(course?.code, session.course_id || session.id);
+  const cardStyle: React.CSSProperties = {
+    ...(style || {}),
+    backgroundColor: isDragging ? '#f1f5f9' : colorPalette.bgHex,
+    borderColor: isDraft ? '#f59e0b' : isMakeup ? '#14b8a6' : colorPalette.borderHex,
+    borderLeftColor: colorPalette.leftBarHex,
+    borderLeftWidth: '5px',
+  };
 
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={cardStyle}
       {...(isCoordinator ? attributes : {})}
       {...(isCoordinator ? listeners : {})}
-      className={`group relative rounded-xl p-2.5 text-xs transition-all duration-200 select-none h-full flex flex-col justify-between border-l-4 ${colorPalette.leftBorder} shadow-xs ${
+      className={`group relative rounded-xl p-2.5 text-xs transition-all duration-200 select-none h-full flex flex-col justify-between border shadow-xs ${
         isShortDuration
           ? 'overflow-hidden hover:overflow-visible hover:z-50 hover:h-auto hover:min-h-full hover:shadow-2xl hover:scale-[1.02]'
           : 'overflow-hidden hover:shadow-md'
       } ${
         isDragging
-          ? 'opacity-20 grayscale border-2 border-dashed border-slate-400 bg-slate-100 scale-95 shadow-none pointer-events-none'
+          ? 'opacity-20 grayscale border-2 border-dashed border-slate-400 scale-95 shadow-none pointer-events-none'
           : isDraft
-          ? `${colorPalette.cardBg} border-2 border-dashed border-amber-400 hover:border-amber-500`
-          : isMakeup
-          ? `${colorPalette.cardBg} border border-teal-300 hover:border-teal-500`
-          : `${colorPalette.cardBg} border ${colorPalette.cardBorder} ${colorPalette.shadowHover}`
-      } ${isCoordinator ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
+          ? 'border-2 border-dashed'
+          : ''
+      } ${colorPalette.cardClass} ${isCoordinator ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
     >
       {/* Top Banner: Status & Badges */}
       <div>
         <div className="flex items-center justify-between gap-1 mb-1">
           <div className="flex items-center gap-1 flex-wrap">
             <span
-              className={`font-bold px-1.5 py-0.5 rounded text-[10px] font-mono shadow-2xs ${
-                isDraft
-                  ? 'bg-amber-200/90 text-amber-950 border border-amber-300'
-                  : isMakeup
-                  ? 'bg-teal-200/90 text-teal-950 border border-teal-300'
-                  : colorPalette.badgeBg
-              }`}
+              style={{
+                backgroundColor: isDraft ? '#fef3c7' : isMakeup ? '#ccfbf1' : colorPalette.badgeBgHex,
+                color: isDraft ? '#78350f' : isMakeup ? '#115e59' : colorPalette.badgeTextHex,
+                borderColor: isDraft ? '#fde68a' : isMakeup ? '#99f6e4' : colorPalette.badgeBorderHex,
+              }}
+              className="font-extrabold px-2 py-0.5 rounded text-[10px] font-mono shadow-2xs border"
             >
               {course?.code || 'CRS-000'}
             </span>
 
-            <span className="px-1 py-0.2 rounded text-[9px] font-medium bg-white/90 text-slate-800 font-mono border border-slate-200/80 shadow-2xs">
+            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-white/95 text-slate-800 font-mono border border-slate-300 shadow-2xs">
               {boxesCount * 30}m
             </span>
 
@@ -137,7 +141,7 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
             )}
 
             {isMerged && (
-              <span className="px-1 py-0.2 rounded text-[9px] font-semibold bg-purple-100 text-purple-800 border border-purple-200">
+              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-200 text-purple-900 border border-purple-300">
                 Joint
               </span>
             )}
@@ -172,7 +176,8 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
 
         {/* Course Title - Compact single line with ellipsis for short cards, full expand on hover */}
         <h4
-          className={`font-bold text-xs leading-tight ${colorPalette.titleText} ${
+          style={{ color: colorPalette.titleColorHex }}
+          className={`font-extrabold text-xs leading-tight ${
             isShortDuration
               ? 'line-clamp-1 group-hover:line-clamp-none break-words'
               : 'break-words leading-snug'
@@ -183,37 +188,40 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
       </div>
 
       {/* Details Footer */}
-      <div className={`pt-1 mt-1 border-t ${colorPalette.subtleBorder} space-y-1 text-slate-700 text-[10px]`}>
+      <div 
+        style={{ borderTopColor: colorPalette.borderHex }}
+        className="pt-1 mt-1 border-t space-y-1 text-slate-800 text-[10px]"
+      >
         {/* Time & Room Row */}
         <div className="flex flex-wrap items-center justify-between gap-1">
-          <div className="flex items-center gap-1 font-mono font-medium text-slate-800">
-            <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+          <div className="flex items-center gap-1 font-mono font-bold text-slate-900">
+            <Clock className="w-3 h-3 text-slate-500 shrink-0" />
             <span className="text-[10px]">{formatTimeRange(session.start_time, session.end_time)}</span>
           </div>
 
           {isUnassignedRoom ? (
-            <span className="flex items-center gap-0.5 font-bold text-amber-950 bg-amber-200/90 px-1.5 py-0.5 rounded text-[9px] break-words border border-amber-300">
+            <span className="flex items-center gap-0.5 font-bold text-amber-950 bg-amber-200/95 px-1.5 py-0.5 rounded text-[9px] break-words border border-amber-400">
               <AlertTriangle className="w-2.5 h-2.5 text-amber-700 shrink-0" />
               <span>Pending</span>
             </span>
           ) : (
             <span
-              className={`flex items-center gap-1 font-semibold text-slate-800 ${
+              className={`flex items-center gap-1 font-semibold text-slate-900 ${
                 isShortDuration
                   ? 'truncate max-w-[120px] group-hover:max-w-none group-hover:whitespace-normal'
                   : 'break-words'
               }`}
             >
-              <MapPin className={`w-2.5 h-2.5 ${colorPalette.accentText} shrink-0`} />
+              <MapPin style={{ color: colorPalette.leftBarHex }} className="w-2.5 h-2.5 shrink-0" />
               <span>{room?.name}</span>
             </span>
           )}
         </div>
 
         {/* Teacher & Batch Row */}
-        <div className="flex flex-wrap items-center justify-between gap-1 text-[10px] text-slate-700">
+        <div className="flex flex-wrap items-center justify-between gap-1 text-[10px] text-slate-800">
           <span
-            className={`font-medium text-slate-800 ${
+            className={`font-semibold text-slate-900 ${
               isShortDuration
                 ? 'truncate max-w-[110px] group-hover:max-w-none group-hover:whitespace-normal'
                 : 'break-words'
@@ -221,7 +229,14 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
           >
             {teacher?.name || 'Instructor'}
           </span>
-          <span className={`font-semibold px-1.5 py-0.5 rounded text-[9px] ${colorPalette.pillBg}`}>
+          <span 
+            style={{
+              backgroundColor: colorPalette.pillBgHex,
+              color: colorPalette.pillTextHex,
+              borderColor: colorPalette.pillBorderHex,
+            }}
+            className="font-bold px-1.5 py-0.5 rounded text-[9px] border shadow-2xs"
+          >
             {batch?.name || 'Batch'}
           </span>
         </div>

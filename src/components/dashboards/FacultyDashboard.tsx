@@ -295,34 +295,44 @@ export const FacultyDashboard: React.FC = () => {
                               className="absolute inset-x-1 inset-y-0.5 z-10"
                             >
                               <div
-                                className={`group h-full p-2.5 rounded-xl border shadow-xs flex flex-col justify-between transition-all duration-200 border-l-4 ${colorPalette.leftBorder} ${
+                                style={{
+                                  backgroundColor: colorPalette.bgHex,
+                                  borderColor: isUnassigned ? '#f59e0b' : colorPalette.borderHex,
+                                  borderLeftColor: colorPalette.leftBarHex,
+                                  borderLeftWidth: '5px',
+                                }}
+                                className={`group h-full p-2.5 rounded-xl border shadow-xs flex flex-col justify-between transition-all duration-200 ${
                                   isShortDuration
                                     ? 'overflow-hidden hover:overflow-visible hover:z-50 hover:h-auto hover:min-h-full hover:shadow-2xl hover:scale-[1.02]'
                                     : 'overflow-hidden hover:shadow-md'
-                                } ${
-                                  isUnassigned
-                                    ? `${colorPalette.cardBg} border-amber-300 hover:border-amber-400`
-                                    : `${colorPalette.cardBg} ${colorPalette.cardBorder} ${colorPalette.shadowHover}`
-                                }`}
+                                } ${colorPalette.cardClass}`}
                               >
                                 <div>
                                   <div className="flex items-center justify-between gap-1 mb-1">
                                     <div className="flex items-center gap-1 flex-wrap">
-                                      <span className={`font-bold font-mono text-[10px] px-1.5 py-0.5 rounded shadow-2xs ${colorPalette.badgeBg}`}>
+                                      <span
+                                        style={{
+                                          backgroundColor: colorPalette.badgeBgHex,
+                                          color: colorPalette.badgeTextHex,
+                                          borderColor: colorPalette.badgeBorderHex,
+                                        }}
+                                        className="font-extrabold font-mono text-[10px] px-2 py-0.5 rounded shadow-2xs border"
+                                      >
                                         {crs?.code}
                                       </span>
-                                      <span className="px-1 py-0.2 rounded text-[9px] font-medium bg-white/90 text-slate-800 border border-slate-200/80">
+                                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-white/95 text-slate-800 border border-slate-300 shadow-2xs">
                                         {boxesCount * 30}m
                                       </span>
                                     </div>
 
-                                    <span className="text-[10px] font-mono font-semibold text-slate-800">
+                                    <span className="text-[10px] font-mono font-bold text-slate-900">
                                       {formatTimeRange(s.start_time, s.end_time)}
                                     </span>
                                   </div>
 
                                   <h5
-                                    className={`font-bold text-xs leading-tight ${colorPalette.titleText} ${
+                                    style={{ color: colorPalette.titleColorHex }}
+                                    className={`font-extrabold text-xs leading-tight ${
                                       isShortDuration
                                         ? 'line-clamp-1 group-hover:line-clamp-none break-words'
                                         : 'break-words leading-snug'
@@ -332,25 +342,35 @@ export const FacultyDashboard: React.FC = () => {
                                   </h5>
                                 </div>
 
-                                <div className={`pt-1 mt-1 border-t ${colorPalette.subtleBorder} flex flex-wrap items-center justify-between gap-1 text-[10px]`}>
-                                  <span className={`font-semibold px-1.5 py-0.5 rounded text-[9px] ${colorPalette.pillBg}`}>
+                                <div 
+                                  style={{ borderTopColor: colorPalette.borderHex }}
+                                  className="pt-1 mt-1 border-t flex flex-wrap items-center justify-between gap-1 text-[10px]"
+                                >
+                                  <span 
+                                    style={{
+                                      backgroundColor: colorPalette.pillBgHex,
+                                      color: colorPalette.pillTextHex,
+                                      borderColor: colorPalette.pillBorderHex,
+                                    }}
+                                    className="font-semibold px-1.5 py-0.5 rounded text-[9px] border shadow-2xs"
+                                  >
                                     Batch: {bth?.name}
                                   </span>
 
                                   {isUnassigned ? (
-                                    <span className="flex items-center gap-0.5 font-bold text-amber-950 bg-amber-200/90 px-1.5 py-0.5 rounded text-[9px] break-words border border-amber-300">
+                                    <span className="flex items-center gap-0.5 font-bold text-amber-950 bg-amber-200/95 px-1.5 py-0.5 rounded text-[9px] break-words border border-amber-400">
                                       <AlertTriangle className="w-2.5 h-2.5 text-amber-700 shrink-0" />
                                       <span>Pending</span>
                                     </span>
                                   ) : (
                                     <span
-                                      className={`font-semibold text-slate-800 flex items-center gap-1 ${
+                                      className={`font-semibold text-slate-900 flex items-center gap-1 ${
                                         isShortDuration
                                           ? 'truncate max-w-[120px] group-hover:max-w-none group-hover:whitespace-normal'
                                           : 'break-words'
                                       }`}
                                     >
-                                      <MapPin className={`w-2.5 h-2.5 ${colorPalette.accentText} shrink-0`} />
+                                      <MapPin className="w-2.5 h-2.5 shrink-0 opacity-70" />
                                       <span>{rm?.name}</span>
                                     </span>
                                   )}

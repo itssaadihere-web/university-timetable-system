@@ -408,34 +408,44 @@ export const StudentPublicDashboard: React.FC = () => {
                               className="absolute inset-x-1 inset-y-0.5 z-10"
                             >
                               <div
-                                className={`group h-full p-2.5 rounded-xl border shadow-xs flex flex-col justify-between transition-all duration-200 border-l-4 ${colorPalette.leftBorder} ${
+                                style={{
+                                  backgroundColor: colorPalette.bgHex,
+                                  borderColor: isUnassigned ? '#f59e0b' : colorPalette.borderHex,
+                                  borderLeftColor: colorPalette.leftBarHex,
+                                  borderLeftWidth: '5px',
+                                }}
+                                className={`group h-full p-2.5 rounded-xl border shadow-xs flex flex-col justify-between transition-all duration-200 ${
                                   isShortDuration
                                     ? 'overflow-hidden hover:overflow-visible hover:z-50 hover:h-auto hover:min-h-full hover:shadow-2xl hover:scale-[1.02]'
                                     : 'overflow-hidden hover:shadow-md'
-                                } ${
-                                  isUnassigned
-                                    ? `${colorPalette.cardBg} border-amber-300 hover:border-amber-400`
-                                    : `${colorPalette.cardBg} ${colorPalette.cardBorder} ${colorPalette.shadowHover}`
-                                }`}
+                                } ${colorPalette.cardClass}`}
                               >
                                 <div>
                                   <div className="flex items-center justify-between gap-1 mb-1">
                                     <div className="flex items-center gap-1 flex-wrap">
-                                      <span className={`font-bold font-mono text-[10px] px-1.5 py-0.5 rounded shadow-2xs ${colorPalette.badgeBg}`}>
+                                      <span
+                                        style={{
+                                          backgroundColor: colorPalette.badgeBgHex,
+                                          color: colorPalette.badgeTextHex,
+                                          borderColor: colorPalette.badgeBorderHex,
+                                        }}
+                                        className="font-extrabold font-mono text-[10px] px-2 py-0.5 rounded shadow-2xs border"
+                                      >
                                         {crs?.code}
                                       </span>
-                                      <span className="px-1 py-0.2 rounded text-[9px] font-medium bg-white/90 text-slate-800 border border-slate-200/80">
+                                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-white/95 text-slate-800 border border-slate-300 shadow-2xs">
                                         {boxesCount * 30}m
                                       </span>
                                     </div>
 
-                                    <span className="text-[10px] font-mono font-semibold text-slate-800">
+                                    <span className="text-[10px] font-mono font-bold text-slate-900">
                                       {formatTimeRange(s.start_time, s.end_time)}
                                     </span>
                                   </div>
 
                                   <h5
-                                    className={`font-bold text-xs leading-tight ${colorPalette.titleText} ${
+                                    style={{ color: colorPalette.titleColorHex }}
+                                    className={`font-extrabold text-xs leading-tight ${
                                       isShortDuration
                                         ? 'line-clamp-1 group-hover:line-clamp-none break-words'
                                         : 'break-words leading-snug'
@@ -445,9 +455,12 @@ export const StudentPublicDashboard: React.FC = () => {
                                   </h5>
                                 </div>
 
-                                <div className={`pt-1 mt-1 border-t ${colorPalette.subtleBorder} flex flex-wrap items-center justify-between gap-1 text-[10px]`}>
+                                <div 
+                                  style={{ borderTopColor: colorPalette.borderHex }}
+                                  className="pt-1 mt-1 border-t flex flex-wrap items-center justify-between gap-1 text-[10px]"
+                                >
                                   <span
-                                    className={`font-medium text-slate-800 ${
+                                    className={`font-semibold text-slate-900 ${
                                       isShortDuration
                                         ? 'truncate max-w-[110px] group-hover:max-w-none group-hover:whitespace-normal'
                                         : 'break-words'
@@ -457,19 +470,19 @@ export const StudentPublicDashboard: React.FC = () => {
                                   </span>
 
                                   {isUnassigned ? (
-                                    <span className="flex items-center gap-0.5 font-bold text-amber-950 bg-amber-200/90 px-1.5 py-0.5 rounded text-[9px] break-words border border-amber-300">
+                                    <span className="flex items-center gap-0.5 font-bold text-amber-950 bg-amber-200/95 px-1.5 py-0.5 rounded text-[9px] break-words border border-amber-400">
                                       <AlertTriangle className="w-2.5 h-2.5 text-amber-700 shrink-0" />
                                       <span>Pending</span>
                                     </span>
                                   ) : (
                                     <span
-                                      className={`font-semibold text-slate-800 flex items-center gap-1 ${
+                                      className={`font-semibold text-slate-900 flex items-center gap-1 ${
                                         isShortDuration
                                           ? 'truncate max-w-[120px] group-hover:max-w-none group-hover:whitespace-normal'
                                           : 'break-words'
                                       }`}
                                     >
-                                      <MapPin className={`w-2.5 h-2.5 ${colorPalette.accentText} shrink-0`} />
+                                      <MapPin style={{ color: colorPalette.leftBarHex }} className="w-2.5 h-2.5 shrink-0" />
                                       <span>{rm?.name}</span>
                                     </span>
                                   )}
@@ -523,52 +536,67 @@ export const StudentPublicDashboard: React.FC = () => {
                 return (
                   <div
                     key={session.id}
-                    className={`rounded-2xl border transition-all p-5 space-y-3 shadow-2xs border-l-4 ${colorPalette.leftBorder} ${
-                      isUnassigned
-                        ? `${colorPalette.cardBg} border-amber-300 hover:border-amber-400 hover:shadow-md`
-                        : `${colorPalette.cardBg} ${colorPalette.cardBorder} hover:shadow-md ${colorPalette.shadowHover}`
-                    }`}
+                    style={{
+                      backgroundColor: colorPalette.bgHex,
+                      borderColor: isUnassigned ? '#f59e0b' : colorPalette.borderHex,
+                      borderLeftColor: colorPalette.leftBarHex,
+                      borderLeftWidth: '5px',
+                    }}
+                    className={`rounded-2xl border transition-all p-5 space-y-3 shadow-xs ${colorPalette.cardClass}`}
                   >
                     {/* Top: Course Code & Time */}
                     <div className="flex items-start justify-between gap-2">
-                      <span className={`px-2.5 py-1 rounded-lg font-bold font-mono text-xs shadow-2xs ${colorPalette.badgeBg}`}>
+                      <span
+                        style={{
+                          backgroundColor: colorPalette.badgeBgHex,
+                          color: colorPalette.badgeTextHex,
+                          borderColor: colorPalette.badgeBorderHex,
+                        }}
+                        className="px-2.5 py-1 rounded-lg font-extrabold font-mono text-xs shadow-2xs border"
+                      >
                         {course?.code || 'CRS-000'}
                       </span>
-                      <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-white/80 border border-slate-200/60 px-2.5 py-1 rounded-lg">
-                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900 bg-white/90 border border-slate-300 px-2.5 py-1 rounded-lg shadow-2xs">
+                        <Clock className="w-3.5 h-3.5 text-slate-500" />
                         <span className="font-mono">{formatTimeRange(session.start_time, session.end_time)}</span>
                       </div>
                     </div>
 
                     {/* Course Title - Wraps to next line */}
-                    <h4 className={`font-bold text-sm break-words leading-snug ${colorPalette.titleText}`}>
+                    <h4 
+                      style={{ color: colorPalette.titleColorHex }}
+                      className="font-extrabold text-sm break-words leading-snug"
+                    >
                       {course?.name || 'Class Session'}
                     </h4>
 
                     {/* Room & Instructor */}
-                    <div className={`pt-2 border-t ${colorPalette.subtleBorder} space-y-2 text-xs text-slate-600`}>
+                    <div 
+                      style={{ borderTopColor: colorPalette.borderHex }}
+                      className="pt-2 border-t space-y-2 text-xs text-slate-800"
+                    >
                       <div className="flex flex-wrap items-center justify-between gap-1.5">
                         {isUnassigned ? (
-                          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-200/90 text-amber-950 font-semibold text-[11px] border border-amber-300 break-words">
+                          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-200/95 text-amber-950 font-bold text-[11px] border border-amber-400 break-words">
                             <AlertTriangle className="w-3.5 h-3.5 text-amber-700 shrink-0" />
                             <span className="break-words">Room Not Assigned (Pending)</span>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-1.5 font-semibold text-slate-800 break-words">
-                            <MapPin className={`w-3.5 h-3.5 ${colorPalette.accentText} shrink-0`} />
+                          <div className="flex items-center gap-1.5 font-bold text-slate-900 break-words">
+                            <MapPin style={{ color: colorPalette.leftBarHex }} className="w-3.5 h-3.5 shrink-0" />
                             <span className="break-words">{room?.name}</span>
                           </div>
                         )}
                         {!isUnassigned && room && (
-                          <span className="text-[11px] text-slate-500 break-words">
+                          <span className="text-[11px] text-slate-600 font-medium break-words">
                             {room.building} (Fl {room.floor})
                           </span>
                         )}
                       </div>
 
                       <div className="flex items-center gap-1.5">
-                        <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span className="text-slate-700 break-words font-medium">{teacher?.name || 'Instructor'}</span>
+                        <User className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                        <span className="text-slate-900 font-semibold break-words">{teacher?.name || 'Instructor'}</span>
                       </div>
                     </div>
                   </div>
