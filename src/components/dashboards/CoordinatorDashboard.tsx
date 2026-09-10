@@ -24,7 +24,8 @@ import {
   Upload,
   AlertTriangle,
   DoorOpen,
-  ArrowRight
+  ArrowRight,
+  RefreshCw
 } from 'lucide-react';
 
 interface CoordinatorDashboardProps {
@@ -45,10 +46,27 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
   onOpenImport,
 }) => {
   const { currentUser } = useAuth();
-  const { sessions, rooms, advisingSuggestions, makeupRequests, activeSemester } = useTimetable();
+  const { sessions, rooms, advisingSuggestions, makeupRequests, activeSemester, syncAllToSupabase } = useTimetable();
 
   const [activeTab, setActiveTab] = useState<'matrix' | 'advising' | 'makeup' | 'analytics'>('matrix');
   const [isRoomAllocationOpen, setIsRoomAllocationOpen] = useState<boolean>(false);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [syncStatusMessage, setSyncStatusMessage] = useState<string | null>(null);
+
+  const handleSyncToSupabase = async () => {
+    setIsSyncing(true);
+    setSyncStatusMessage(null);
+    try {
+      const result = await syncAllToSupabase();
+      setSyncStatusMessage(result.message);
+      setTimeout(() => setSyncStatusMessage(null), 6000);
+    } catch (err: any) {
+      setSyncStatusMessage(`Sync failed: ${err.message}`);
+      setTimeout(() => setSyncStatusMessage(null), 6000);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const draftSessionsCount = sessions.filter((s) => s.status === 'draft').length;
   const pendingAdvisingCount = advisingSuggestions.filter((a) => a.status === 'pending').length;
@@ -115,8 +133,18 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             )}
 
             <button
+              onClick={handleSyncToSupabase}
+              disabled={isSyncing}
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-emerald-700/80 hover:bg-emerald-600 text-white rounded-xl transition-all cursor-pointer border border-emerald-500/40 shadow-sm disabled:opacity-50"
+              title="Push & Sync all master schedules directly to Supabase"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-emerald-200 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span>{isSyncing ? 'Syncing...' : 'Sync Supabase'}</span>
+            </button>
+
+            <button
               onClick={onOpenUserManagement}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all cursor-pointer border border-white/10"
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all cursor-pointer border border-white/10"
             >
               <UserPlus className="w-4 h-4 text-slate-300" />
               <span>Faculty</span>
@@ -124,7 +152,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
             <button
               onClick={onOpenRollover}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all cursor-pointer border border-white/10"
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all cursor-pointer border border-white/10"
             >
               <Copy className="w-3.5 h-3.5 text-slate-300" />
               <span>Rollover</span>
@@ -132,7 +160,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
             <button
               onClick={onOpenImport}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all cursor-pointer border border-white/10"
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all cursor-pointer border border-white/10"
             >
               <Upload className="w-3.5 h-3.5 text-slate-300" />
               <span>CSV</span>
@@ -140,6 +168,14 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Supabase Sync Feedback Banner */}
+      {syncStatusMessage && (
+        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold flex items-center gap-2 shadow-2xs animate-fadeIn">
+          <RefreshCw className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>{syncStatusMessage}</span>
+        </div>
+      )}
 
       {/* Unassigned Rooms Clickable Alert Notification */}
       {unassignedSessions.length > 0 && (

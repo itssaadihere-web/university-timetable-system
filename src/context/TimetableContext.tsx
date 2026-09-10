@@ -101,6 +101,7 @@ interface TimetableContextType {
   bulkImportEntities: (type: 'rooms' | 'faculty' | 'batches' | 'courses', items: any[]) => void;
   updateFaculty: (updated: Faculty) => Promise<{ success: boolean; errors?: string[] }>;
   updateRoom: (updated: Room) => Promise<{ success: boolean; errors?: string[] }>;
+  syncAllToSupabase: () => Promise<{ success: boolean; message: string }>;
 }
 
 const TimetableContext = createContext<TimetableContextType | null>(null);
@@ -502,10 +503,13 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Resolve Advising Queue Item
-  const resolveAdvising = (id: string, notes?: string) => {
+  const resolveAdvising = async (id: string, notes?: string) => {
     setAdvisingSuggestions((prev) =>
       prev.map((a) => (a.id === id ? { ...a, status: 'resolved' as const, notes: notes || a.notes } : a))
     );
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('advising_suggestions').update({ status: 'resolved', notes }).eq('id', id);
+    }
   };
 
   // Makeup Class Approval Workflow
@@ -518,7 +522,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     const dayOfWeek = reqDate.getDay() === 0 ? 7 : reqDate.getDay(); // 1=Mon, 7=Sun
 
     const newSession: ClassSession = {
-      id: `mup-sess-${Date.now()}`,
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `mup-sess-${Date.now()}`,
       semester_id: req.semester_id,
       course_id: req.course_id,
       faculty_id: req.faculty_id,
@@ -553,10 +557,19 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       )
     );
 
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('makeup_requests').update({
+        status: 'approved',
+        reviewed_by: currentUserName,
+        reviewed_at: new Date().toISOString(),
+      }).eq('id', requestId);
+      await supabase.from('class_sessions').upsert([newSession]);
+    }
+
     return { success: true };
   };
 
-  const rejectMakeup = (requestId: string, reason?: string) => {
+  const rejectMakeup = async (requestId: string, reason?: string) => {
     setMakeupRequests((prev) =>
       prev.map((r) =>
         r.id === requestId
@@ -570,11 +583,19 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           : r
       )
     );
+
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('makeup_requests').update({
+        status: 'rejected',
+        reviewed_by: currentUserName,
+        reviewed_at: new Date().toISOString(),
+      }).eq('id', requestId);
+    }
   };
 
   // Semester Rollover / Template Cloning
-  const cloneSemesterRollover = (targetSemesterName: string, targetAcademicYear: string) => {
-    const newSemId = `sem-${Date.now()}`;
+  const cloneSemesterRollover = async (targetSemesterName: string, targetAcademicYear: string) => {
+    const newSemId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `11111111-1111-1111-1111-${Date.now()}`;
     const newSemester: Semester = {
       id: newSemId,
       name: targetSemesterName,
@@ -589,7 +610,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       .filter((s) => s.session_type === 'regular')
       .map((s) => ({
         ...s,
-        id: `sess-cloned-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `sess-cloned-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         semester_id: newSemId,
         status: 'draft',
         specific_date: null,
@@ -598,6 +619,15 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     setSemesters((prev) => [newSemester, ...prev.map((s) => ({ ...s, is_active: false }))]);
     setActiveSemester(newSemester);
     setSessions(clonedDraftSessions);
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('semesters').upsert([newSemester]);
+        await supabase.from('class_sessions').upsert(clonedDraftSessions);
+      } catch (err) {
+        console.warn('Supabase rollover error:', err);
+      }
+    }
 
     const newLog: AuditLogEntry = {
       id: `log-${Date.now()}`,
@@ -610,11 +640,70 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Bulk Import Helper
-  const bulkImportEntities = (type: 'rooms' | 'faculty' | 'batches' | 'courses', items: any[]) => {
+  const bulkImportEntities = async (type: 'rooms' | 'faculty' | 'batches' | 'courses', items: any[]) => {
     if (type === 'rooms') setRooms((prev) => [...prev, ...items].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })));
     if (type === 'faculty') setFaculty((prev) => [...prev, ...items]);
     if (type === 'batches') setBatches((prev) => [...prev, ...items]);
     if (type === 'courses') setCourses((prev) => [...prev, ...items]);
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from(type).upsert(items);
+      } catch (e) {
+        console.warn(`Supabase upsert error for ${type}:`, e);
+      }
+    }
+  };
+
+  // Push / Seed All Current Local & Institutional Data to Supabase
+  const syncAllToSupabase = async (): Promise<{ success: boolean; message: string }> => {
+    if (!isSupabaseConfigured || !supabase) {
+      return { success: false, message: 'Supabase is not configured in .env.local' };
+    }
+
+    try {
+      // 1. Semesters
+      if (semesters.length > 0) {
+        const { error } = await supabase.from('semesters').upsert(semesters);
+        if (error) throw new Error(`Semesters sync error: ${error.message}`);
+      }
+
+      // 2. Rooms
+      if (rooms.length > 0) {
+        const { error } = await supabase.from('rooms').upsert(rooms);
+        if (error) throw new Error(`Rooms sync error: ${error.message}`);
+      }
+
+      // 3. Faculty
+      if (faculty.length > 0) {
+        const { error } = await supabase.from('faculty').upsert(faculty);
+        if (error) throw new Error(`Faculty sync error: ${error.message}`);
+      }
+
+      // 4. Batches
+      if (batches.length > 0) {
+        const { error } = await supabase.from('batches').upsert(batches);
+        if (error) throw new Error(`Batches sync error: ${error.message}`);
+      }
+
+      // 5. Courses
+      if (courses.length > 0) {
+        const { error } = await supabase.from('courses').upsert(courses);
+        if (error) throw new Error(`Courses sync error: ${error.message}`);
+      }
+
+      // 6. Class Sessions
+      if (sessions.length > 0) {
+        const { error } = await supabase.from('class_sessions').upsert(sessions);
+        if (error) throw new Error(`Sessions sync error: ${error.message}`);
+      }
+
+      setLastSyncTime(new Date().toLocaleTimeString());
+      return { success: true, message: `Successfully synchronized all ${sessions.length} class sessions, ${rooms.length} rooms, ${faculty.length} faculty, ${batches.length} batches, and ${courses.length} courses with Supabase!` };
+    } catch (err: any) {
+      console.error('Supabase Sync All failed:', err);
+      return { success: false, message: err?.message || 'Failed to sync with Supabase' };
+    }
   };
 
   // Update Faculty Load Limit & Department
@@ -701,6 +790,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         bulkImportEntities,
         updateFaculty,
         updateRoom,
+        syncAllToSupabase,
       }}
     >
       {children}
