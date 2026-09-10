@@ -21,6 +21,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { formatTimeRange } from '@/lib/conflict-engine';
+import { getCourseColor } from '@/lib/course-colors';
 
 interface DraggableSessionCardProps {
   session: ClassSession;
@@ -80,20 +81,22 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
   const durationHours = (durationMinutes / 60).toFixed(durationMinutes % 60 === 0 ? 0 : 1);
   const boxesCount = Math.max(1, Math.round(durationMinutes / 30));
 
+  const colorPalette = getCourseColor(course?.code, session.course_id || session.id);
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...(isCoordinator ? attributes : {})}
       {...(isCoordinator ? listeners : {})}
-      className={`group relative rounded-xl p-2.5 text-xs transition-all duration-150 select-none h-full flex flex-col justify-between ${
+      className={`group relative rounded-xl p-2.5 text-xs transition-all duration-150 select-none h-full flex flex-col justify-between border-l-4 ${colorPalette.leftBorder} ${
         isDragging
-          ? 'opacity-90 scale-105 shadow-xl ring-2 ring-shu-700 bg-red-50/90 cursor-grabbing z-50'
+          ? 'opacity-95 scale-105 shadow-2xl ring-2 ring-shu-700 bg-white cursor-grabbing z-50'
           : isDraft
-          ? 'bg-amber-50/80 border border-dashed border-amber-300 hover:border-amber-400 hover:shadow-md'
+          ? `${colorPalette.cardBg} border-2 border-dashed border-amber-400 hover:border-amber-500 hover:shadow-md`
           : isMakeup
-          ? 'bg-teal-50/80 border border-teal-200 hover:border-teal-400 hover:shadow-md'
-          : 'bg-white border border-slate-200/90 hover:border-shu-700 hover:shadow-md'
+          ? `${colorPalette.cardBg} border border-teal-300 hover:border-teal-500 hover:shadow-md`
+          : `${colorPalette.cardBg} border ${colorPalette.cardBorder} hover:shadow-md ${colorPalette.shadowHover}`
       } ${isCoordinator ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
     >
       {/* Top Banner: Status & Badges */}
@@ -101,18 +104,18 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
         <div className="flex items-center justify-between gap-1 mb-1">
           <div className="flex items-center gap-1 flex-wrap">
             <span
-              className={`font-bold px-1.5 py-0.5 rounded text-[10px] font-mono ${
+              className={`font-bold px-1.5 py-0.5 rounded text-[10px] font-mono shadow-2xs ${
                 isDraft
-                  ? 'bg-amber-200/80 text-amber-900'
+                  ? 'bg-amber-200/90 text-amber-950 border border-amber-300'
                   : isMakeup
-                  ? 'bg-teal-200/80 text-teal-900'
-                  : 'bg-red-50 text-shu-700 border border-red-100'
+                  ? 'bg-teal-200/90 text-teal-950 border border-teal-300'
+                  : colorPalette.badgeBg
               }`}
             >
               {course?.code || 'CRS-000'}
             </span>
 
-            <span className="px-1 py-0.2 rounded text-[9px] font-medium bg-slate-100 text-slate-600 font-mono">
+            <span className="px-1 py-0.2 rounded text-[9px] font-medium bg-white/80 text-slate-700 font-mono border border-slate-200/60 shadow-2xs">
               {boxesCount * 30}m
             </span>
 
@@ -163,13 +166,13 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
         </div>
 
         {/* Course Title - Wraps to next line when long */}
-        <h4 className="font-bold text-slate-900 text-xs break-words leading-tight">
+        <h4 className={`font-bold text-xs break-words leading-tight ${colorPalette.titleText}`}>
           {course?.name || 'Class Session'}
         </h4>
       </div>
 
       {/* Details Footer */}
-      <div className="pt-1.5 mt-1 border-t border-slate-100 space-y-1 text-slate-600 text-[10px]">
+      <div className={`pt-1.5 mt-1 border-t ${colorPalette.subtleBorder} space-y-1 text-slate-600 text-[10px]`}>
         {/* Time & Room Row */}
         <div className="flex flex-wrap items-center justify-between gap-1">
           <div className="flex items-center gap-1 font-mono font-medium text-slate-700">
@@ -178,24 +181,24 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
           </div>
 
           {isUnassignedRoom ? (
-            <span className="flex items-center gap-0.5 font-bold text-amber-800 bg-amber-100/90 px-1.5 py-0.5 rounded text-[9px] break-words">
-              <AlertTriangle className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+            <span className="flex items-center gap-0.5 font-bold text-amber-900 bg-amber-200/90 px-1.5 py-0.5 rounded text-[9px] break-words border border-amber-300">
+              <AlertTriangle className="w-2.5 h-2.5 text-amber-700 shrink-0" />
               <span>Pending</span>
             </span>
           ) : (
             <span className="flex items-center gap-1 font-semibold text-slate-700 break-words">
-              <MapPin className="w-2.5 h-2.5 text-shu-700 shrink-0" />
+              <MapPin className={`w-2.5 h-2.5 ${colorPalette.accentText} shrink-0`} />
               <span className="break-words">{room?.name}</span>
             </span>
           )}
         </div>
 
         {/* Teacher & Batch Row */}
-        <div className="flex flex-wrap items-center justify-between gap-1 text-[10px] text-slate-500">
-          <span className="break-words font-medium text-slate-600">
+        <div className="flex flex-wrap items-center justify-between gap-1 text-[10px] text-slate-600">
+          <span className="break-words font-medium text-slate-700">
             {teacher?.name || 'Instructor'}
           </span>
-          <span className="font-semibold text-shu-700 bg-red-50/80 px-1 py-0.5 rounded break-words">
+          <span className={`font-semibold px-1.5 py-0.5 rounded break-words text-[9px] ${colorPalette.pillBg}`}>
             {batch?.name || 'Batch'}
           </span>
         </div>

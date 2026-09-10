@@ -12,6 +12,7 @@ import {
   formatTo12Hour,
   formatTimeRange
 } from '@/lib/conflict-engine';
+import { getCourseColor } from '@/lib/course-colors';
 import { 
   UserCheck, 
   Calendar, 
@@ -261,6 +262,7 @@ export const FacultyDashboard: React.FC = () => {
                           const rm = rooms.find((r) => r.id === s.room_id);
                           const bth = batches.find((b) => b.id === s.batch_id);
                           const isUnassigned = !s.room_id || !rm;
+                          const colorPalette = getCourseColor(crs?.code, s.course_id || s.id);
 
                           const { rowStart, rowSpan, boxesCount } = calculateSlotSpan(
                             s.start_time,
@@ -276,46 +278,47 @@ export const FacultyDashboard: React.FC = () => {
                               className="absolute inset-x-1 inset-y-0.5 z-10"
                             >
                               <div
-                                className={`h-full p-2.5 rounded-xl border shadow-2xs flex flex-col justify-between transition-all duration-150 ${
+                                className={`h-full p-2.5 rounded-xl border shadow-2xs flex flex-col justify-between transition-all duration-150 border-l-4 ${colorPalette.leftBorder} ${
                                   isUnassigned
-                                    ? 'bg-amber-50/95 border-amber-300 hover:border-amber-400 hover:shadow-sm'
-                                    : 'bg-teal-50/90 border-teal-200/90 hover:border-teal-400 hover:shadow-md'
+                                    ? `${colorPalette.cardBg} border-amber-300 hover:border-amber-400 hover:shadow-md`
+                                    : `${colorPalette.cardBg} ${colorPalette.cardBorder} hover:shadow-md ${colorPalette.shadowHover}`
                                 }`}
                               >
                                 <div>
                                   <div className="flex items-center justify-between gap-1 mb-1">
                                     <div className="flex items-center gap-1 flex-wrap">
-                                      <span className="font-bold text-teal-900 font-mono text-[11px] bg-teal-100/90 px-1.5 py-0.5 rounded">
+                                      <span className={`font-bold font-mono text-[11px] px-1.5 py-0.5 rounded shadow-2xs ${colorPalette.badgeBg}`}>
                                         {crs?.code}
                                       </span>
-                                      <span className="px-1 py-0.2 rounded text-[9px] font-medium bg-white text-teal-800 border border-teal-200/80">
+                                      <span className="px-1 py-0.2 rounded text-[9px] font-medium bg-white/80 text-slate-700 border border-slate-200/60">
                                         {boxesCount * 30}m
                                       </span>
                                     </div>
 
-                                    <span className="text-[10px] font-mono font-semibold text-teal-900">
+                                    <span className="text-[10px] font-mono font-semibold text-slate-700">
                                       {formatTimeRange(s.start_time, s.end_time)}
                                     </span>
                                   </div>
 
-                                  <h5 className="font-bold text-slate-900 text-xs break-words leading-tight">
+                                  <h5 className={`font-bold text-xs break-words leading-tight ${colorPalette.titleText}`}>
                                     {crs?.name}
                                   </h5>
                                 </div>
 
-                                <div className="pt-1.5 mt-1 border-t border-teal-100/80 flex flex-wrap items-center justify-between gap-1 text-[10px]">
-                                  <span className="font-medium text-slate-700 break-words">
+                                <div className={`pt-1.5 mt-1 border-t ${colorPalette.subtleBorder} flex flex-wrap items-center justify-between gap-1 text-[10px]`}>
+                                  <span className={`font-semibold px-1.5 py-0.5 rounded break-words text-[9px] ${colorPalette.pillBg}`}>
                                     Batch: {bth?.name}
                                   </span>
 
                                   {isUnassigned ? (
-                                    <span className="flex items-center gap-0.5 font-bold text-amber-800 bg-amber-200/80 px-1.5 py-0.5 rounded text-[9px] break-words">
+                                    <span className="flex items-center gap-0.5 font-bold text-amber-900 bg-amber-200/90 px-1.5 py-0.5 rounded text-[9px] break-words border border-amber-300">
                                       <AlertTriangle className="w-2.5 h-2.5 text-amber-700 shrink-0" />
                                       <span>Pending Room</span>
                                     </span>
                                   ) : (
-                                    <span className="font-bold text-teal-800 break-words">
-                                      {rm?.name}
+                                    <span className="font-semibold text-slate-800 break-words flex items-center gap-1">
+                                      <MapPin className={`w-2.5 h-2.5 ${colorPalette.accentText} shrink-0`} />
+                                      <span>{rm?.name}</span>
                                     </span>
                                   )}
                                 </div>
