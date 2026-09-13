@@ -92,7 +92,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <img
               src="/shu-logo.png"
               alt="Salim Habib University"
-              className="h-10 sm:h-12 w-auto object-contain"
+              className="h-7 sm:h-8 w-auto object-contain"
             />
           </div>
 
