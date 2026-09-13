@@ -173,6 +173,56 @@ EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- ============================================================================
+-- PART 5: CREATE COVERING INDEXES ON ALL FOREIGN KEYS (0001)
+-- Resolves all unindexed_foreign_keys performance warnings
+-- ============================================================================
+
+-- 1. advising_suggestions
+CREATE INDEX IF NOT EXISTS idx_advising_suggestions_clashing_course_id ON public.advising_suggestions(clashing_course_id);
+CREATE INDEX IF NOT EXISTS idx_advising_suggestions_flagged_course_id ON public.advising_suggestions(flagged_course_id);
+CREATE INDEX IF NOT EXISTS idx_advising_suggestions_student_id ON public.advising_suggestions(student_id);
+
+-- 2. batches
+DO $$ BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'batches' AND column_name = 'merge_group_id'
+    ) THEN
+        CREATE INDEX IF NOT EXISTS idx_batches_merge_group_id ON public.batches(merge_group_id);
+    END IF;
+END $$;
+
+-- 3. class_sessions
+CREATE INDEX IF NOT EXISTS idx_class_sessions_batch_group_id ON public.class_sessions(batch_group_id);
+CREATE INDEX IF NOT EXISTS idx_class_sessions_batch_id ON public.class_sessions(batch_id);
+CREATE INDEX IF NOT EXISTS idx_class_sessions_course_id ON public.class_sessions(course_id);
+CREATE INDEX IF NOT EXISTS idx_class_sessions_faculty_id ON public.class_sessions(faculty_id);
+CREATE INDEX IF NOT EXISTS idx_class_sessions_room_id ON public.class_sessions(room_id);
+CREATE INDEX IF NOT EXISTS idx_class_sessions_semester_id ON public.class_sessions(semester_id);
+
+-- 4. course_prerequisites
+CREATE INDEX IF NOT EXISTS idx_course_prerequisites_required_course_id ON public.course_prerequisites(required_course_id);
+
+-- 5. makeup_requests
+CREATE INDEX IF NOT EXISTS idx_makeup_requests_batch_id ON public.makeup_requests(batch_id);
+CREATE INDEX IF NOT EXISTS idx_makeup_requests_course_id ON public.makeup_requests(course_id);
+CREATE INDEX IF NOT EXISTS idx_makeup_requests_faculty_id ON public.makeup_requests(faculty_id);
+CREATE INDEX IF NOT EXISTS idx_makeup_requests_room_id ON public.makeup_requests(room_id);
+CREATE INDEX IF NOT EXISTS idx_makeup_requests_semester_id ON public.makeup_requests(semester_id);
+
+-- 6. semester_calendar
+CREATE INDEX IF NOT EXISTS idx_semester_calendar_semester_id ON public.semester_calendar(semester_id);
+
+-- 7. student_courses_completed
+CREATE INDEX IF NOT EXISTS idx_student_courses_completed_course_id ON public.student_courses_completed(course_id);
+
+-- 8. students
+CREATE INDEX IF NOT EXISTS idx_students_batch_id ON public.students(batch_id);
+
+-- 9. timetable_versions
+CREATE INDEX IF NOT EXISTS idx_timetable_versions_semester_id ON public.timetable_versions(semester_id);
+
+-- ============================================================================
 -- VERIFICATION CONFIRMATION
 -- ============================================================================
 SELECT 
@@ -181,5 +231,6 @@ SELECT
     rowsecurity AS rls_enabled
 FROM pg_tables
 WHERE schemaname = 'public';
+
 
 
