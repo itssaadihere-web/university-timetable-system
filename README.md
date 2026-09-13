@@ -10,7 +10,7 @@ A zero-operational-cost, real-time web portal for automating university course, 
    - **Room Double-Booking**: Overlapping time slots in the same room on the same day or specific date.
    - **Faculty Double-Booking**: Overlapping assignments for the same instructor.
    - **Batch Double-Booking**: Overlapping classes for the same student batch or merge group (excluding approved joint merge sessions).
-   - **Mandatory 15-Minute Buffer**: Strict $\ge 15$-minute transition gap between adjacent classes for instructors or batches across any room.
+   - **Seamless Back-to-Back Scheduling**: Allows classes to be conducted or attended back-to-back by students and faculty without artificial buffer restrictions.
    - **Room Capability Matching**: Verifies that rooms meet all required course tags (`multimedia`, `interactive_lcd`, `horseshoe`, `computer_lab`, `standard`).
    - **Holiday / Exam Calendar Suppression**: Regular recurring classes are suppressed during midterms, finals, or campus holidays.
 

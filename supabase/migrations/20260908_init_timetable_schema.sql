@@ -261,7 +261,6 @@ DECLARE
     v_course_name TEXT;
     v_required_room_types TEXT[];
     v_room_types TEXT[];
-    v_buffer_interval INTERVAL := INTERVAL '15 minutes';
     v_is_holiday BOOLEAN;
     v_holiday_name TEXT;
     v_conflict_record RECORD;
@@ -399,26 +398,6 @@ BEGIN
                 END IF;
             END IF;
 
-        END IF;
-
-        -- Rule 4: Buffer Violation (Mandatory 15-minute gap between adjacent sessions for faculty OR batch)
-        -- An adjacent session is buffer-violating if:
-        -- 0 <= (p_start_time - v_conflict_record.end_time) < 15 mins OR
-        -- 0 <= (v_conflict_record.start_time - p_end_time) < 15 mins
-        IF (v_conflict_record.faculty_id = p_faculty_id OR v_conflict_record.batch_id = p_batch_id) THEN
-            IF (p_start_time >= v_conflict_record.end_time AND p_start_time < (v_conflict_record.end_time + v_buffer_interval)) OR
-               (v_conflict_record.start_time >= p_end_time AND v_conflict_record.start_time < (p_end_time + v_buffer_interval)) THEN
-                
-                v_conflict_errors := array_append(
-                    v_conflict_errors,
-                    format('15-Minute Buffer Violation: Less than 15-minute gap with adjacent session "%s" (%s - %s) for %s.',
-                        v_conflict_record.course_name,
-                        v_conflict_record.start_time,
-                        v_conflict_record.end_time,
-                        CASE WHEN v_conflict_record.faculty_id = p_faculty_id THEN 'Faculty ' || v_faculty_name ELSE 'Batch ' || v_batch_name END
-                    )
-                );
-            END IF;
         END IF;
 
     END LOOP;

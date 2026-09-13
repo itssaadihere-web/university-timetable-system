@@ -57,7 +57,11 @@ export const RoomAllocationModal: React.FC<RoomAllocationModalProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [pendingSelections, setPendingSelections] = useState<Record<string, string>>({});
   const [savingSessionId, setSavingSessionId] = useState<string | null>(null);
-  const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [feedbackMsg, setFeedbackMsg] = useState<{
+    type: 'success' | 'error' | 'warning';
+    title: string;
+    items?: { code?: string; message: string }[];
+  } | null>(null);
 
   // Real rooms only (excluding dummy unassigned markers)
   const realRooms = useMemo(() => {
@@ -112,7 +116,7 @@ export const RoomAllocationModal: React.FC<RoomAllocationModalProps> = ({
     const sEnd = timeToMinutes(targetSession.end_time);
 
     const clashingSession = sessions.find((other) => {
-      if (other.id === targetSession.id) return false;
+      if (other.id === targetSession.id || other.status === 'cancelled') return false;
       if (other.room_id !== roomId) return false;
       if (other.day_of_week !== targetSession.day_of_week) return false;
 
@@ -138,7 +142,10 @@ export const RoomAllocationModal: React.FC<RoomAllocationModalProps> = ({
   const handleAssignSingle = (session: ClassSession) => {
     const chosenRoomId = pendingSelections[session.id];
     if (!chosenRoomId) {
-      setFeedbackMsg({ type: 'error', text: 'Please select a classroom first.' });
+      setFeedbackMsg({
+        type: 'error',
+        title: 'Please select a classroom first before assigning.',
+      });
       return;
     }
 
@@ -184,12 +191,13 @@ export const RoomAllocationModal: React.FC<RoomAllocationModalProps> = ({
         });
         setFeedbackMsg({
           type: 'success',
-          text: `Assigned ${roomObj?.name || 'room'} to ${crsObj?.code || 'class'} & dispatched confirmation emails!`,
+          title: `Allocated ${roomObj?.name || 'Room'} to ${crsObj?.code || 'Class'}`,
+          items: [{ message: 'Confirmation emails have been dispatched to the instructor and students.' }],
         });
       } else {
         setFeedbackMsg({
           type: 'success',
-          text: `Assigned ${roomObj?.name || 'room'} to ${crsObj?.code || 'class'} successfully! (Email skipped)`,
+          title: `Allocated ${roomObj?.name || 'Room'} to ${crsObj?.code || 'Class'} successfully.`,
         });
       }
 
@@ -200,9 +208,14 @@ export const RoomAllocationModal: React.FC<RoomAllocationModalProps> = ({
         return next;
       });
     } else {
+      const crs = courses.find((c) => c.id === session.course_id);
       setFeedbackMsg({
         type: 'error',
-        text: res.errors?.join(', ') || 'Failed to assign room due to conflict.',
+        title: 'Unable to Complete Room Allocation',
+        items: (res.errors || ['Schedule conflict encountered.']).map((err) => ({
+          code: crs?.code,
+          message: err,
+        })),
       });
     }
   };
@@ -211,13 +224,17 @@ export const RoomAllocationModal: React.FC<RoomAllocationModalProps> = ({
   const handleAutoAssignAll = async () => {
     setFeedbackMsg(null);
     let assignedCount = 0;
-    const errors: string[] = [];
+    const errorItems: { code: string; message: string }[] = [];
+    let workingSessions = [...sessions];
 
     for (const session of filteredSessions) {
       const crs = courses.find((c) => c.id === session.course_id);
       const b = batches.find((b) => b.id === session.batch_id);
       const requiredTypes = crs?.required_room_types || ['standard'];
       const requiredCap = b?.student_count || 30;
+
+      const sStart = timeToMinutes(session.start_time);
+      const sEnd = timeToMinutes(session.end_time);
 
       // Find first available room matching criteria
       const candidateRoom = realRooms.find((room) => {
@@ -229,9 +246,17 @@ export const RoomAllocationModal: React.FC<RoomAllocationModalProps> = ({
           return false;
         }
 
-        // Must be available
-        const avail = getRoomAvailability(room.id, session);
-        return avail.isAvailable;
+        // Must be available against working list
+        const clashing = workingSessions.find((other) => {
+          if (other.id === session.id || other.status === 'cancelled') return false;
+          if (other.room_id !== room.id) return false;
+          if (other.day_of_week !== session.day_of_week) return false;
+          const oStart = timeToMinutes(other.start_time);
+          const oEnd = timeToMinutes(other.end_time);
+          return Math.max(sStart, oStart) < Math.min(sEnd, oEnd);
+        });
+
+        return !clashing;
       });
 
       if (candidateRoom) {
@@ -242,21 +267,40 @@ export const RoomAllocationModal: React.FC<RoomAllocationModalProps> = ({
         const res = await updateSession(updated);
         if (res.success) {
           assignedCount++;
+          workingSessions = workingSessions.map((s) => (s.id === updated.id ? updated : s));
         } else {
-          errors.push(`${crs?.code || 'Course'}: ${res.errors?.join(', ')}`);
+          errorItems.push({
+            code: crs?.code || 'Course',
+            message: res.errors?.join(', ') || 'Clash encountered during allocation.',
+          });
         }
+      } else {
+        errorItems.push({
+          code: crs?.code || 'Course',
+          message: `No available venue with ≥${requiredCap} seats matching required capabilities at this time slot.`,
+        });
       }
     }
 
-    if (assignedCount > 0) {
+    if (assignedCount > 0 && errorItems.length === 0) {
       setFeedbackMsg({
         type: 'success',
-        text: `Successfully allocated classrooms for ${assignedCount} class session(s)!`,
+        title: `All ${assignedCount} Pending Classes Successfully Allocated!`,
+        items: [{ message: 'All scheduled sessions now have designated physical classroom venues.' }],
+      });
+    } else if (assignedCount > 0 && errorItems.length > 0) {
+      setFeedbackMsg({
+        type: 'warning',
+        title: `Allocated ${assignedCount} Classrooms (${errorItems.length} require manual resolution)`,
+        items: errorItems,
       });
     } else {
       setFeedbackMsg({
         type: 'error',
-        text: errors.length > 0 ? errors.slice(0, 2).join(' | ') : 'No non-conflicting rooms were found for automatic allocation.',
+        title: 'Could Not Auto-Allocate Classrooms',
+        items: errorItems.length > 0 ? errorItems : [
+          { message: 'No available rooms with matching capacity were free at the requested time slots.' }
+        ],
       });
     }
   };
@@ -362,26 +406,69 @@ export const RoomAllocationModal: React.FC<RoomAllocationModalProps> = ({
         {/* Status / Feedback Banner */}
         {feedbackMsg && (
           <div
-            className={`px-4 py-2.5 text-xs font-semibold flex items-center justify-between border-b ${
+            className={`p-4 text-xs border-b transition-all ${
               feedbackMsg.type === 'success'
-                ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
-                : 'bg-rose-50 text-rose-900 border-rose-200'
+                ? 'bg-emerald-50/90 border-emerald-200 text-emerald-950'
+                : feedbackMsg.type === 'warning'
+                ? 'bg-amber-50/90 border-amber-200 text-amber-950'
+                : 'bg-rose-50/90 border-rose-200 text-rose-950'
             }`}
           >
-            <div className="flex items-center gap-2">
-              {feedbackMsg.type === 'success' ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              ) : (
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-              )}
-              <span>{feedbackMsg.text}</span>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3 flex-1">
+                <div
+                  className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                    feedbackMsg.type === 'success'
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : feedbackMsg.type === 'warning'
+                      ? 'bg-amber-100 text-amber-800'
+                      : 'bg-rose-100 text-rose-700'
+                  }`}
+                >
+                  {feedbackMsg.type === 'success' ? (
+                    <CheckCircle2 className="w-4 h-4" />
+                  ) : feedbackMsg.type === 'warning' ? (
+                    <AlertTriangle className="w-4 h-4" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4" />
+                  )}
+                </div>
+
+                <div className="space-y-1.5 flex-1">
+                  <div className="font-bold text-xs sm:text-sm">
+                    {feedbackMsg.title}
+                  </div>
+
+                  {feedbackMsg.items && feedbackMsg.items.length > 0 && (
+                    <div className="space-y-1.5 mt-1">
+                      {feedbackMsg.items.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-start gap-2 bg-white/80 backdrop-blur-xs rounded-lg px-2.5 py-1.5 border border-slate-200/80 shadow-2xs"
+                        >
+                          {item.code && (
+                            <span className="font-mono text-[11px] font-extrabold px-1.5 py-0.5 rounded bg-slate-800 text-white shrink-0">
+                              {item.code}
+                            </span>
+                          )}
+                          <span className="text-slate-700 text-xs font-medium leading-relaxed">
+                            {item.message}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <button
+                onClick={() => setFeedbackMsg(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-black/5 rounded-lg transition-all shrink-0 cursor-pointer"
+                title="Dismiss message"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <button
-              onClick={() => setFeedbackMsg(null)}
-              className="text-slate-400 hover:text-slate-600"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
           </div>
         )}
 

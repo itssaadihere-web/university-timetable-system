@@ -221,7 +221,8 @@ export function validateSessionConflicts(ctx: ConflictCheckContext): ConflictVal
     }
   }
 
-  // Rule 1, 2, 3, 4: Overlaps and 15-Minute Buffers
+  // Rules 1, 2, 3: Overlaps (Room, Teacher, and Batch Double-Bookings)
+  // Note: Classes can be conducted or attended back-to-back by students and faculty without artificial buffer restrictions.
   for (const existing of existingSessions) {
     // Skip self and cancelled
     if (existing.id === sessionId || existing.status === 'cancelled') {
@@ -245,22 +246,34 @@ export function validateSessionConflicts(ctx: ConflictCheckContext): ConflictVal
 
     const exCourse = courses.find((c) => c.id === existing.course_id);
     const exCourseName = exCourse ? `${exCourse.code} (${exCourse.name})` : 'Class';
-    const exRoom = rooms.find((r) => r.id === existing.room_id);
+    const exRoom = rooms.find(
+      (r) =>
+        r.id === existing.room_id &&
+        r.id !== 'a0000000-0000-0000-0000-000000000000' &&
+        r.building !== 'TBD'
+    );
+    const exRoomName = exRoom ? `Room "${exRoom.name}"` : 'Unassigned Room';
     const exBatch = batches.find((b) => b.id === existing.batch_id);
+    const exTimeFormatted = formatTimeRange(existing.start_time, existing.end_time);
 
     if (isDirectOverlap) {
       // 1. Room Unavailable Clash (Only evaluated if a physical room is assigned)
-      const isPhysicalRoomAssigned = Boolean(roomId && roomId.trim() !== '');
+      const isPhysicalRoomAssigned = Boolean(
+        roomId &&
+          roomId.trim() !== '' &&
+          roomId !== 'a0000000-0000-0000-0000-000000000000' &&
+          roomId !== 'room-unassigned'
+      );
       if (isPhysicalRoomAssigned && existing.room_id === roomId) {
         errors.push(
-          `[Room Unavailable Clash]: Room "${roomName}" is occupied by "${exCourseName}" for batch "${exBatch?.name || 'Batch'}" from ${existing.start_time} to ${existing.end_time}.`
+          `[Room Clash]: "${roomName}" is occupied by ${exCourseName} for batch "${exBatch?.name || 'Batch'}" (${exTimeFormatted}).`
         );
       }
 
       // 2. Teacher Clash (Faculty Double-Booking)
       if (existing.faculty_id === facultyId) {
         errors.push(
-          `[Teacher Clash]: Instructor ${facultyName} is already teaching "${exCourseName}" in Room "${exRoom?.name || 'Room'}" from ${existing.start_time} to ${existing.end_time}.`
+          `[Teacher Clash]: Instructor ${facultyName} is already teaching ${exCourseName} in ${exRoomName} (${exTimeFormatted}).`
         );
       }
 
@@ -280,24 +293,9 @@ export function validateSessionConflicts(ctx: ConflictCheckContext): ConflictVal
 
         if (!isApprovedMergeSession) {
           errors.push(
-            `[Student's Batch Clash]: Students in Batch "${batchName}" already have "${exCourseName}" in Room "${exRoom?.name || 'Room'}" from ${existing.start_time} to ${existing.end_time}.`
+            `[Batch Clash]: Students in "${batchName}" already have ${exCourseName} in ${exRoomName} (${exTimeFormatted}).`
           );
         }
-      }
-    }
-
-    // 4. Buffer Rule (Mandatory 15-minute gap between adjacent sessions for faculty OR batch)
-    if (existing.faculty_id === facultyId || existing.batch_id === batchId) {
-      const isBufferViolation =
-        (startMins >= exEndMins && startMins - exEndMins < 15) ||
-        (exStartMins >= endMins && exStartMins - endMins < 15);
-
-      if (isBufferViolation) {
-        const entityLabel =
-          existing.faculty_id === facultyId ? `Instructor (${facultyName})` : `Students of Batch (${batchName})`;
-        errors.push(
-          `[15-Minute Transition Buffer Clash]: Less than 15-minute gap with adjacent class "${exCourseName}" (${existing.start_time} - ${existing.end_time}) for ${entityLabel}.`
-        );
       }
     }
   }
