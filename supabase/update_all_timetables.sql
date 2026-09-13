@@ -24,7 +24,7 @@ ALTER TABLE IF EXISTS timetable_versions DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS class_sessions ALTER COLUMN room_id DROP NOT NULL;
 
 -- 2. Clean previous timetable data for fresh synchronization
-TRUNCATE TABLE class_sessions, advising_suggestions, makeup_requests, student_courses_completed, students, course_prerequisites, courses, batches, batch_merge_groups, faculty, rooms, semester_calendar, semesters, timetable_versions CASCADE;
+TRUNCATE TABLE class_sessions, advising_suggestions, makeup_requests, student_courses_completed, students, course_prerequisites, courses, batches, batch_merge_groups, faculty, rooms, semester_calendar, semesters, timetable_versions, audit_log CASCADE;
 
 -- 3. Semesters
 INSERT INTO semesters (id, name, academic_year, start_date, end_date, is_active)
@@ -488,4 +488,5 @@ VALUES (
   'ROLLOVER',
   'Synchronized institutional timetable for Semester 1 (Sections 1A-1D) and Semesters 2-8 across all programs (BBA, BS AF, BS FT, BS BAN, BS ARM).',
   NOW()
-);
+)
+ON CONFLICT (id) DO UPDATE SET timestamp = NOW(), description = EXCLUDED.description;

@@ -59,10 +59,27 @@ export const RoomAllocationModal: React.FC<RoomAllocationModalProps> = ({
   const [savingSessionId, setSavingSessionId] = useState<string | null>(null);
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // All unassigned sessions (no room_id or room_id doesn't exist in rooms)
+  // Real rooms only (excluding dummy unassigned markers)
+  const realRooms = useMemo(() => {
+    return rooms.filter(
+      (r) =>
+        r.id !== 'a0000000-0000-0000-0000-000000000000' &&
+        r.id !== 'room-unassigned' &&
+        r.building !== 'TBD' &&
+        !r.name.toLowerCase().includes('not assigned')
+    );
+  }, [rooms]);
+
+  // All unassigned sessions (no room_id or room_id doesn't exist in physical rooms)
   const unassignedSessions = useMemo(() => {
-    return sessions.filter((s) => !s.room_id || !rooms.some((r) => r.id === s.room_id));
-  }, [sessions, rooms]);
+    return sessions.filter(
+      (s) =>
+        !s.room_id ||
+        s.room_id === 'a0000000-0000-0000-0000-000000000000' ||
+        s.room_id === 'room-unassigned' ||
+        !realRooms.some((r) => r.id === s.room_id)
+    );
+  }, [sessions, realRooms]);
 
   // Filtered list
   const filteredSessions = useMemo(() => {
@@ -155,7 +172,7 @@ export const RoomAllocationModal: React.FC<RoomAllocationModalProps> = ({
     setSavingSessionId(null);
 
     if (res.success) {
-      const roomObj = rooms.find((r) => r.id === targetRoomId);
+      const roomObj = realRooms.find((r) => r.id === targetRoomId);
       const crsObj = courses.find((c) => c.id === session.course_id);
 
       if (sendEmail) {
@@ -203,7 +220,7 @@ export const RoomAllocationModal: React.FC<RoomAllocationModalProps> = ({
       const requiredCap = b?.student_count || 30;
 
       // Find first available room matching criteria
-      const candidateRoom = rooms.find((room) => {
+      const candidateRoom = realRooms.find((room) => {
         // Room must have sufficient capacity
         if (room.capacity < requiredCap) return false;
 
@@ -460,7 +477,7 @@ export const RoomAllocationModal: React.FC<RoomAllocationModalProps> = ({
                         }`}
                       >
                         <option value="">— Select Classroom Venue —</option>
-                        {rooms.map((room) => {
+                        {realRooms.map((room) => {
                           const avail = getRoomAvailability(room.id, session);
                           const isMatchCap = room.capacity >= (b?.student_count || 30);
                           const isLabMatch = crs?.required_room_types?.includes('computer_lab')

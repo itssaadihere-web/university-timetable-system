@@ -60,7 +60,11 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
   const batch = batches.find((b) => b.id === session.batch_id);
 
   const colorPalette = getCourseColor(course?.code, session.course_id || session.id);
-  const isUnassignedRoom = !session.room_id || !room;
+  const isUnassignedRoom =
+    !session.room_id ||
+    !room ||
+    session.room_id === 'a0000000-0000-0000-0000-000000000000' ||
+    session.room_id === 'room-unassigned';
 
   // Check if another coordinator has a soft lock on this session
   const softLock = activeLocks[session.id];
@@ -86,8 +90,8 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
   const cardStyle: React.CSSProperties = {
     ...(style || {}),
     backgroundColor: isDragging ? '#f1f5f9' : colorPalette.bgHex,
-    borderColor: isDraft ? '#f59e0b' : isMakeup ? '#14b8a6' : colorPalette.borderHex,
-    borderLeftColor: colorPalette.leftBarHex,
+    borderColor: isUnassignedRoom ? '#f43f5e' : isDraft ? '#f59e0b' : isMakeup ? '#14b8a6' : colorPalette.borderHex,
+    borderLeftColor: isUnassignedRoom ? '#e11d48' : colorPalette.leftBarHex,
     borderLeftWidth: '5px',
   };
 
@@ -104,6 +108,8 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
       } ${
         isDragging
           ? 'opacity-20 grayscale border-2 border-dashed border-slate-400 scale-95 shadow-none pointer-events-none'
+          : isUnassignedRoom
+          ? 'border-2 ring-1 ring-rose-300/80'
           : isDraft
           ? 'border-2 border-dashed'
           : ''
@@ -127,6 +133,12 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
             <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-white/95 text-slate-800 font-mono border border-slate-300 shadow-2xs">
               {boxesCount * 30}m
             </span>
+
+            {isUnassignedRoom && (
+              <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-rose-600 text-white shadow-2xs animate-pulse">
+                Room Missing
+              </span>
+            )}
 
             {isDraft && (
               <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500 text-white shadow-2xs">
@@ -155,7 +167,7 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
                   e.stopPropagation();
                   onEdit(session);
                 }}
-                title="Edit Class Details"
+                title="Edit Class Details & Assign Venue"
                 className="p-1 text-slate-500 hover:text-shu-700 hover:bg-red-50 rounded transition-colors cursor-pointer"
               >
                 <Edit3 className="w-3 h-3" />
@@ -200,9 +212,20 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
           </div>
 
           {isUnassignedRoom ? (
-            <span className="flex items-center gap-0.5 font-bold text-amber-950 bg-amber-200/95 px-1.5 py-0.5 rounded text-[9px] break-words border border-amber-400">
-              <AlertTriangle className="w-2.5 h-2.5 text-amber-700 shrink-0" />
-              <span>Pending</span>
+            <span 
+              onClick={(e) => {
+                if (isCoordinator) {
+                  e.stopPropagation();
+                  onEdit(session);
+                }
+              }}
+              title={isCoordinator ? "Click to assign classroom venue" : "Room pending assignment"}
+              className={`flex items-center gap-0.5 font-bold text-rose-950 bg-rose-200/95 px-1.5 py-0.5 rounded text-[9px] break-words border border-rose-300 ${
+                isCoordinator ? 'cursor-pointer hover:bg-rose-300 transition-colors' : ''
+              }`}
+            >
+              <AlertTriangle className="w-2.5 h-2.5 text-rose-700 shrink-0" />
+              <span>Room Missing</span>
             </span>
           ) : (
             <span

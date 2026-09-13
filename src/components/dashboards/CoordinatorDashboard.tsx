@@ -54,7 +54,12 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
   const pendingMakeupCount = makeupRequests.filter((m) => m.status === 'pending').length;
 
   const unassignedSessions = sessions.filter((s) => {
-    return !s.room_id || !rooms.some((rm) => rm.id === s.room_id);
+    return (
+      !s.room_id ||
+      !rooms.some((rm) => rm.id === s.room_id) ||
+      s.room_id === 'a0000000-0000-0000-0000-000000000000' ||
+      s.room_id === 'room-unassigned'
+    );
   });
 
   return (
@@ -106,7 +111,8 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             {unassignedSessions.length > 0 && (
               <button
                 onClick={() => setIsRoomAllocationOpen(true)}
-                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white rounded-xl shadow-sm transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white rounded-xl shadow-sm transition-all cursor-pointer animate-pulse"
+                title="Top Priority: Assign classrooms to unallocated sessions"
               >
                 <DoorOpen className="w-4 h-4" />
                 <span>Assign Rooms ({unassignedSessions.length})</span>
@@ -132,35 +138,35 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
         </div>
       </div>
 
-      {/* Unassigned Rooms Clickable Alert Notification */}
+      {/* Top Priority Missing Room Allocation Notification */}
       {unassignedSessions.length > 0 && (
         <div 
           onClick={() => setIsRoomAllocationOpen(true)}
-          className="bg-amber-50/90 hover:bg-amber-100/90 border border-amber-200 text-amber-900 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs hover:shadow-md transition-all cursor-pointer group"
+          className="bg-gradient-to-r from-rose-50 via-amber-50 to-orange-50 hover:from-rose-100 hover:to-orange-100 border-2 border-rose-300 text-rose-950 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs hover:shadow-md transition-all cursor-pointer group"
           role="button"
           tabIndex={0}
-          title="Click to view all unassigned classes and allocate classrooms"
+          title="Click to view all unassigned classes and allocate classrooms on top priority"
         >
           <div className="flex items-start gap-3">
-            <div className="p-2 rounded-xl bg-amber-200 text-amber-900 group-hover:scale-105 transition-transform">
-              <AlertTriangle className="w-5 h-5 text-amber-700 shrink-0" />
+            <div className="p-2.5 rounded-xl bg-rose-600 text-white group-hover:scale-105 transition-transform shrink-0 shadow-xs">
+              <AlertTriangle className="w-5 h-5 text-white shrink-0 animate-bounce" />
             </div>
             <div className="text-xs">
-              <p className="font-extrabold text-amber-950 text-xs sm:text-sm flex items-center gap-2">
-                <span>Room Allocation Notice: {unassignedSessions.length} Scheduled Sessions Have Pending Room Allocation</span>
+              <p className="font-extrabold text-rose-950 text-xs sm:text-sm flex items-center gap-2">
+                <span>🚨 Top Priority Action: {unassignedSessions.length} Scheduled Classes Missing Classroom Allocation</span>
               </p>
-              <p className="text-amber-800 mt-0.5">
-                Click here to launch the Classroom & Venue Allocator and assign lecture halls.
+              <p className="text-rose-900 font-medium mt-0.5">
+                "Room Not Assigned" is treated as a critical missing system detail. Launch the Classroom Allocator to assign available lecture halls or labs immediately.
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-            <span className="px-3.5 py-1.5 rounded-xl bg-amber-200 group-hover:bg-amber-300/90 text-amber-950 font-bold text-xs transition-colors flex items-center gap-1.5">
+            <span className="px-3 py-1.5 rounded-xl bg-rose-200 group-hover:bg-rose-300 text-rose-950 font-extrabold text-xs transition-colors flex items-center gap-1.5">
               <DoorOpen className="w-3.5 h-3.5" />
               <span>{unassignedSessions.length} Pending</span>
             </span>
             <span className="px-3.5 py-1.5 rounded-xl bg-shu-700 group-hover:bg-shu-800 text-white font-bold text-xs shadow-2xs flex items-center gap-1 transition-all">
-              <span>Assign Rooms</span>
+              <span>Assign Rooms Now</span>
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
             </span>
           </div>
@@ -225,12 +231,35 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
         >
           <BarChart3 className="w-4 h-4" />
           <span>Load & Room Reports</span>
+          {unassignedSessions.length > 0 && (
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-600 text-white font-extrabold animate-pulse">
+              {unassignedSessions.length}
+            </span>
+          )}
         </button>
       </div>
 
       {/* Main Tab Content */}
       {activeTab === 'matrix' && (
         <div className="space-y-4">
+          {/* Inline notification banner in Timetable Matrix */}
+          {unassignedSessions.length > 0 && (
+            <div className="bg-amber-50 border border-amber-300 rounded-2xl p-3 px-4 flex items-center justify-between gap-3 text-xs text-amber-900">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
+                <span className="font-semibold">
+                  <strong className="text-amber-950 font-bold">{unassignedSessions.length} classes</strong> currently have pending physical classroom allocations.
+                </span>
+              </div>
+              <button
+                onClick={() => setIsRoomAllocationOpen(true)}
+                className="px-3 py-1 bg-amber-200 hover:bg-amber-300 text-amber-950 font-bold rounded-lg transition-colors cursor-pointer shrink-0"
+              >
+                Assign Now
+              </button>
+            </div>
+          )}
+
           <TimetableFilterBar />
           <TimetableGrid
             onOpenNewSessionModal={onOpenNewSession}
@@ -243,7 +272,12 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
 
       {activeTab === 'makeup' && <MakeupClassManager />}
 
-      {activeTab === 'analytics' && <AnalyticsReports />}
+      {activeTab === 'analytics' && (
+        <AnalyticsReports
+          onOpenRoomAllocation={() => setIsRoomAllocationOpen(true)}
+          onOpenEditSession={onOpenEditSession}
+        />
+      )}
 
       {/* Room Allocation Modal */}
       <RoomAllocationModal

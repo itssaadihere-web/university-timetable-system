@@ -63,9 +63,20 @@ export const TimetableFilterBar: React.FC = () => {
     }));
   }, [faculty]);
 
+  const realRooms = useMemo(() => {
+    return rooms.filter(
+      (r) =>
+        r.id !== 'a0000000-0000-0000-0000-000000000000' &&
+        r.id !== 'room-unassigned' &&
+        !r.name.toLowerCase().includes('room not assigned') &&
+        !r.name.toLowerCase().includes('pending') &&
+        r.building !== 'TBD'
+    );
+  }, [rooms]);
+
   // Room Options (Alphabetically sorted + search keywords)
   const roomOptions = useMemo(() => {
-    return rooms.map((r) => ({
+    return realRooms.map((r) => ({
       id: r.id,
       title: r.name,
       subtitle: `${r.building} • Cap: ${r.capacity}`,
@@ -73,7 +84,7 @@ export const TimetableFilterBar: React.FC = () => {
       badgeColor: 'indigo' as const,
       searchTerms: `${r.name} ${r.building} ${r.room_types.join(' ')}`,
     }));
-  }, [rooms]);
+  }, [realRooms]);
 
   const handleViewModeChange = (mode: TimetableViewMode) => {
     setFilterState((prev) => ({

@@ -52,7 +52,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const publishedCount = sessions.filter((s) => s.status === 'published').length;
   const draftCount = sessions.filter((s) => s.status === 'draft').length;
   const unassignedSessions = sessions.filter((s) => {
-    return !s.room_id || !rooms.some((rm) => rm.id === s.room_id);
+    return (
+      !s.room_id ||
+      !rooms.some((rm) => rm.id === s.room_id) ||
+      s.room_id === 'a0000000-0000-0000-0000-000000000000' ||
+      s.room_id === 'room-unassigned'
+    );
   });
 
   return (
@@ -93,7 +98,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             {unassignedSessions.length > 0 && (
               <button
                 onClick={() => setIsRoomAllocationOpen(true)}
-                className="flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white rounded-xl shadow-sm transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white rounded-xl shadow-sm transition-all cursor-pointer animate-pulse"
               >
                 <DoorOpen className="w-4 h-4" />
                 <span>Assign Rooms ({unassignedSessions.length})</span>
@@ -115,26 +120,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {unassignedSessions.length > 0 && (
         <div 
           onClick={() => setIsRoomAllocationOpen(true)}
-          className="bg-amber-50/90 hover:bg-amber-100/90 border border-amber-200 text-amber-900 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs hover:shadow-md transition-all cursor-pointer group"
+          className="bg-gradient-to-r from-rose-50 via-amber-50 to-orange-50 hover:from-rose-100 hover:to-orange-100 border-2 border-rose-300 text-rose-950 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs hover:shadow-md transition-all cursor-pointer group"
           role="button"
           tabIndex={0}
           title="Click to open Classroom Allocator and assign venues"
         >
           <div className="flex items-start gap-3">
-            <div className="p-2 rounded-xl bg-amber-200 text-amber-900 group-hover:scale-105 transition-transform">
-              <AlertTriangle className="w-5 h-5 text-amber-700 shrink-0" />
+            <div className="p-2.5 rounded-xl bg-rose-600 text-white group-hover:scale-105 transition-transform shrink-0 shadow-xs">
+              <AlertTriangle className="w-5 h-5 text-white animate-bounce" />
             </div>
             <div className="text-xs">
-              <p className="font-extrabold text-amber-950 text-xs sm:text-sm flex items-center gap-2">
-                <span>Room Allocation Notice: {unassignedSessions.length} Scheduled Sessions Have Pending Room Allocation</span>
+              <p className="font-extrabold text-rose-950 text-xs sm:text-sm flex items-center gap-2">
+                <span>🚨 Action Required: {unassignedSessions.length} Scheduled Sessions Have Pending Room Allocation</span>
               </p>
-              <p className="text-amber-800 mt-0.5">
-                Department schedules have courses with pending rooms. Click here to open the Classroom & Venue Allocator and assign available rooms.
+              <p className="text-rose-900 font-medium mt-0.5">
+                "Room Not Assigned" is treated as missing schedule data. Launch the Classroom & Venue Allocator to assign available rooms.
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-            <span className="px-3.5 py-1.5 rounded-xl bg-amber-200 group-hover:bg-amber-300/90 text-amber-950 font-bold text-xs transition-colors flex items-center gap-1.5">
+            <span className="px-3.5 py-1.5 rounded-xl bg-rose-200 group-hover:bg-rose-300 text-rose-950 font-extrabold text-xs transition-colors flex items-center gap-1.5">
               <DoorOpen className="w-3.5 h-3.5" />
               <span>{unassignedSessions.length} Pending</span>
             </span>
@@ -303,7 +308,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       )}
 
-      {adminTab === 'analytics' && <AnalyticsReports />}
+      {adminTab === 'analytics' && (
+        <AnalyticsReports
+          onOpenRoomAllocation={() => setIsRoomAllocationOpen(true)}
+          onOpenEditSession={onOpenEditSession}
+        />
+      )}
 
       {adminTab === 'audit' && <AuditLogViewer />}
 
