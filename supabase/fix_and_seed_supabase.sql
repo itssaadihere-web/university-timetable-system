@@ -490,3 +490,22 @@ VALUES (
   NOW()
 )
 ON CONFLICT (id) DO UPDATE SET timestamp = NOW(), description = EXCLUDED.description;
+
+-- ============================================================================
+-- 12. Re-enable Row Level Security (RLS) on all 15 tables
+-- ============================================================================
+ALTER TABLE IF EXISTS public.semesters ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.semester_calendar ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.rooms ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.faculty ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.batches ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.batch_merge_groups ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.courses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.course_prerequisites ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.students ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.student_courses_completed ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.class_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.advising_suggestions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.makeup_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.audit_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.timetable_versions ENABLE ROW LEVEL SECURITY;
