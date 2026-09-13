@@ -81,7 +81,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </span>
               </div>
               <p className="text-[11px] font-medium text-slate-500">
-                Timetable Portal • Faculty of Management Sciences
+                Faculty of Management Sciences
               </p>
             </div>
           </Link>
