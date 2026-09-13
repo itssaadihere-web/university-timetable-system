@@ -111,7 +111,7 @@ export function exportTimetableToExcel(params: ExportDataParams): void {
   });
 
   const wsGrid = XLSX.utils.json_to_sheet(gridData);
-  XLSX.utils.book_append_sheet(wb, wsGrid, 'Weekly Matrix');
+  XLSX.utils.book_append_sheet(wb, wsGrid, 'Weekly Timetable');
 
   const filename = `Timetable_${filterTitle.replace(/[^a-zA-Z0-9_-]/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
   XLSX.writeFile(wb, filename);
@@ -348,7 +348,7 @@ export function exportTimetableToPDF(params: ExportDataParams): void {
         pageHeight - 8
       );
       doc.text(
-        `Page ${doc.getNumberOfPages()} • Official Schedule Matrix`,
+        `Page ${doc.getNumberOfPages()} • Official Schedule`,
         pageWidth - 55,
         pageHeight - 8
       );

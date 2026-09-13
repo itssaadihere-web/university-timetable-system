@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTimetable } from '@/context/TimetableContext';
 import { ClassSession, SessionType, SessionStatus } from '@/types';
 import { 
@@ -16,7 +16,8 @@ import {
   BookOpen, 
   Users 
 } from 'lucide-react';
-import { TIMETABLE_DAYS, formatTo12Hour } from '@/lib/conflict-engine';
+import { TIMETABLE_DAYS, formatTo12Hour, findBatchMergeCandidate, BatchMergeCandidate } from '@/lib/conflict-engine';
+import { BatchMergeModal } from '@/components/modals/BatchMergeModal';
 
 interface SessionEditModalProps {
   isOpen: boolean;
@@ -42,10 +43,12 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
     rooms,
     batches,
     mergeGroups,
+    sessions,
     activeSemester,
     validateSession,
     addSession,
     updateSession,
+    mergeSessionBatches,
   } = useTimetable();
 
   // Form State
@@ -62,6 +65,7 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
   const [specificDate, setSpecificDate] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isMergeModalOpen, setIsMergeModalOpen] = useState<boolean>(false);
 
   // Initialize or reset form values
   useEffect(() => {
@@ -93,8 +97,6 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
     setSubmitError(null);
   }, [sessionToEdit, presetData, isOpen, courses, faculty, rooms, batches]);
 
-  if (!isOpen) return null;
-
   // Real-time Conflict Engine Evaluation
   const proposedPayload: Partial<ClassSession> = {
     id: sessionToEdit?.id,
@@ -114,12 +116,72 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
 
   const validationResult = validateSession(proposedPayload);
 
+  // Detect potential joint batch merge opportunity
+  const mergeCandidate = useMemo(() => {
+    return findBatchMergeCandidate({
+      sessionToValidate: proposedPayload,
+      existingSessions: sessions,
+      batches,
+      courses,
+      faculty,
+      rooms,
+    });
+  }, [proposedPayload, sessions, batches, courses, faculty, rooms]);
+
   const selectedCourse = courses.find((c) => c.id === courseId);
   const selectedRoom = rooms.find((r) => r.id === roomId);
 
+  const handleConfirmMergeModal = async (candidate: BatchMergeCandidate) => {
+    const groupId =
+      candidate.existingSession.batch_group_id ||
+      (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `mg-${Date.now()}`);
+
+    // Set batchGroupId locally for current session
+    setBatchGroupId(groupId);
+
+    // If editing existing session, merge both
+    if (sessionToEdit) {
+      await mergeSessionBatches(candidate.existingSession.id, sessionToEdit.id);
+      onClose();
+    } else {
+      // For a new session, update existing session to have the group ID, and create the new session
+      const res = await addSession({
+        semester_id: activeSemester?.id || 'sem-fall-2026',
+        course_id: courseId,
+        faculty_id: facultyId,
+        room_id: roomId || null,
+        batch_id: batchId,
+        batch_group_id: groupId,
+        day_of_week: dayOfWeek,
+        start_time: startTime,
+        end_time: endTime,
+        session_type: sessionType,
+        status: status,
+        specific_date: sessionType === 'makeup' ? specificDate : null,
+      });
+
+      if (res.success) {
+        // Also ensure existing session has the group ID
+        await updateSession({
+          ...candidate.existingSession,
+          batch_group_id: groupId,
+        });
+        onClose();
+      } else if (res.errors) {
+        setSubmitError(res.errors.join(' | '));
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!validationResult.valid) {
+      // If there's an eligible batch merge opportunity, prompt the user with the Merge Modal!
+      if (mergeCandidate) {
+        setIsMergeModalOpen(true);
+        return;
+      }
       setSubmitError('Please resolve all scheduling conflicts before saving.');
       return;
     }
@@ -178,6 +240,8 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
     }
   };
 
+  if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
       <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
@@ -201,8 +265,38 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5 text-xs">
+          {/* Joint Batch Merge Opportunity Detected Banner */}
+          {mergeCandidate && (
+            <div className="bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50 border-2 border-purple-300 rounded-2xl p-4 text-purple-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-xl bg-purple-600 text-white shrink-0 mt-0.5 shadow-xs">
+                  <Sparkles className="w-4 h-4 text-yellow-300" />
+                </div>
+                <div className="text-xs space-y-0.5">
+                  <p className="font-extrabold text-purple-950 text-xs sm:text-sm flex items-center gap-1.5">
+                    <span>Joint Class Batch Merge Available</span>
+                    <span className="px-2 py-0.2 bg-purple-200 text-purple-900 text-[10px] rounded-full font-black uppercase">
+                      Merge Eligible
+                    </span>
+                  </p>
+                  <p className="text-purple-800 text-[11px] leading-relaxed">
+                    Instructor <strong>{mergeCandidate.faculty.name}</strong> is teaching <strong>{mergeCandidate.course.code}</strong> at this exact time in <strong>{mergeCandidate.room?.name || 'this room'}</strong> for <strong>{mergeCandidate.existingBatch.name}</strong>.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMergeModalOpen(true)}
+                className="px-3.5 py-2 bg-purple-700 hover:bg-purple-800 active:bg-purple-900 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+                <span>Merge Batches</span>
+              </button>
+            </div>
+          )}
+
           {/* Conflict Engine Feedback Alert */}
-          {validationResult.errors.length > 0 && (
+          {validationResult.errors.length > 0 && !mergeCandidate && (
             <div className="bg-rose-50 border border-rose-300 rounded-xl p-3.5 space-y-1">
               <div className="flex items-center gap-2 text-rose-900 font-bold">
                 <AlertCircle className="w-4 h-4 text-rose-600" />
@@ -481,6 +575,18 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
           </div>
         </form>
       </div>
+
+      {/* Batch Merge Opportunity Modal */}
+      <BatchMergeModal
+        isOpen={isMergeModalOpen}
+        onClose={() => setIsMergeModalOpen(false)}
+        candidate={mergeCandidate}
+        onConfirmMerge={handleConfirmMergeModal}
+        onRejectMerge={() => {
+          setIsMergeModalOpen(false);
+          setSubmitError('Batches not merged. Cannot schedule conflicting class at the same time and venue.');
+        }}
+      />
     </div>
   );
 };

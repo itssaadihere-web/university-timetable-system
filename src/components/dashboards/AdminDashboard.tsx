@@ -233,7 +233,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           }`}
         >
           <Calendar className="w-4 h-4" />
-          <span>Full Timetable Matrix</span>
+          <span>Full Timetable</span>
         </button>
 
         <button

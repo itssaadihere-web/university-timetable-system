@@ -117,7 +117,7 @@ export const MakeupClassManager: React.FC = () => {
               <span className="text-xs text-teal-200">Date-Specific Adjustment Scheduling</span>
             </div>
             <h2 className="text-xl font-bold tracking-tight">
-              Makeup Class & Room Availability Matrix
+              Makeup Class & Room Availability
             </h2>
             <p className="text-xs text-teal-200/80 mt-1 max-w-2xl">
               Schedule floating makeup classes tied to specific dates, query live room availability by equipment capabilities, and process faculty adjustment requests.
@@ -313,7 +313,7 @@ export const MakeupClassManager: React.FC = () => {
             <div>
               <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
                 <DoorOpen className="w-4 h-4 text-teal-600" />
-                <span>Room & Resource Availability Matrix</span>
+                <span>Room & Resource Availability Grid</span>
               </h3>
               <p className="text-xs text-slate-500">
                 Instantly check free rooms and equipment availability on any given date

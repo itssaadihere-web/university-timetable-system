@@ -228,7 +228,7 @@ export const StudentPublicDashboard: React.FC = () => {
                 }`}
               >
                 <Calendar className="w-3.5 h-3.5" />
-                <span>Weekly Matrix</span>
+                <span>Weekly Timetable</span>
               </button>
               <button
                 onClick={() => setViewLayout('day_list')}
@@ -287,7 +287,7 @@ export const StudentPublicDashboard: React.FC = () => {
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-shu-700" />
               <span className="font-bold text-slate-900 text-sm">
-                Weekly Matrix: {selectedBatch?.name} — {selectedBatch?.program}
+                Weekly Timetable: {selectedBatch?.name} — {selectedBatch?.program}
               </span>
             </div>
             <span className="text-xs font-medium text-slate-500 font-mono">

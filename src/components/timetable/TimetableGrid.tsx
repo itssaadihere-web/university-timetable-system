@@ -16,13 +16,16 @@ import { ClassSession } from '@/types';
 import { DroppableTimeSlot } from './DroppableTimeSlot';
 import { DraggableSessionCard } from './DraggableSessionCard';
 import { ScheduleChangeConfirmModal, PendingScheduleChange } from '@/components/modals/ScheduleChangeConfirmModal';
+import { BatchMergeModal } from '@/components/modals/BatchMergeModal';
 import { 
   TIME_SLOTS_30MIN, 
   TIMETABLE_DAYS, 
   calculateSlotSpan, 
   timeToMinutes, 
   minutesToTime,
-  TOTAL_30MIN_SLOTS
+  TOTAL_30MIN_SLOTS,
+  findBatchMergeCandidate,
+  BatchMergeCandidate
 } from '@/lib/conflict-engine';
 import { 
   AlertCircle, 
@@ -84,6 +87,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
     currentRole,
     moveSession,
     deleteSession,
+    mergeSessionBatches,
     setSessionLock,
     validateSession,
     dispatchScheduleEmailAlert,
@@ -98,6 +102,9 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
   const [changeFeedback, setChangeFeedback] = useState<string | null>(null);
   const [pendingChange, setPendingChange] = useState<PendingScheduleChange | null>(null);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState<boolean>(false);
+  const [isMergeModalOpen, setIsMergeModalOpen] = useState<boolean>(false);
+  const [pendingMergeCandidate, setPendingMergeCandidate] = useState<BatchMergeCandidate | null>(null);
+  const [pendingProposedSession, setPendingProposedSession] = useState<ClassSession | null>(null);
   const [mobileActiveDay, setMobileActiveDay] = useState<number>(1);
   const [showWeekendExceptions, setShowWeekendExceptions] = useState<boolean>(false);
 
@@ -231,6 +238,23 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
 
     const validation = validateSession(proposed);
     if (!validation.valid) {
+      // Check if there is a Joint Batch Merge Opportunity!
+      const mergeCand = findBatchMergeCandidate({
+        sessionToValidate: proposed,
+        existingSessions: sessions,
+        batches,
+        courses,
+        faculty,
+        rooms,
+      });
+
+      if (mergeCand) {
+        setPendingMergeCandidate(mergeCand);
+        setPendingProposedSession(proposed);
+        setIsMergeModalOpen(true);
+        return;
+      }
+
       // Show explicit categorized clash
       setConflictAlert(validation.errors);
       setTimeout(() => setConflictAlert(null), 9000);
@@ -248,6 +272,31 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
       changeType: 'DRAG_MOVE',
     });
     setIsConfirmModalOpen(true);
+  };
+
+  const handleConfirmMergeFromGrid = async (candidate: BatchMergeCandidate) => {
+    if (!pendingProposedSession) return;
+    const res = await mergeSessionBatches(candidate.existingSession.id, pendingProposedSession.id);
+    if (res.success) {
+      setChangeFeedback(
+        `✨ Joint class established! Merged ${candidate.existingBatch.name} & ${candidate.newBatch.name} for ${candidate.course.code} under ${candidate.faculty.name}.`
+      );
+      setTimeout(() => setChangeFeedback(null), 7000);
+    }
+    setIsMergeModalOpen(false);
+    setPendingMergeCandidate(null);
+    setPendingProposedSession(null);
+  };
+
+  const handleRejectMergeFromGrid = () => {
+    if (pendingProposedSession) {
+      const validation = validateSession(pendingProposedSession);
+      setConflictAlert(validation.errors);
+      setTimeout(() => setConflictAlert(null), 9000);
+    }
+    setIsMergeModalOpen(false);
+    setPendingMergeCandidate(null);
+    setPendingProposedSession(null);
   };
 
   const handleConfirmScheduleChange = async (sendEmail: boolean) => {
@@ -607,6 +656,19 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
         }}
         pendingChange={pendingChange}
         onConfirm={handleConfirmScheduleChange}
+      />
+
+      {/* Joint Batch Merge Opportunity Modal */}
+      <BatchMergeModal
+        isOpen={isMergeModalOpen}
+        onClose={() => {
+          setIsMergeModalOpen(false);
+          setPendingMergeCandidate(null);
+          setPendingProposedSession(null);
+        }}
+        candidate={pendingMergeCandidate}
+        onConfirmMerge={handleConfirmMergeFromGrid}
+        onRejectMerge={handleRejectMergeFromGrid}
       />
     </div>
   );

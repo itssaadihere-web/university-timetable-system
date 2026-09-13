@@ -256,22 +256,33 @@ export function validateSessionConflicts(ctx: ConflictCheckContext): ConflictVal
     const exBatch = batches.find((b) => b.id === existing.batch_id);
     const exTimeFormatted = formatTimeRange(existing.start_time, existing.end_time);
 
+    const isSameMergeGroup =
+      Boolean(batchGroupId) && Boolean(existing.batch_group_id) && existing.batch_group_id === batchGroupId;
+
+    // Approved joint batch merge session (same course, faculty, start, end time, and shared merge group)
+    const isApprovedMergeSession =
+      isSameMergeGroup &&
+      existing.course_id === courseId &&
+      existing.faculty_id === facultyId &&
+      existing.start_time === startTimeStr &&
+      existing.end_time === endTimeStr;
+
     if (isDirectOverlap) {
-      // 1. Room Unavailable Clash (Only evaluated if a physical room is assigned)
+      // 1. Room Unavailable Clash (Only evaluated if a physical room is assigned and not an approved joint merge session)
       const isPhysicalRoomAssigned = Boolean(
         roomId &&
           roomId.trim() !== '' &&
           roomId !== 'a0000000-0000-0000-0000-000000000000' &&
           roomId !== 'room-unassigned'
       );
-      if (isPhysicalRoomAssigned && existing.room_id === roomId) {
+      if (isPhysicalRoomAssigned && existing.room_id === roomId && !isApprovedMergeSession) {
         errors.push(
           `[Room Clash]: "${roomName}" is occupied by ${exCourseName} for batch "${exBatch?.name || 'Batch'}" (${exTimeFormatted}).`
         );
       }
 
-      // 2. Teacher Clash (Faculty Double-Booking)
-      if (existing.faculty_id === facultyId) {
+      // 2. Teacher Clash (Faculty Double-Booking - exempted if conducting joint merged session)
+      if (existing.faculty_id === facultyId && !isApprovedMergeSession) {
         errors.push(
           `[Teacher Clash]: Instructor ${facultyName} is already teaching ${exCourseName} in ${exRoomName} (${exTimeFormatted}).`
         );
@@ -279,21 +290,21 @@ export function validateSessionConflicts(ctx: ConflictCheckContext): ConflictVal
 
       // 3. Student's Clash (Batch Double-Booking)
       const isSameBatch = existing.batch_id === batchId;
-      const isSameMergeGroup =
-        Boolean(batchGroupId) && Boolean(existing.batch_group_id) && existing.batch_group_id === batchGroupId;
 
       if (isSameBatch || isSameMergeGroup) {
-        // Exception: Approved batch merge session (same course, faculty, start, end time)
-        const isApprovedMergeSession =
-          isSameMergeGroup &&
-          existing.course_id === courseId &&
-          existing.faculty_id === facultyId &&
-          existing.start_time === startTimeStr &&
-          existing.end_time === endTimeStr;
-
         if (!isApprovedMergeSession) {
           errors.push(
             `[Batch Clash]: Students in "${batchName}" already have ${exCourseName} in ${exRoomName} (${exTimeFormatted}).`
+          );
+        }
+      }
+
+      // Soft Warning: If merged joint class, check room capacity
+      if (isApprovedMergeSession && room) {
+        const combinedCount = (batch?.student_count || 30) + (exBatch?.student_count || 30);
+        if (combinedCount > room.capacity) {
+          warnings.push(
+            `[Capacity Warning]: Merged classes ("${batchName}" + "${exBatch?.name}") total ${combinedCount} students in Room "${room.name}" (Capacity: ${room.capacity}).`
           );
         }
       }
@@ -328,4 +339,128 @@ export function validateSessionConflicts(ctx: ConflictCheckContext): ConflictVal
     errors,
     warnings,
   };
+}
+
+export interface BatchMergeCandidate {
+  existingSession: ClassSession;
+  existingBatch: Batch;
+  newBatch: Batch;
+  course: Course;
+  faculty: Faculty;
+  room: Room | null;
+  combinedStudentCount: number;
+  roomCapacity: number;
+  hasCapacityIssue: boolean;
+}
+
+/**
+ * Detects if a proposed or dragged session matches an existing session
+ * (same teacher, same course, same room, same day & overlapping time, but different batch)
+ * that is eligible for a joint batch merge.
+ */
+export function findBatchMergeCandidate(params: {
+  sessionToValidate: Partial<ClassSession>;
+  existingSessions: ClassSession[];
+  batches: Batch[];
+  courses: Course[];
+  faculty: Faculty[];
+  rooms: Room[];
+}): BatchMergeCandidate | null {
+  const { sessionToValidate, existingSessions, batches, courses, faculty, rooms } = params;
+
+  if (!sessionToValidate.faculty_id || !sessionToValidate.course_id || !sessionToValidate.batch_id) {
+    return null;
+  }
+
+  const startMins = timeToMinutes(sessionToValidate.start_time || '');
+  const endMins = timeToMinutes(sessionToValidate.end_time || '');
+  if (endMins <= startMins) return null;
+
+  const currentBatch = batches.find((b) => b.id === sessionToValidate.batch_id);
+  const currentCourse = courses.find((c) => c.id === sessionToValidate.course_id);
+  const currentFaculty = faculty.find((f) => f.id === sessionToValidate.faculty_id);
+  const currentRoom = rooms.find(
+    (r) =>
+      r.id === sessionToValidate.room_id &&
+      r.id !== 'a0000000-0000-0000-0000-000000000000' &&
+      r.building !== 'TBD'
+  );
+
+  if (!currentBatch || !currentCourse || !currentFaculty) return null;
+
+  for (const existing of existingSessions) {
+    if (existing.id === sessionToValidate.id || existing.status === 'cancelled') continue;
+
+    // Check same day / date context
+    const isSameDateContext =
+      (sessionToValidate.specific_date && existing.specific_date === sessionToValidate.specific_date) ||
+      (!sessionToValidate.specific_date &&
+        !existing.specific_date &&
+        existing.day_of_week === sessionToValidate.day_of_week);
+
+    if (!isSameDateContext) continue;
+
+    const exStartMins = timeToMinutes(existing.start_time);
+    const exEndMins = timeToMinutes(existing.end_time);
+    const isDirectOverlap = Math.max(startMins, exStartMins) < Math.min(endMins, exEndMins);
+    if (!isDirectOverlap) continue;
+
+    // Check same teacher
+    if (existing.faculty_id !== sessionToValidate.faculty_id) continue;
+
+    // Check same course (or same course code)
+    const exCourse = courses.find((c) => c.id === existing.course_id);
+    const isSameOrSimilarCourse =
+      existing.course_id === sessionToValidate.course_id ||
+      (exCourse && currentCourse && exCourse.code === currentCourse.code);
+
+    if (!isSameOrSimilarCourse) continue;
+
+    // Check same room (or both unassigned)
+    const exHasRoom =
+      existing.room_id &&
+      existing.room_id !== 'a0000000-0000-0000-0000-000000000000' &&
+      existing.room_id !== 'room-unassigned';
+    const curHasRoom =
+      sessionToValidate.room_id &&
+      sessionToValidate.room_id !== 'a0000000-0000-0000-0000-000000000000' &&
+      sessionToValidate.room_id !== 'room-unassigned';
+
+    if (exHasRoom && curHasRoom && existing.room_id !== sessionToValidate.room_id) {
+      continue;
+    }
+
+    // Must be a different batch
+    if (existing.batch_id === sessionToValidate.batch_id) continue;
+
+    // Must not already be merged together under the same merge group
+    if (
+      sessionToValidate.batch_group_id &&
+      existing.batch_group_id &&
+      sessionToValidate.batch_group_id === existing.batch_group_id
+    ) {
+      continue;
+    }
+
+    const exBatch = batches.find((b) => b.id === existing.batch_id);
+    if (!exBatch) continue;
+
+    const exRoom = rooms.find((r) => r.id === existing.room_id) || currentRoom || null;
+    const combinedStudentCount = (currentBatch.student_count || 40) + (exBatch.student_count || 40);
+    const roomCapacity = exRoom?.capacity || 60;
+
+    return {
+      existingSession: existing,
+      existingBatch: exBatch,
+      newBatch: currentBatch,
+      course: currentCourse,
+      faculty: currentFaculty,
+      room: exRoom,
+      combinedStudentCount,
+      roomCapacity,
+      hasCapacityIssue: combinedStudentCount > roomCapacity,
+    };
+  }
+
+  return null;
 }

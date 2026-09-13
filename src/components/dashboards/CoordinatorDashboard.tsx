@@ -184,7 +184,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
           }`}
         >
           <Calendar className="w-4 h-4" />
-          <span>Timetable Matrix</span>
+          <span>Timetable</span>
         </button>
 
         <button
@@ -242,24 +242,6 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
       {/* Main Tab Content */}
       {activeTab === 'matrix' && (
         <div className="space-y-4">
-          {/* Inline notification banner in Timetable Matrix */}
-          {unassignedSessions.length > 0 && (
-            <div className="bg-amber-50 border border-amber-300 rounded-2xl p-3 px-4 flex items-center justify-between gap-3 text-xs text-amber-900">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
-                <span className="font-semibold">
-                  <strong className="text-amber-950 font-bold">{unassignedSessions.length} classes</strong> currently have pending physical classroom allocations.
-                </span>
-              </div>
-              <button
-                onClick={() => setIsRoomAllocationOpen(true)}
-                className="px-3 py-1 bg-amber-200 hover:bg-amber-300 text-amber-950 font-bold rounded-lg transition-colors cursor-pointer shrink-0"
-              >
-                Assign Now
-              </button>
-            </div>
-          )}
-
           <TimetableFilterBar />
           <TimetableGrid
             onOpenNewSessionModal={onOpenNewSession}

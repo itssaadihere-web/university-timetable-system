@@ -92,6 +92,11 @@ interface TimetableContextType {
     targetEndTime: string,
     targetRoomId?: string
   ) => Promise<{ success: boolean; errors?: string[] }>;
+  mergeSessionBatches: (
+    session1Id: string,
+    session2Id: string,
+    customGroupName?: string
+  ) => Promise<{ success: boolean; mergeGroupId?: string; errors?: string[] }>;
   publishCurrentDraft: (summary?: string) => Promise<{ success: boolean; versionNumber: number }>;
   revertToVersion: (version: TimetableVersion) => Promise<{ success: boolean }>;
   resolveAdvising: (id: string, notes?: string) => void;
@@ -503,6 +508,86 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     return { success: true };
   };
 
+  // Merge Sessions for Joint Batches
+  const mergeSessionBatches = async (
+    session1Id: string,
+    session2Id: string,
+    customGroupName?: string
+  ): Promise<{ success: boolean; mergeGroupId?: string; errors?: string[] }> => {
+    const s1 = sessions.find((s) => s.id === session1Id);
+    const s2 = sessions.find((s) => s.id === session2Id);
+    if (!s1 || !s2) {
+      return { success: false, errors: ['Could not find both sessions to merge.'] };
+    }
+
+    const b1 = batches.find((b) => b.id === s1.batch_id);
+    const b2 = batches.find((b) => b.id === s2.batch_id);
+    const crs = courses.find((c) => c.id === s1.course_id);
+    const fac = faculty.find((f) => f.id === s1.faculty_id);
+
+    // Reuse existing merge_group_id if one already has it, or generate a unique ID
+    const groupId =
+      s1.batch_group_id ||
+      s2.batch_group_id ||
+      (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `mg-${Date.now()}`);
+    const groupName =
+      customGroupName ||
+      `Joint ${crs?.code || 'Class'} (${b1?.name || 'Batch 1'} & ${b2?.name || 'Batch 2'})`;
+
+    // Ensure group exists in local mergeGroups list
+    setMergeGroups((prev) => {
+      if (prev.some((g) => g.id === groupId)) return prev;
+      return [...prev, { id: groupId, name: groupName }];
+    });
+
+    const updatedS1: ClassSession = { ...s1, batch_group_id: groupId, updated_at: new Date().toISOString() };
+    const updatedS2: ClassSession = {
+      ...s2,
+      batch_group_id: groupId,
+      room_id: s1.room_id,
+      day_of_week: s1.day_of_week,
+      start_time: s1.start_time,
+      end_time: s1.end_time,
+      updated_at: new Date().toISOString(),
+    };
+
+    setSessions((prev) =>
+      prev.map((s) => (s.id === s1.id ? updatedS1 : s.id === s2.id ? updatedS2 : s))
+    );
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('batch_merge_groups').upsert([{ id: groupId, name: groupName }]);
+      } catch (e) {
+        console.warn('batch_merge_groups upsert notice:', e);
+      }
+      await supabase.from('class_sessions').update({ batch_group_id: groupId }).eq('id', s1.id);
+      await supabase
+        .from('class_sessions')
+        .update({
+          batch_group_id: groupId,
+          room_id: s1.room_id,
+          day_of_week: s1.day_of_week,
+          start_time: s1.start_time,
+          end_time: s1.end_time,
+        })
+        .eq('id', s2.id);
+    }
+
+    // Add Audit Log
+    const newLog: AuditLogEntry = {
+      id: `log-${Date.now()}`,
+      class_session_id: s1.id,
+      changed_by: currentUserName,
+      change_type: 'UPDATE',
+      description: `Merged joint batches ${b1?.name} & ${b2?.name} for ${crs?.code} (${fac?.name})`,
+      timestamp: new Date().toISOString(),
+    };
+    setAuditLogs((prev) => [newLog, ...prev]);
+
+    return { success: true, mergeGroupId: groupId };
+  };
+
   // Publish Current Draft
   const publishCurrentDraft = async (
     summary: string = 'Published updated semester timetable'
@@ -882,6 +967,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         updateSession,
         deleteSession,
         moveSession,
+        mergeSessionBatches,
         publishCurrentDraft,
         revertToVersion,
         resolveAdvising,

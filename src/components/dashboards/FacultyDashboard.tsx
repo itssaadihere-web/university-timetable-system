@@ -178,7 +178,7 @@ export const FacultyDashboard: React.FC = () => {
           }`}
         >
           <Calendar className="w-4 h-4" />
-          <span>My Teaching Schedule Matrix</span>
+          <span>My Teaching Schedule</span>
         </button>
 
         <button

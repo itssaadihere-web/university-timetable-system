@@ -17,17 +17,8 @@ import {
   Layers,
   Sparkles,
   Monitor,
-  Tv,
-  Cpu,
   X
 } from 'lucide-react';
-
-const ROOM_TYPE_OPTIONS: { id: RoomType; label: string; icon: any }[] = [
-  { id: 'multimedia', label: 'Multimedia', icon: Monitor },
-  { id: 'interactive_lcd', label: 'Interactive LCD', icon: Tv },
-  { id: 'horseshoe', label: 'Horseshoe Hall', icon: Sparkles },
-  { id: 'computer_lab', label: 'Computer Lab', icon: Cpu },
-];
 
 export const TimetableFilterBar: React.FC = () => {
   const {
@@ -94,19 +85,6 @@ export const TimetableFilterBar: React.FC = () => {
       selectedFacultyId: mode === 'faculty' ? prev.selectedFacultyId || faculty[0]?.id : undefined,
       selectedRoomId: mode === 'room' ? prev.selectedRoomId || rooms[0]?.id : undefined,
     }));
-  };
-
-  const toggleRoomType = (type: RoomType) => {
-    setFilterState((prev) => {
-      const current = prev.selectedRoomTypes || [];
-      const exists = current.includes(type);
-      return {
-        ...prev,
-        selectedRoomTypes: exists
-          ? current.filter((t) => t !== type)
-          : [...current, type],
-      };
-    });
   };
 
   // Get active entity title for export
@@ -294,35 +272,10 @@ export const TimetableFilterBar: React.FC = () => {
         </div>
       </div>
 
-      {/* Bottom Filter Row: Capability Tags, Department, Draft toggle */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 text-xs">
-        {/* Room Capability Tag Filters */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-slate-400 font-semibold flex items-center gap-1 mr-1">
-            <Filter className="w-3 h-3" /> Equipment:
-          </span>
-          {ROOM_TYPE_OPTIONS.map((opt) => {
-            const isSelected = filterState.selectedRoomTypes.includes(opt.id);
-            const Icon = opt.icon;
-            return (
-              <button
-                key={opt.id}
-                onClick={() => toggleRoomType(opt.id)}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
-                  isSelected
-                    ? 'bg-slate-800 text-white shadow-2xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200/80 border border-slate-200/60'
-                }`}
-              >
-                <Icon className="w-3 h-3" />
-                <span>{opt.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
+      {/* Bottom Filter Row: Draft toggle & search */}
+      <div className="flex flex-wrap items-center justify-end gap-3 pt-3 border-t border-slate-100 text-xs">
         {/* Right filters: Drafts toggle & search */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
           {currentRole === 'coordinator' && (
             <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 select-none font-semibold">
               <input
