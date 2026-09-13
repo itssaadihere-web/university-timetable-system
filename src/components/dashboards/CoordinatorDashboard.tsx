@@ -32,7 +32,7 @@ interface CoordinatorDashboardProps {
   onOpenEditSession: (session: ClassSession) => void;
   onOpenPublishModal: () => void;
   onOpenUserManagement: () => void;
-  onOpenRollover: () => void;
+  onOpenRollover?: () => void;
   onOpenImport: () => void;
 }
 
@@ -41,7 +41,6 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
   onOpenEditSession,
   onOpenPublishModal,
   onOpenUserManagement,
-  onOpenRollover,
   onOpenImport,
 }) => {
   const { currentUser } = useAuth();
@@ -120,14 +119,6 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             >
               <UserPlus className="w-4 h-4 text-slate-300" />
               <span>Faculty</span>
-            </button>
-
-            <button
-              onClick={onOpenRollover}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all cursor-pointer border border-white/10"
-            >
-              <Copy className="w-3.5 h-3.5 text-slate-300" />
-              <span>Rollover</span>
             </button>
 
             <button

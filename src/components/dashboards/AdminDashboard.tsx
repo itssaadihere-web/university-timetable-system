@@ -31,7 +31,7 @@ import {
 
 interface AdminDashboardProps {
   onOpenUserManagement: () => void;
-  onOpenRollover: () => void;
+  onOpenRollover?: () => void;
   onOpenImport: () => void;
   onOpenNewSession: (preset?: { dayOfWeek: number; startTime: string; endTime: string }) => void;
   onOpenEditSession: (session: ClassSession) => void;
@@ -39,7 +39,6 @@ interface AdminDashboardProps {
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onOpenUserManagement,
-  onOpenRollover,
   onOpenImport,
   onOpenNewSession,
   onOpenEditSession,
@@ -100,14 +99,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <span>Assign Rooms ({unassignedSessions.length})</span>
               </button>
             )}
-
-            <button
-              onClick={onOpenRollover}
-              className="flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all cursor-pointer border border-white/10"
-            >
-              <Copy className="w-3.5 h-3.5 text-slate-300" />
-              <span>Rollover</span>
-            </button>
 
             <button
               onClick={onOpenImport}
@@ -267,7 +258,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
       {/* Tab 1: Overview Quick Cards */}
       {adminTab === 'overview' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-md transition-all space-y-3">
             <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold">
               <UserPlus className="w-5 h-5" />
@@ -281,22 +272,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               className="text-xs font-bold text-purple-700 hover:text-purple-900 flex items-center gap-1 pt-1 cursor-pointer"
             >
               <span>Open User Console &rarr;</span>
-            </button>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-md transition-all space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold">
-              <Copy className="w-5 h-5" />
-            </div>
-            <h3 className="font-bold text-slate-900 text-sm">Semester Rollover Cloning</h3>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Clone previous semester schedule templates into an editable draft for the next term with 1-click.
-            </p>
-            <button
-              onClick={onOpenRollover}
-              className="text-xs font-bold text-indigo-700 hover:text-indigo-900 flex items-center gap-1 pt-1 cursor-pointer"
-            >
-              <span>Launch Rollover Wizard &rarr;</span>
             </button>
           </div>
 

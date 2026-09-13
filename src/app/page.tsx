@@ -11,7 +11,6 @@ import { CoordinatorDashboard } from '@/components/dashboards/CoordinatorDashboa
 import { AdminDashboard } from '@/components/dashboards/AdminDashboard';
 import { SessionEditModal } from '@/components/modals/SessionEditModal';
 import { VersionDiffModal } from '@/components/modals/VersionDiffModal';
-import { SemesterRolloverModal } from '@/components/modals/SemesterRolloverModal';
 import { BulkCsvImportModal } from '@/components/modals/BulkCsvImportModal';
 import { ClassSession } from '@/types';
 
@@ -35,7 +34,6 @@ export default function AppMainPage() {
   const [sessionToEdit, setSessionToEdit] = useState<ClassSession | null>(null);
   const [slotPreset, setSlotPreset] = useState<{ dayOfWeek: number; startTime: string; endTime: string } | null>(null);
   const [isPublishModalOpen, setIsPublishModalOpen] = useState<boolean>(false);
-  const [isRolloverModalOpen, setIsRolloverModalOpen] = useState<boolean>(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
 
   const handleOpenNewSession = (preset?: { dayOfWeek: number; startTime: string; endTime: string }) => {
@@ -80,7 +78,6 @@ export default function AppMainPage() {
             onOpenEditSession={handleOpenEditSession}
             onOpenPublishModal={() => setIsPublishModalOpen(true)}
             onOpenUserManagement={() => setIsUserManagementOpen(true)}
-            onOpenRollover={() => setIsRolloverModalOpen(true)}
             onOpenImport={() => setIsImportModalOpen(true)}
           />
         )}
@@ -88,7 +85,6 @@ export default function AppMainPage() {
         {currentRole === 'admin' && (
           <AdminDashboard
             onOpenUserManagement={() => setIsUserManagementOpen(true)}
-            onOpenRollover={() => setIsRolloverModalOpen(true)}
             onOpenImport={() => setIsImportModalOpen(true)}
             onOpenNewSession={handleOpenNewSession}
             onOpenEditSession={handleOpenEditSession}
@@ -112,11 +108,6 @@ export default function AppMainPage() {
       <VersionDiffModal
         isOpen={isPublishModalOpen}
         onClose={() => setIsPublishModalOpen(false)}
-      />
-
-      <SemesterRolloverModal
-        isOpen={isRolloverModalOpen}
-        onClose={() => setIsRolloverModalOpen(false)}
       />
 
       <BulkCsvImportModal
