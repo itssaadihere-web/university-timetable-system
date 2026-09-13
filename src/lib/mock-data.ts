@@ -18,7 +18,7 @@ import {
 export const INITIAL_SEMESTERS: Semester[] = [
   {
     id: '11111111-1111-1111-1111-111111111111',
-    name: 'Current Academic Term',
+    name: 'FALL-26',
     academic_year: '2026-2027',
     start_date: '2026-09-01',
     end_date: '2027-01-30',
@@ -123,21 +123,26 @@ export const INITIAL_FACULTY: Faculty[] = [
 export const INITIAL_MERGE_GROUPS: BatchMergeGroup[] = [];
 
 export const INITIAL_BATCHES: Batch[] = [
-  // Semester 1 Sections
-  { id: 'batch-sec-1a', name: 'Section 1A', program: 'BS (Accounting & Finance)', semester: 1, student_count: 50 },
-  { id: 'batch-sec-1b', name: 'Section 1B', program: 'BS (Business Analytics) & BBA', semester: 1, student_count: 50 },
-  { id: 'batch-sec-1c', name: 'Section 1C', program: 'BBA & BS (Supply Chain)', semester: 1, student_count: 50 },
-  { id: 'batch-sec-1d', name: 'Section 1D', program: 'BS (Accounting & Finance) & BS (Fintech)', semester: 1, student_count: 50 },
+  // Actuarial Science & Risk Management (ARM)
+  { id: 'batch-arm-3', name: 'ARM - 3', program: 'BS (Actuarial Science)', semester: 3, student_count: 35 },
+  { id: 'batch-arm-5', name: 'ARM - 5', program: 'BS (Actuarial Science)', semester: 5, student_count: 30 },
+  { id: 'batch-arm-6', name: 'ARM - 6', program: 'BS (Actuarial Science)', semester: 6, student_count: 28 },
 
   // Business Analytics (BAN)
   { id: 'batch-ban-2', name: 'BAN - 2', program: 'BS (Business Analytics)', semester: 2, student_count: 45 },
   { id: 'batch-ban-3', name: 'BAN - 3', program: 'BS (Business Analytics)', semester: 3, student_count: 40 },
   { id: 'batch-ban-4', name: 'BAN - 4', program: 'BS (Business Analytics)', semester: 4, student_count: 38 },
 
-  // Actuarial Science & Risk Management (ARM)
-  { id: 'batch-arm-3', name: 'ARM - 3', program: 'BS (Actuarial Science)', semester: 3, student_count: 35 },
-  { id: 'batch-arm-5', name: 'ARM - 5', program: 'BS (Actuarial Science)', semester: 5, student_count: 30 },
-  { id: 'batch-arm-6', name: 'ARM - 6', program: 'BS (Actuarial Science)', semester: 6, student_count: 28 },
+  // BBA
+  { id: 'batch-bba-2', name: 'BBA - 2', program: 'BBA', semester: 2, student_count: 55 },
+  { id: 'batch-bba-3a', name: 'BBA - 3A', program: 'BBA', semester: 3, student_count: 45 },
+  { id: 'batch-bba-3b', name: 'BBA - 3B', program: 'BBA', semester: 3, student_count: 45 },
+  { id: 'batch-bba-3c', name: 'BBA - 3C', program: 'BBA', semester: 3, student_count: 45 },
+  { id: 'batch-bba-4', name: 'BBA - 4', program: 'BBA', semester: 4, student_count: 50 },
+  { id: 'batch-bba-5', name: 'BBA - 5', program: 'BBA', semester: 5, student_count: 48 },
+  { id: 'batch-bba-6', name: 'BBA - 6', program: 'BBA', semester: 6, student_count: 45 },
+  { id: 'batch-bba-7', name: 'BBA - 7', program: 'BBA', semester: 7, student_count: 42 },
+  { id: 'batch-bba-8', name: 'BBA - 8', program: 'BBA', semester: 8, student_count: 40 },
 
   // Accounting & Finance (BS AF)
   { id: 'batch-bsaf-2', name: 'BS(AF) - 2', program: 'BS (Accounting & Finance)', semester: 2, student_count: 50 },
@@ -150,16 +155,11 @@ export const INITIAL_BATCHES: Batch[] = [
   { id: 'batch-bsaf-7', name: 'BS(AF) - 7', program: 'BS (Accounting & Finance)', semester: 7, student_count: 38 },
   { id: 'batch-bsaf-8', name: 'BS(AF) - 8', program: 'BS (Accounting & Finance)', semester: 8, student_count: 35 },
 
-  // BBA
-  { id: 'batch-bba-2', name: 'BBA - 2', program: 'BBA', semester: 2, student_count: 55 },
-  { id: 'batch-bba-3a', name: 'BBA - 3A', program: 'BBA', semester: 3, student_count: 45 },
-  { id: 'batch-bba-3b', name: 'BBA - 3B', program: 'BBA', semester: 3, student_count: 45 },
-  { id: 'batch-bba-3c', name: 'BBA - 3C', program: 'BBA', semester: 3, student_count: 45 },
-  { id: 'batch-bba-4', name: 'BBA - 4', program: 'BBA', semester: 4, student_count: 50 },
-  { id: 'batch-bba-5', name: 'BBA - 5', program: 'BBA', semester: 5, student_count: 48 },
-  { id: 'batch-bba-6', name: 'BBA - 6', program: 'BBA', semester: 6, student_count: 45 },
-  { id: 'batch-bba-7', name: 'BBA - 7', program: 'BBA', semester: 7, student_count: 42 },
-  { id: 'batch-bba-8', name: 'BBA - 8', program: 'BBA', semester: 8, student_count: 40 },
+  // Semester 1 Sections
+  { id: 'batch-sec-1a', name: 'Section 1A', program: 'BS (Accounting & Finance)', semester: 1, student_count: 50 },
+  { id: 'batch-sec-1b', name: 'Section 1B', program: 'BS (Business Analytics) & BBA', semester: 1, student_count: 50 },
+  { id: 'batch-sec-1c', name: 'Section 1C', program: 'BBA & BS (Supply Chain)', semester: 1, student_count: 50 },
+  { id: 'batch-sec-1d', name: 'Section 1D', program: 'BS (Accounting & Finance) & BS (Fintech)', semester: 1, student_count: 50 },
 ];
 
 export const INITIAL_COURSES: Course[] = [

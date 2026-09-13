@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTimetable } from '@/context/TimetableContext';
 import { RoomType, TimetableViewMode } from '@/types';
 import { exportTimetableToExcel, exportTimetableToPDF } from '@/lib/export-utils';
+import { SearchableSelect } from './SearchableSelect';
 import { 
   Users, 
   UserCheck, 
@@ -39,21 +40,59 @@ export const TimetableFilterBar: React.FC = () => {
     currentRole,
   } = useTimetable();
 
+  // Batch Options (Alphabetically sorted + search keywords)
+  const batchOptions = useMemo(() => {
+    return batches.map((b) => ({
+      id: b.id,
+      title: b.name,
+      subtitle: `${b.program} • Sem ${b.semester}`,
+      badge: b.is_irregular ? 'Irregular' : undefined,
+      badgeColor: 'amber' as const,
+      searchTerms: `${b.name} ${b.program} ${b.semester} sem-${b.semester}`,
+    }));
+  }, [batches]);
+
+  // Faculty Options (Alphabetically sorted + search keywords)
+  const facultyOptions = useMemo(() => {
+    return faculty.map((f) => ({
+      id: f.id,
+      title: f.name,
+      subtitle: `${f.department} • Max ${f.max_load_per_day}h/day`,
+      searchTerms: `${f.name} ${f.department} ${f.email}`,
+    }));
+  }, [faculty]);
+
+  // Room Options (Alphabetically sorted + search keywords)
+  const roomOptions = useMemo(() => {
+    return rooms.map((r) => ({
+      id: r.id,
+      title: r.name,
+      subtitle: `${r.building} • Cap: ${r.capacity}`,
+      badge: r.room_types.join(', '),
+      badgeColor: 'indigo' as const,
+      searchTerms: `${r.name} ${r.building} ${r.room_types.join(' ')}`,
+    }));
+  }, [rooms]);
+
   const handleViewModeChange = (mode: TimetableViewMode) => {
     setFilterState((prev) => ({
       ...prev,
       viewMode: mode,
+      selectedBatchId: mode === 'batch' ? prev.selectedBatchId || batches[0]?.id : undefined,
+      selectedFacultyId: mode === 'faculty' ? prev.selectedFacultyId || faculty[0]?.id : undefined,
+      selectedRoomId: mode === 'room' ? prev.selectedRoomId || rooms[0]?.id : undefined,
     }));
   };
 
   const toggleRoomType = (type: RoomType) => {
     setFilterState((prev) => {
-      const exists = prev.selectedRoomTypes.includes(type);
+      const current = prev.selectedRoomTypes || [];
+      const exists = current.includes(type);
       return {
         ...prev,
         selectedRoomTypes: exists
-          ? prev.selectedRoomTypes.filter((t) => t !== type)
-          : [...prev.selectedRoomTypes, type],
+          ? current.filter((t) => t !== type)
+          : [...current, type],
       };
     });
   };
@@ -123,16 +162,21 @@ export const TimetableFilterBar: React.FC = () => {
     });
   };
 
+  // Get distinct departments from courses/faculty
+  const departments = Array.from(
+    new Set([...courses.map((c) => c.department), ...faculty.map((f) => f.department)])
+  ).filter(Boolean);
+
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-4 sm:p-5 mb-5 space-y-4">
-      {/* Top Row: View Mode Tabs & Primary Selector & Exports */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        {/* View Mode Tabs */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-500 mr-1 hidden sm:inline">
-            View By:
+    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-3.5 sm:p-4 space-y-3.5">
+      {/* Top Filter Row: View Mode Switcher + Entity Dropdown + Export */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5">
+        {/* View Mode Switcher Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider hidden sm:inline mr-1">
+            View:
           </span>
-          <div className="inline-flex p-1 bg-slate-100/90 rounded-xl border border-slate-200/80">
+          <div className="flex items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 shrink-0">
             <button
               onClick={() => handleViewModeChange('batch')}
               className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
@@ -171,57 +215,48 @@ export const TimetableFilterBar: React.FC = () => {
           </div>
         </div>
 
-        {/* Primary Entity Selector Dropdown */}
-        <div className="flex-1 max-w-md">
+        {/* Primary Entity Selector Dropdown (Searchable, Alphabetically Sorted, Live Shrink List) */}
+        <div className="flex-1 max-w-md min-w-[240px]">
           {filterState.viewMode === 'batch' && (
-            <select
+            <SearchableSelect
+              options={batchOptions}
               value={filterState.selectedBatchId || ''}
-              onChange={(e) =>
-                setFilterState((prev) => ({ ...prev, selectedBatchId: e.target.value }))
+              onChange={(batchId) =>
+                setFilterState((prev) => ({ ...prev, selectedBatchId: batchId }))
               }
-              className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-shu-700/20 focus:border-shu-700 focus:outline-none transition-all cursor-pointer"
-            >
-              <option value="">-- All Student Batches --</option>
-              {batches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name} ({b.program} - Sem {b.semester}) {b.is_irregular ? '[Special/Irregular]' : ''}
-                </option>
-              ))}
-            </select>
+              allOptionLabel="-- All Student Batches --"
+              placeholder="Search or select batch..."
+              icon={<Users className="w-4 h-4 text-shu-700" />}
+              autoSortAlphabetical={true}
+            />
           )}
 
           {filterState.viewMode === 'faculty' && (
-            <select
+            <SearchableSelect
+              options={facultyOptions}
               value={filterState.selectedFacultyId || ''}
-              onChange={(e) =>
-                setFilterState((prev) => ({ ...prev, selectedFacultyId: e.target.value }))
+              onChange={(facultyId) =>
+                setFilterState((prev) => ({ ...prev, selectedFacultyId: facultyId }))
               }
-              className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-shu-700/20 focus:border-shu-700 focus:outline-none transition-all cursor-pointer"
-            >
-              <option value="">-- All Faculty Members --</option>
-              {faculty.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name} ({f.department}) - Max {f.max_load_per_day}h/day
-                </option>
-              ))}
-            </select>
+              allOptionLabel="-- All Faculty Members --"
+              placeholder="Search or select faculty..."
+              icon={<UserCheck className="w-4 h-4 text-shu-700" />}
+              autoSortAlphabetical={true}
+            />
           )}
 
           {filterState.viewMode === 'room' && (
-            <select
+            <SearchableSelect
+              options={roomOptions}
               value={filterState.selectedRoomId || ''}
-              onChange={(e) =>
-                setFilterState((prev) => ({ ...prev, selectedRoomId: e.target.value }))
+              onChange={(roomId) =>
+                setFilterState((prev) => ({ ...prev, selectedRoomId: roomId }))
               }
-              className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-shu-700/20 focus:border-shu-700 focus:outline-none transition-all cursor-pointer"
-            >
-              <option value="">-- All Rooms & Venues --</option>
-              {rooms.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name} ({r.building}, Cap: {r.capacity}) [{r.room_types.join(', ')}]
-                </option>
-              ))}
-            </select>
+              allOptionLabel="-- All Rooms & Venues --"
+              placeholder="Search or select room..."
+              icon={<DoorOpen className="w-4 h-4 text-shu-700" />}
+              autoSortAlphabetical={true}
+            />
           )}
         </div>
 

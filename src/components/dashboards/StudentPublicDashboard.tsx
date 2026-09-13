@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTimetable } from '@/context/TimetableContext';
 import { exportTimetableToExcel, exportTimetableToPDF } from '@/lib/export-utils';
+import { SearchableSelect } from '@/components/timetable/SearchableSelect';
 import { 
   GraduationCap, 
   Calendar, 
@@ -38,6 +39,17 @@ export const StudentPublicDashboard: React.FC = () => {
   const [selectedDay, setSelectedDay] = useState<number>(1);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [viewLayout, setViewLayout] = useState<'weekly_grid' | 'day_list'>('weekly_grid');
+  // Batch Options for student dashboard (Alphabetically sorted)
+  const batchOptions = useMemo(() => {
+    return batches.map((b) => ({
+      id: b.id,
+      title: b.name,
+      subtitle: `${b.program} • Semester ${b.semester}`,
+      badge: b.is_irregular ? 'Irregular' : undefined,
+      badgeColor: 'amber' as const,
+      searchTerms: `${b.name} ${b.program} ${b.semester} sem-${b.semester}`,
+    }));
+  }, [batches]);
 
   const selectedBatch = batches.find((b) => b.id === selectedBatchId);
 
@@ -108,7 +120,7 @@ export const StudentPublicDashboard: React.FC = () => {
                 Salim Habib University
               </span>
               <span className="text-xs font-medium text-slate-300">
-                {activeSemester?.name || 'Fall 2026'} Academic Term
+                {activeSemester?.name || 'FALL-26'} Academic Term
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
@@ -157,23 +169,20 @@ export const StudentPublicDashboard: React.FC = () => {
       {/* Selector & View Toggle Card */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-4 sm:p-5 space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          {/* Batch Selector */}
-          <div className="flex-1 max-w-md">
+          {/* Batch Selector (Searchable, Alphabetically Sorted, Live Shrink Filter) */}
+          <div className="flex-1 max-w-md min-w-[260px]">
             <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
               <GraduationCap className="w-4 h-4 text-shu-700" />
               <span>Degree Program & Batch Section:</span>
             </label>
-            <select
+            <SearchableSelect
+              options={batchOptions}
               value={selectedBatchId}
-              onChange={(e) => setSelectedBatchId(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-shu-700/20 focus:border-shu-700 transition-all cursor-pointer"
-            >
-              {batches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name} — {b.program} (Semester {b.semester})
-                </option>
-              ))}
-            </select>
+              onChange={(batchId) => setSelectedBatchId(batchId || batches[0]?.id || '')}
+              placeholder="Search or select batch..."
+              icon={<GraduationCap className="w-4 h-4 text-shu-700" />}
+              autoSortAlphabetical={true}
+            />
           </div>
 
           {/* Search Box */}

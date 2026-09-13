@@ -113,6 +113,12 @@ interface TimetableContextType {
 
 const TimetableContext = createContext<TimetableContextType | null>(null);
 
+const sortBatchesAlphabetically = (list: Batch[]) => {
+  return [...list].sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+  );
+};
+
 export function TimetableProvider({ children }: { children: React.ReactNode }) {
   // State
   const [semesters, setSemesters] = useState<Semester[]>(INITIAL_SEMESTERS);
@@ -120,7 +126,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
   const [calendarEvents, setCalendarEvents] = useState<SemesterCalendarEvent[]>(INITIAL_CALENDAR);
   const [rooms, setRooms] = useState<Room[]>(INITIAL_ROOMS);
   const [faculty, setFaculty] = useState<Faculty[]>(INITIAL_FACULTY);
-  const [batches, setBatches] = useState<Batch[]>(INITIAL_BATCHES);
+  const [batches, setBatches] = useState<Batch[]>(() => sortBatchesAlphabetically(INITIAL_BATCHES));
   const [mergeGroups, setMergeGroups] = useState<BatchMergeGroup[]>(INITIAL_MERGE_GROUPS);
   const [courses, setCourses] = useState<Course[]>(INITIAL_COURSES);
   const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
@@ -203,7 +209,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           if (cleanFaculty.length > 0) setFaculty(cleanFaculty);
         }
 
-        if (batchData && batchData.length > 0) setBatches(batchData as Batch[]);
+        if (batchData && batchData.length > 0) setBatches(sortBatchesAlphabetically(batchData as Batch[]));
 
         if (crsData && crsData.length > 0) {
           const cleanCourses = (crsData as Course[]).filter(

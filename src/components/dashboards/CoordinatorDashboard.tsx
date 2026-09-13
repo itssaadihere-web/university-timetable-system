@@ -72,7 +72,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
                 Coordinator Console
               </span>
               <span className="text-xs font-medium text-slate-300">
-                {activeSemester?.name || 'Fall 2026'}
+                {activeSemester?.name || 'FALL-26'}
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
