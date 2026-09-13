@@ -3,7 +3,6 @@
 import React from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { useTimetable } from '@/context/TimetableContext';
 import { 
   Lock, 
   LogOut, 
@@ -24,7 +23,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenUserManagement,
 }) => {
   const { currentUser, currentRole, isAuthenticated, logout } = useAuth();
-  const { activeSemester, lastSyncTime } = useTimetable();
 
   const getRoleBadge = () => {
     switch (currentRole) {
@@ -83,22 +81,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </span>
               </div>
               <p className="text-[11px] font-medium text-slate-500">
-                Timetable Portal • Management Sciences & Computer Science
+                Timetable Portal • Faculty of Management Sciences
               </p>
             </div>
           </Link>
 
-          {/* Center: Live Sync & Academic Term */}
-          <div className="hidden xl:flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-slate-50 border border-slate-200/80 text-xs text-slate-600 shadow-2xs">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span className="font-semibold text-slate-800">
-              {activeSemester?.name || 'Fall 2026 Term'}
-            </span>
-            <span className="text-slate-300">|</span>
-            <span className="text-slate-500 text-[11px] font-mono">Synced {lastSyncTime}</span>
+          {/* Center: Salim Habib University Logo */}
+          <div className="flex items-center justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/shu-logo.png"
+              alt="Salim Habib University"
+              className="h-10 sm:h-12 w-auto object-contain"
+            />
           </div>
 
           {/* Right: Auth Profile & Login Action */}
@@ -145,11 +140,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-                  <GraduationCap className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Public View</span>
-                </span>
-
                 <Link
                   href="/login"
                   className="flex items-center gap-1.5 px-3.5 sm:px-4 py-2 text-xs font-bold text-white bg-shu-700 hover:bg-shu-800 rounded-xl shadow-sm hover:shadow transition-all"

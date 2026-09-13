@@ -162,7 +162,7 @@ export function exportTimetableToPDF(params: ExportDataParams): void {
   doc.setFontSize(8.5);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 116, 139); // Slate 500
-  doc.text('Faculty of Management Sciences • Faculty of Computer Science • Official Timetable Portal', 22, 22);
+  doc.text('Faculty of Management Sciences • Official Timetable Portal', 22, 22);
 
   // Top Metadata Badges (Right side)
   doc.setFillColor(241, 245, 249); // Slate 100

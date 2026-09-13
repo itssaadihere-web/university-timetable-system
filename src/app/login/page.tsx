@@ -121,7 +121,7 @@ export default function LoginPage() {
                 Fatima Business School
               </h1>
               <p className="text-xs sm:text-sm font-medium text-slate-300 mt-2">
-                Faculty of Management Sciences & Faculty of Computer Science
+                Faculty of Management Sciences
               </p>
               <div className="w-12 h-1 bg-shu-600 rounded-full my-4"></div>
               <p className="text-xs text-slate-400 leading-relaxed">

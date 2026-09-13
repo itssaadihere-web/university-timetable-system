@@ -26,6 +26,7 @@ import {
   formatTimeRange, 
   timeToMinutes 
 } from '@/lib/conflict-engine';
+import { ScheduleChangeConfirmModal, PendingScheduleChange } from '@/components/modals/ScheduleChangeConfirmModal';
 
 interface RoomAllocationModalProps {
   isOpen: boolean;
@@ -45,7 +46,11 @@ export const RoomAllocationModal: React.FC<RoomAllocationModalProps> = ({
     faculty,
     batches,
     updateSession,
+    dispatchScheduleEmailAlert,
   } = useTimetable();
+
+  const [pendingChange, setPendingChange] = useState<PendingScheduleChange | null>(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState<boolean>(false);
 
   const [selectedBatchFilter, setSelectedBatchFilter] = useState<string>('ALL');
   const [selectedDayFilter, setSelectedDayFilter] = useState<string>('ALL');
@@ -113,31 +118,64 @@ export const RoomAllocationModal: React.FC<RoomAllocationModalProps> = ({
     }));
   };
 
-  const handleAssignSingle = async (session: ClassSession) => {
+  const handleAssignSingle = (session: ClassSession) => {
     const chosenRoomId = pendingSelections[session.id];
     if (!chosenRoomId) {
       setFeedbackMsg({ type: 'error', text: 'Please select a classroom first.' });
       return;
     }
 
+    setFeedbackMsg(null);
+    setPendingChange({
+      session,
+      targetDay: session.day_of_week,
+      targetStartTime: session.start_time,
+      targetEndTime: session.end_time,
+      targetRoomId: chosenRoomId,
+      changeType: 'ROOM_ASSIGNMENT',
+    });
+    setIsConfirmModalOpen(true);
+  };
+
+  const handleConfirmRoomAllocation = async (sendEmail: boolean) => {
+    if (!pendingChange) return;
+
+    const { session, targetRoomId } = pendingChange;
+    if (!targetRoomId) return;
+
     setSavingSessionId(session.id);
     setFeedbackMsg(null);
 
     const updated: ClassSession = {
       ...session,
-      room_id: chosenRoomId,
+      room_id: targetRoomId,
     };
 
     const res = await updateSession(updated);
     setSavingSessionId(null);
 
     if (res.success) {
-      const roomObj = rooms.find((r) => r.id === chosenRoomId);
+      const roomObj = rooms.find((r) => r.id === targetRoomId);
       const crsObj = courses.find((c) => c.id === session.course_id);
-      setFeedbackMsg({
-        type: 'success',
-        text: `Assigned ${roomObj?.name || 'room'} to ${crsObj?.code || 'class'} successfully!`,
-      });
+
+      if (sendEmail) {
+        await dispatchScheduleEmailAlert({
+          eventType: 'ROOM_ASSIGNMENT',
+          previousSession: session,
+          updatedSession: updated,
+          sendEmailNotification: true,
+        });
+        setFeedbackMsg({
+          type: 'success',
+          text: `Assigned ${roomObj?.name || 'room'} to ${crsObj?.code || 'class'} & dispatched confirmation emails!`,
+        });
+      } else {
+        setFeedbackMsg({
+          type: 'success',
+          text: `Assigned ${roomObj?.name || 'room'} to ${crsObj?.code || 'class'} successfully! (Email skipped)`,
+        });
+      }
+
       // Clear pending
       setPendingSelections((prev) => {
         const next = { ...prev };
@@ -501,6 +539,17 @@ export const RoomAllocationModal: React.FC<RoomAllocationModalProps> = ({
         </div>
 
       </div>
+
+      {/* Confirmation Modal with Default-Checked Email Toggle */}
+      <ScheduleChangeConfirmModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => {
+          setIsConfirmModalOpen(false);
+          setPendingChange(null);
+        }}
+        pendingChange={pendingChange}
+        onConfirm={handleConfirmRoomAllocation}
+      />
     </div>
   );
 };

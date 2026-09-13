@@ -9,6 +9,7 @@ import { StudentAdvisingModule } from '@/components/advising/StudentAdvisingModu
 import { MakeupClassManager } from '@/components/makeup/MakeupClassManager';
 import { AnalyticsReports } from '@/components/reports/AnalyticsReports';
 import { RoomAllocationModal } from '@/components/modals/RoomAllocationModal';
+import { WhatsAppAgentManager } from '@/components/whatsapp/WhatsAppAgentManager';
 import { ClassSession } from '@/types';
 import { 
   Sparkles, 
@@ -24,7 +25,8 @@ import {
   Upload,
   AlertTriangle,
   DoorOpen,
-  ArrowRight
+  ArrowRight,
+  MessageSquare
 } from 'lucide-react';
 
 interface CoordinatorDashboardProps {
@@ -47,7 +49,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
   const { currentUser } = useAuth();
   const { sessions, rooms, advisingSuggestions, makeupRequests, activeSemester } = useTimetable();
 
-  const [activeTab, setActiveTab] = useState<'matrix' | 'advising' | 'makeup' | 'analytics'>('matrix');
+  const [activeTab, setActiveTab] = useState<'matrix' | 'advising' | 'makeup' | 'analytics' | 'whatsapp'>('matrix');
   const [isRoomAllocationOpen, setIsRoomAllocationOpen] = useState<boolean>(false);
 
   const draftSessionsCount = sessions.filter((s) => s.status === 'draft').length;
@@ -80,7 +82,7 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
               {currentUser?.name || 'Program Coordinator'}
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 mt-1.5 max-w-xl leading-relaxed">
-              Centralized timetable management with automated 3D conflict prevention for Management Sciences & Computer Science.
+              Centralized timetable management with automated 3D conflict prevention for Faculty of Management Sciences.
             </p>
           </div>
 
@@ -235,6 +237,19 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
           <BarChart3 className="w-4 h-4" />
           <span>Load & Room Reports</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab('whatsapp')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'whatsapp'
+              ? 'bg-emerald-700 text-white shadow-2xs'
+              : 'text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200'
+          }`}
+        >
+          <MessageSquare className="w-4 h-4 text-emerald-600" />
+          <span>WhatsApp AI Agent</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        </button>
       </div>
 
       {/* Main Tab Content */}
@@ -253,6 +268,8 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
       {activeTab === 'makeup' && <MakeupClassManager />}
 
       {activeTab === 'analytics' && <AnalyticsReports />}
+
+      {activeTab === 'whatsapp' && <WhatsAppAgentManager />}
 
       {/* Room Allocation Modal */}
       <RoomAllocationModal

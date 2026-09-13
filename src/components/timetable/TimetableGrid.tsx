@@ -15,6 +15,7 @@ import { useTimetable } from '@/context/TimetableContext';
 import { ClassSession } from '@/types';
 import { DroppableTimeSlot } from './DroppableTimeSlot';
 import { DraggableSessionCard } from './DraggableSessionCard';
+import { ScheduleChangeConfirmModal, PendingScheduleChange } from '@/components/modals/ScheduleChangeConfirmModal';
 import { 
   TIME_SLOTS_30MIN, 
   TIMETABLE_DAYS, 
@@ -84,6 +85,8 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
     moveSession,
     deleteSession,
     setSessionLock,
+    validateSession,
+    dispatchScheduleEmailAlert,
     courses,
     batches,
     faculty,
@@ -92,6 +95,9 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
 
   const [activeSession, setActiveSession] = useState<ClassSession | null>(null);
   const [conflictAlert, setConflictAlert] = useState<string[] | null>(null);
+  const [changeFeedback, setChangeFeedback] = useState<string | null>(null);
+  const [pendingChange, setPendingChange] = useState<PendingScheduleChange | null>(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState<boolean>(false);
   const [mobileActiveDay, setMobileActiveDay] = useState<number>(1);
   const [showWeekendExceptions, setShowWeekendExceptions] = useState<boolean>(false);
 
@@ -215,19 +221,71 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
       return;
     }
 
-    // Attempt move via context conflict engine
+    // Step 1: Pre-validate using centralized conflict engine
+    const proposed: ClassSession = {
+      ...session,
+      day_of_week: overData.dayOfWeek,
+      start_time: overData.startTime,
+      end_time: newEndTime,
+    };
+
+    const validation = validateSession(proposed);
+    if (!validation.valid) {
+      // Show explicit categorized clash
+      setConflictAlert(validation.errors);
+      setTimeout(() => setConflictAlert(null), 9000);
+      return;
+    }
+
+    // Step 2: Open Confirmation Modal with Default-Checked Email Notification
+    setConflictAlert(null);
+    setPendingChange({
+      session,
+      targetDay: overData.dayOfWeek,
+      targetStartTime: overData.startTime,
+      targetEndTime: newEndTime,
+      targetRoomId: session.room_id,
+      changeType: 'DRAG_MOVE',
+    });
+    setIsConfirmModalOpen(true);
+  };
+
+  const handleConfirmScheduleChange = async (sendEmail: boolean) => {
+    if (!pendingChange) return;
+
+    const { session, targetDay, targetStartTime, targetEndTime, targetRoomId } = pendingChange;
     const result = await moveSession(
       session.id,
-      overData.dayOfWeek,
-      overData.startTime,
-      newEndTime
+      targetDay,
+      targetStartTime,
+      targetEndTime,
+      targetRoomId || undefined
     );
 
-    if (!result.success && result.errors) {
+    if (result.success) {
+      const updatedSession: ClassSession = {
+        ...session,
+        day_of_week: targetDay,
+        start_time: targetStartTime,
+        end_time: targetEndTime,
+        room_id: targetRoomId || session.room_id,
+      };
+
+      if (sendEmail) {
+        await dispatchScheduleEmailAlert({
+          eventType: 'RESCHEDULE_CLASS',
+          previousSession: session,
+          updatedSession,
+          sendEmailNotification: true,
+        });
+        setChangeFeedback('✅ Timetable reshuffled successfully! Email notifications dispatched to Instructor, HOD, Admin, and Students.');
+      } else {
+        setChangeFeedback('✅ Timetable reshuffled successfully (email notifications skipped as unchecked).');
+      }
+
+      setTimeout(() => setChangeFeedback(null), 6000);
+    } else if (result.errors) {
       setConflictAlert(result.errors);
-      setTimeout(() => setConflictAlert(null), 8000);
-    } else {
-      setConflictAlert(null);
     }
   };
 
@@ -239,6 +297,22 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
 
   return (
     <div className="space-y-4">
+      {/* Change Success & Email Dispatch Banner */}
+      {changeFeedback && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 shadow-sm animate-fadeIn flex items-center justify-between gap-3 text-emerald-900 text-xs font-bold">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            <span>{changeFeedback}</span>
+          </div>
+          <button
+            onClick={() => setChangeFeedback(null)}
+            className="text-emerald-700 hover:text-emerald-900 px-2 py-1 rounded-lg hover:bg-emerald-100 transition-colors cursor-pointer"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Conflict Alert Banner */}
       {conflictAlert && (
         <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 shadow-sm animate-shake">
@@ -523,6 +597,17 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      {/* Multi-Stakeholder Schedule Change Confirmation & Email Dispatch Modal */}
+      <ScheduleChangeConfirmModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => {
+          setIsConfirmModalOpen(false);
+          setPendingChange(null);
+        }}
+        pendingChange={pendingChange}
+        onConfirm={handleConfirmScheduleChange}
+      />
     </div>
   );
 };

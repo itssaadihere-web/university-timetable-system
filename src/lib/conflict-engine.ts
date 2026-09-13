@@ -249,22 +249,22 @@ export function validateSessionConflicts(ctx: ConflictCheckContext): ConflictVal
     const exBatch = batches.find((b) => b.id === existing.batch_id);
 
     if (isDirectOverlap) {
-      // 1. Room Double-Booking (Only evaluated if a physical room is assigned)
+      // 1. Room Unavailable Clash (Only evaluated if a physical room is assigned)
       const isPhysicalRoomAssigned = Boolean(roomId && roomId.trim() !== '');
       if (isPhysicalRoomAssigned && existing.room_id === roomId) {
         errors.push(
-          `Room Double-Booking: Room "${roomName}" is already booked for "${exCourseName}" with batch "${exBatch?.name || 'Batch'}" from ${existing.start_time} to ${existing.end_time}.`
+          `[Room Unavailable Clash]: Room "${roomName}" is occupied by "${exCourseName}" for batch "${exBatch?.name || 'Batch'}" from ${existing.start_time} to ${existing.end_time}.`
         );
       }
 
-      // 2. Faculty Double-Booking
+      // 2. Teacher Clash (Faculty Double-Booking)
       if (existing.faculty_id === facultyId) {
         errors.push(
-          `Faculty Double-Booking: ${facultyName} is already teaching "${exCourseName}" in Room "${exRoom?.name || 'Room'}" from ${existing.start_time} to ${existing.end_time}.`
+          `[Teacher Clash]: Instructor ${facultyName} is already teaching "${exCourseName}" in Room "${exRoom?.name || 'Room'}" from ${existing.start_time} to ${existing.end_time}.`
         );
       }
 
-      // 3. Batch Double-Booking
+      // 3. Student's Clash (Batch Double-Booking)
       const isSameBatch = existing.batch_id === batchId;
       const isSameMergeGroup =
         Boolean(batchGroupId) && Boolean(existing.batch_group_id) && existing.batch_group_id === batchGroupId;
@@ -280,7 +280,7 @@ export function validateSessionConflicts(ctx: ConflictCheckContext): ConflictVal
 
         if (!isApprovedMergeSession) {
           errors.push(
-            `Batch Double-Booking: Batch "${batchName}" is already scheduled for "${exCourseName}" in Room "${exRoom?.name || 'Room'}" from ${existing.start_time} to ${existing.end_time}.`
+            `[Student's Batch Clash]: Students in Batch "${batchName}" already have "${exCourseName}" in Room "${exRoom?.name || 'Room'}" from ${existing.start_time} to ${existing.end_time}.`
           );
         }
       }
@@ -294,9 +294,9 @@ export function validateSessionConflicts(ctx: ConflictCheckContext): ConflictVal
 
       if (isBufferViolation) {
         const entityLabel =
-          existing.faculty_id === facultyId ? `Faculty (${facultyName})` : `Batch (${batchName})`;
+          existing.faculty_id === facultyId ? `Instructor (${facultyName})` : `Students of Batch (${batchName})`;
         errors.push(
-          `15-Minute Buffer Violation: Less than 15-minute transition gap with adjacent class "${exCourseName}" (${existing.start_time} - ${existing.end_time}) for ${entityLabel}.`
+          `[15-Minute Transition Buffer Clash]: Less than 15-minute gap with adjacent class "${exCourseName}" (${existing.start_time} - ${existing.end_time}) for ${entityLabel}.`
         );
       }
     }

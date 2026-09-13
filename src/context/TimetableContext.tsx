@@ -102,6 +102,13 @@ interface TimetableContextType {
   updateFaculty: (updated: Faculty) => Promise<{ success: boolean; errors?: string[] }>;
   updateRoom: (updated: Room) => Promise<{ success: boolean; errors?: string[] }>;
   syncAllToSupabase: () => Promise<{ success: boolean; message: string }>;
+  dispatchScheduleEmailAlert: (payload: {
+    eventType: 'RESCHEDULE_CLASS' | 'ROOM_ASSIGNMENT' | 'MAKEUP_CLASS' | 'SESSION_CANCELLED';
+    previousSession?: Partial<ClassSession> | null;
+    updatedSession: ClassSession;
+    sendEmailNotification: boolean;
+    reason?: string;
+  }) => Promise<{ success: boolean; message?: string }>;
 }
 
 const TimetableContext = createContext<TimetableContextType | null>(null);
@@ -761,6 +768,50 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     return { success: true };
   };
 
+  // Dispatch Email Alerts via Email Agent API
+  const dispatchScheduleEmailAlert = async (payload: {
+    eventType: 'RESCHEDULE_CLASS' | 'ROOM_ASSIGNMENT' | 'MAKEUP_CLASS' | 'SESSION_CANCELLED';
+    previousSession?: Partial<ClassSession> | null;
+    updatedSession: ClassSession;
+    sendEmailNotification: boolean;
+    reason?: string;
+  }): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const crs = courses.find((c) => c.id === payload.updatedSession.course_id);
+      const fac = faculty.find((f) => f.id === payload.updatedSession.faculty_id);
+      const b = batches.find((b) => b.id === payload.updatedSession.batch_id);
+      const rm = rooms.find((r) => r.id === payload.updatedSession.room_id);
+      const prevRm = payload.previousSession ? rooms.find((r) => r.id === payload.previousSession?.room_id) : undefined;
+
+      const res = await fetch('/api/email/dispatch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventType: payload.eventType,
+          previousSession: payload.previousSession,
+          updatedSession: payload.updatedSession,
+          coordinatorName: currentUserName,
+          coordinatorEmail: 'coordinator@shu.edu.pk',
+          sendEmailNotification: payload.sendEmailNotification,
+          reason: payload.reason,
+          metadata: {
+            course: crs,
+            faculty: fac,
+            batch: b,
+            room: rm,
+            previousRoom: prevRm,
+          },
+        }),
+      });
+
+      const data = await res.json();
+      return { success: data.success, message: data.message };
+    } catch (e: any) {
+      console.warn('Email dispatch failed:', e);
+      return { success: false, message: e?.message };
+    }
+  };
+
   const sortedRooms = [...rooms].sort((a, b) =>
     a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
   );
@@ -808,6 +859,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         updateFaculty,
         updateRoom,
         syncAllToSupabase,
+        dispatchScheduleEmailAlert,
       }}
     >
       {children}

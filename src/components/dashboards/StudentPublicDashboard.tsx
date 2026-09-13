@@ -115,7 +115,7 @@ export const StudentPublicDashboard: React.FC = () => {
               Weekly Timetable & Lecture Schedules
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 mt-1.5 max-w-xl leading-relaxed">
-              Official course schedules for <span className="font-semibold text-white">Faculty of Management Sciences</span> and <span className="font-semibold text-white">Faculty of Computer Science</span>.
+              Official course schedules for <span className="font-semibold text-white">Faculty of Management Sciences</span>.
             </p>
           </div>
 

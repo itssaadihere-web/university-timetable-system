@@ -134,8 +134,6 @@ export default function AppMainPage() {
           </div>
           <div className="flex items-center gap-3 text-[11px] text-slate-400">
             <span>Faculty of Management Sciences</span>
-            <span className="text-slate-300">•</span>
-            <span>Faculty of Computer Science</span>
           </div>
         </div>
       </footer>
