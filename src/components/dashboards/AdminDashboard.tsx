@@ -8,7 +8,6 @@ import { AnalyticsReports } from '@/components/reports/AnalyticsReports';
 import { TimetableFilterBar } from '@/components/timetable/TimetableFilterBar';
 import { TimetableGrid } from '@/components/timetable/TimetableGrid';
 import { RoomAllocationModal } from '@/components/modals/RoomAllocationModal';
-import { WhatsAppAgentManager } from '@/components/whatsapp/WhatsAppAgentManager';
 import { ClassSession } from '@/types';
 import { 
   Users, 
@@ -27,8 +26,7 @@ import {
   History,
   Building2,
   ArrowRight,
-  TrendingUp,
-  MessageSquare
+  TrendingUp
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -49,7 +47,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const { currentUser, userAccounts } = useAuth();
   const { sessions, rooms, faculty, courses, batches, activeSemester } = useTimetable();
 
-  const [adminTab, setAdminTab] = useState<'overview' | 'matrix' | 'analytics' | 'audit' | 'whatsapp'>('overview');
+  const [adminTab, setAdminTab] = useState<'overview' | 'matrix' | 'analytics' | 'audit'>('overview');
   const [isRoomAllocationOpen, setIsRoomAllocationOpen] = useState<boolean>(false);
 
   const publishedCount = sessions.filter((s) => s.status === 'published').length;
@@ -265,19 +263,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <History className="w-4 h-4" />
           <span>System Audit Trail</span>
         </button>
-
-        <button
-          onClick={() => setAdminTab('whatsapp')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            adminTab === 'whatsapp'
-              ? 'bg-emerald-700 text-white shadow-2xs'
-              : 'text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200'
-          }`}
-        >
-          <MessageSquare className="w-4 h-4 text-emerald-600" />
-          <span>WhatsApp AI Agent Hub</span>
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        </button>
       </div>
 
       {/* Tab 1: Overview Quick Cards */}
@@ -346,8 +331,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {adminTab === 'analytics' && <AnalyticsReports />}
 
       {adminTab === 'audit' && <AuditLogViewer />}
-
-      {adminTab === 'whatsapp' && <WhatsAppAgentManager />}
 
       {/* Room Allocation Modal */}
       <RoomAllocationModal

@@ -92,42 +92,72 @@ async function getActiveDatasets() {
   return { students, batches, courses, faculty, rooms, sessions };
 }
 
-/**
- * POST Handler for Processing Incoming Messages from WhatsApp Cloud API or Twilio
- */
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-
     let fromPhone = '';
     let messageText = '';
+    let body: any = {};
 
-    // Case 1: Standard Meta WhatsApp Cloud API Payload
-    if (body.object === 'whatsapp_business_account' || body.entry) {
-      const entry = body.entry?.[0];
-      const change = entry?.changes?.[0];
-      const value = change?.value;
-      const message = value?.messages?.[0];
+    const contentType = req.headers.get('content-type') || '';
 
-      if (!message) {
-        // Status updates (delivered, read, etc.)
-        return NextResponse.json({ status: 'ignored_status_update' });
+    // Handle Form URL Encoded (Default Twilio Webhook Format)
+    if (contentType.includes('application/x-www-form-urlencoded')) {
+      const formData = await req.formData();
+      fromPhone = (formData.get('From') as string) || (formData.get('from') as string) || '';
+      messageText = (formData.get('Body') as string) || (formData.get('body') as string) || (formData.get('message') as string) || '';
+    } else {
+      // Handle JSON Payloads
+      body = await req.json();
+
+      // Case 1: Standard Meta WhatsApp Cloud API Payload
+      if (body.object === 'whatsapp_business_account' || body.entry) {
+        const entry = body.entry?.[0];
+        const change = entry?.changes?.[0];
+        const value = change?.value;
+        const message = value?.messages?.[0];
+
+        if (!message) {
+          // Status updates (delivered, read, etc.)
+          return NextResponse.json({ status: 'ignored_status_update' });
+        }
+
+        fromPhone = message.from;
+        if (message.type === 'text') {
+          messageText = message.text?.body || '';
+        } else if (message.type === 'button') {
+          messageText = message.button?.text || message.button?.payload || '';
+        } else if (message.type === 'interactive') {
+          messageText = message.interactive?.button_reply?.title || message.interactive?.list_reply?.title || '';
+        }
+      } 
+      // Case 2: Twilio JSON Payload
+      else if (body.From && (body.Body || body.body)) {
+        fromPhone = body.From;
+        messageText = body.Body || body.body || '';
       }
-
-      fromPhone = message.from;
-      if (message.type === 'text') {
-        messageText = message.text?.body || '';
-      } else if (message.type === 'button') {
-        messageText = message.button?.text || message.button?.payload || '';
-      } else if (message.type === 'interactive') {
-        messageText = message.interactive?.button_reply?.title || message.interactive?.list_reply?.title || '';
+      // Case 3: UltraMsg / Green API Webhook Payload
+      else if (body.data?.from || body.from) {
+        fromPhone = body.data?.from || body.from || '';
+        messageText = body.data?.body || body.body || body.message || body.data?.message || '';
       }
-    } 
-    // Case 2: Custom JSON Direct Test Call (e.g. from Coordinator Dashboard)
-    else if (body.phoneNumber && body.message) {
-      fromPhone = body.phoneNumber;
-      messageText = body.message;
+      // Case 4: Evolution API / Baileys QR Webhook Payload
+      else if (body.data?.key?.remoteJid || body.key?.remoteJid) {
+        fromPhone = body.data?.key?.remoteJid || body.key?.remoteJid || '';
+        messageText = 
+          body.data?.message?.conversation || 
+          body.data?.message?.extendedTextMessage?.text || 
+          body.message?.conversation || 
+          body.message?.extendedTextMessage?.text || '';
+      }
+      // Case 5: Generic JSON direct format { phoneNumber/sender, message/text }
+      else if (body.phoneNumber || body.sender || body.phone) {
+        fromPhone = body.phoneNumber || body.sender || body.phone;
+        messageText = body.message || body.text || '';
+      }
     }
+
+    // Clean phone number (strip "whatsapp:" and "@c.us" / "@s.whatsapp.net")
+    fromPhone = fromPhone.replace('whatsapp:', '').replace('@c.us', '').replace('@s.whatsapp.net', '').trim();
 
     if (!fromPhone || !messageText) {
       return NextResponse.json({ error: 'Missing phoneNumber or message body' }, { status: 400 });
@@ -158,8 +188,10 @@ export async function POST(req: NextRequest) {
       senderPhone: fromPhone,
       studentInput: messageText,
       agentReply: result.replyText,
-      conversationState: result.sessionState.state,
-      pendingIntent: result.sessionState.pendingIntent,
+      isIdentified: result.sessionState.isIdentified,
+      studentName: result.sessionState.studentName,
+      batchName: result.sessionState.batchName,
+      rollNumber: result.sessionState.rollNumber,
       metaDispatchStatus: dispatchRes,
       timestamp: new Date().toISOString(),
     });

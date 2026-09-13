@@ -21,20 +21,23 @@ export interface WhatsAppConversationSession {
   phoneNumber: string;
   studentId?: string;
   studentName?: string;
+  rollNumber?: string;
   batchId?: string;
   batchName?: string;
+  program?: string;
+  isIdentified: boolean;
   pendingIntent?: {
-    type: 'full_timetable' | 'next_class' | 'room_navigation' | 'course_schedule' | 'general';
-    quotedSummary: string;
+    type: 'full_timetable' | 'next_class' | 'today_schedule' | 'tomorrow_schedule' | 'day_schedule' | 'room_navigation' | 'course_schedule' | 'faculty_schedule';
     targetCourseId?: string;
+    targetFacultyId?: string;
     targetRoomId?: string;
     targetDay?: number;
+    originalQuestion?: string;
   } | null;
-  state: 'IDLE' | 'AWAITING_CONFIRMATION';
   lastActivity: number;
 }
 
-// In-Memory store for conversation states
+// In-Memory store for conversation sessions (keyed by student phone number)
 const conversationStore: Record<string, WhatsAppConversationSession> = {};
 
 export interface ProcessMessageContext {
@@ -46,7 +49,7 @@ export interface ProcessMessageContext {
   faculty: Faculty[];
   rooms: Room[];
   sessions: ClassSession[];
-  customTimeStr?: string; // e.g. "10:15" for testing
+  customTimeStr?: string; // For simulation/testing (e.g. "10:15")
   customDayOfWeek?: number; // 1-7 for testing
 }
 
@@ -57,262 +60,437 @@ export interface ProcessMessageResult {
 }
 
 /**
- * Normalizes text for matching
+ * Normalizes input text for case-insensitive matching
  */
 function clean(str: string): string {
   return (str || '').toLowerCase().trim();
 }
 
 /**
- * Detects if the incoming message is a confirmation
+ * Removes punctuation/special characters for fuzzy comparison
  */
-function isConfirmation(text: string): boolean {
-  const t = clean(text);
-  const positiveAnswers = [
-    '1', 'yes', 'y', 'confirm', 'confirmed', 'ok', 'okay', 
-    'haan', 'ha', 'sahi hai', 'proceed', 'send', 'dikhao', 'tell me', 'yep', 'sure', 'pls send'
-  ];
-  return positiveAnswers.includes(t) || t.startsWith('yes') || t.startsWith('confirm');
+function alphanumericOnly(str: string): string {
+  return (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
 /**
- * Main WhatsApp Multi-Turn Conversation Processor
+ * Checks if a string contains any day of week and returns day ID (1=Mon ... 7=Sun)
+ */
+function extractDayOfWeek(text: string): { dayId: number; dayName: string } | null {
+  const t = clean(text);
+  if (t.includes('mon') || t.includes('somwar') || t.includes('peer')) return { dayId: 1, dayName: 'Monday' };
+  if (t.includes('tue') || t.includes('mangal')) return { dayId: 2, dayName: 'Tuesday' };
+  if (t.includes('wed') || t.includes('budh')) return { dayId: 3, dayName: 'Wednesday' };
+  if (t.includes('thu') || t.includes('jumerat') || t.includes('jummarat')) return { dayId: 4, dayName: 'Thursday' };
+  if (t.includes('fri') || t.includes('jumma') || t.includes('juma')) return { dayId: 5, dayName: 'Friday' };
+  if (t.includes('sat') || t.includes('hafta') || t.includes('saturday')) return { dayId: 6, dayName: 'Saturday' };
+  if (t.includes('sun') || t.includes('itwar') || t.includes('sunday')) return { dayId: 7, dayName: 'Sunday' };
+  return null;
+}
+
+/**
+ * Main WhatsApp Conversational Engine
  */
 export function processIncomingWhatsAppMessage(ctx: ProcessMessageContext): ProcessMessageResult {
   const { phoneNumber, incomingText, students, batches, courses, faculty, rooms, sessions } = ctx;
   const rawText = incomingText.trim();
   const lowerText = clean(rawText);
+  const alphaText = alphanumericOnly(rawText);
 
+  // 1. Retrieve or initialize user conversation session
   let session = conversationStore[phoneNumber];
   if (!session) {
     session = {
       phoneNumber,
-      state: 'IDLE',
+      isIdentified: false,
       lastActivity: Date.now(),
     };
     conversationStore[phoneNumber] = session;
   }
   session.lastActivity = Date.now();
 
-  // -------------------------------------------------------------
-  // STEP 1: Handle User in 'AWAITING_CONFIRMATION' State
-  // -------------------------------------------------------------
-  if (session.state === 'AWAITING_CONFIRMATION' && session.pendingIntent) {
-    if (isConfirmation(lowerText)) {
-      // Execute the pending action
-      const intent = session.pendingIntent;
-      session.state = 'IDLE';
-      session.pendingIntent = null;
+  // 2. Check for reset or logout command
+  if (lowerText === 'reset' || lowerText === 'logout' || lowerText === 'change user' || lowerText === 'switch student' || lowerText === 'restart') {
+    conversationStore[phoneNumber] = {
+      phoneNumber,
+      isIdentified: false,
+      lastActivity: Date.now(),
+    };
+    const reply = [
+      `🔄 *Session Reset Successfully!*`,
+      ``,
+      `🎓 *Welcome to Salim Habib University (SHU) Timetable Assistant!*`,
+      `Please provide your *Student Roll Number / ID* (e.g. \`AF-2026-001\`), *Full Name*, or *Batch / Section* (e.g. \`Section 1A\`, \`BAN-2\`) to get started.`,
+    ].join('\n');
 
-      const reply = executeConfirmedIntent(intent, session, {
-        students,
-        batches,
-        courses,
-        faculty,
-        rooms,
-        sessions,
-        customTimeStr: ctx.customTimeStr,
-        customDayOfWeek: ctx.customDayOfWeek,
-      });
-
-      return {
-        replyText: reply,
-        sessionState: session,
-        dispatchedToPhone: phoneNumber,
-      };
-    } else {
-      // Student declined or provided new instructions
-      session.state = 'IDLE';
-      session.pendingIntent = null;
-      // Fall through to parse new message
-    }
+    return { replyText: reply, sessionState: conversationStore[phoneNumber], dispatchedToPhone: phoneNumber };
   }
 
-  // -------------------------------------------------------------
-  // STEP 2: Intent Parsing & Entity Extraction
-  // -------------------------------------------------------------
+  // 3. Identification Check: Roll Number / Student ID / Name / Batch
+  let identifiedNow = false;
+  let matchedStudent: Student | undefined = undefined;
 
-  // Check 1: Did the student provide a Student Roll Number or ID?
-  const matchedStudent = students.find((s) => {
+  // A. Check by Student ID / Roll Number
+  matchedStudent = students.find((s) => {
+    const sAlpha = alphanumericOnly(s.roll_number);
+    const sClean = clean(s.roll_number);
     return (
-      clean(s.roll_number) === lowerText ||
-      lowerText.includes(clean(s.roll_number)) ||
-      (s.roll_number.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() === lowerText.replace(/[^a-zA-Z0-9]/g, ''))
+      sClean === lowerText ||
+      lowerText.includes(sClean) ||
+      alphaText === sAlpha ||
+      alphaText.includes(sAlpha) ||
+      (sAlpha.length > 4 && alphaText.includes(sAlpha))
     );
   });
 
+  // B. Check by Student Name if not matched by Roll Number
+  if (!matchedStudent) {
+    const matchingByName = students.filter((s) => {
+      const nameParts = clean(s.name).split(' ');
+      const sFullAlpha = alphanumericOnly(s.name);
+      return (
+        alphaText.includes(sFullAlpha) ||
+        (lowerText.length > 3 && clean(s.name) === lowerText) ||
+        nameParts.some((part) => part.length >= 4 && (lowerText.startsWith(part) || lowerText.includes(`i am ${part}`) || lowerText.includes(`name is ${part}`)))
+      );
+    });
+
+    if (matchingByName.length === 1) {
+      matchedStudent = matchingByName[0];
+    }
+  }
+
+  // If a student record is found, update session
   if (matchedStudent) {
-    const studentBatch = batches.find((b) => b.id === matchedStudent.batch_id);
+    const studentBatch = batches.find((b) => b.id === matchedStudent!.batch_id);
     session.studentId = matchedStudent.id;
     session.studentName = matchedStudent.name;
+    session.rollNumber = matchedStudent.roll_number;
     session.batchId = matchedStudent.batch_id;
-    session.batchName = studentBatch ? `${studentBatch.name} (${studentBatch.program})` : 'Assigned Batch';
-
-    session.state = 'AWAITING_CONFIRMATION';
-    session.pendingIntent = {
-      type: 'full_timetable',
-      quotedSummary: `Full Weekly Timetable for ${matchedStudent.name} (Roll: ${matchedStudent.roll_number}, Batch: ${session.batchName})`,
-    };
-
-    const reply = [
-      `👋 *Hello ${matchedStudent.name}!*`,
-      `We found your student profile:`,
-      `🎓 *Roll No:* ${matchedStudent.roll_number}`,
-      `📚 *Enrolled Batch:* ${session.batchName}`,
-      ``,
-      `❓ *Reconfirmation:*`,
-      `You requested your *Weekly Class Timetable*.`,
-      `Please reply *'1'* or *'Yes'* to confirm and view your complete schedule.`,
-    ].join('\n');
-
-    return { replyText: reply, sessionState: session, dispatchedToPhone: phoneNumber };
+    session.batchName = studentBatch ? studentBatch.name : 'Enrolled Batch';
+    session.program = studentBatch ? studentBatch.program : 'Faculty of Management Sciences';
+    session.isIdentified = true;
+    identifiedNow = true;
   }
 
-  // Check 2: Did user mention a specific Batch Name?
-  const matchedBatch = batches.find((b) => {
-    const bName = clean(b.name);
-    const bProg = clean(b.program);
-    return lowerText.includes(bName) || (bProg && lowerText.includes(bProg) && lowerText.includes(`sem ${b.semester}`));
+  // C. Check by Batch / Section Name if not matched by individual student
+  if (!session.isIdentified) {
+    const matchedBatch = batches.find((b) => {
+      const bAlpha = alphanumericOnly(b.name);
+      return (
+        alphaText.includes(bAlpha) ||
+        lowerText.includes(clean(b.name)) ||
+        (b.name.toLowerCase().includes('section') && lowerText.includes(b.name.toLowerCase().replace('section ', 'sec ')))
+      );
+    });
+
+    if (matchedBatch) {
+      session.batchId = matchedBatch.id;
+      session.batchName = matchedBatch.name;
+      session.program = matchedBatch.program;
+      session.studentName = `Student (${matchedBatch.name})`;
+      session.isIdentified = true;
+      identifiedNow = true;
+    }
+  }
+
+  // 4. Intent Classification
+
+  // Query: Specific Room Navigation
+  const matchedRoom = rooms.find((r) => {
+    const rAlpha = alphanumericOnly(r.name);
+    const rIdAlpha = alphanumericOnly(r.id);
+    return (
+      alphaText.includes(rAlpha) ||
+      lowerText.includes(clean(r.name)) ||
+      (rIdAlpha.length > 3 && alphaText.includes(rIdAlpha))
+    );
   });
 
-  if (matchedBatch) {
-    session.batchId = matchedBatch.id;
-    session.batchName = `${matchedBatch.name} (${matchedBatch.program})`;
+  const isRoomQuery = 
+    Boolean(matchedRoom) ||
+    lowerText.includes('where is room') ||
+    lowerText.includes('where is') ||
+    lowerText.includes('room location') ||
+    lowerText.includes('navigate to') ||
+    lowerText.includes('how to reach') ||
+    lowerText.includes('room guidance') ||
+    lowerText.includes('floor directions') ||
+    lowerText.includes('kahan hai');
 
-    // Check if asking for next class or full timetable
-    const isNextClass = lowerText.includes('next') || lowerText.includes('upcoming') || lowerText.includes('ab konsi') || lowerText.includes('current');
-    const isRoom = lowerText.includes('room') || lowerText.includes('kahan') || lowerText.includes('location') || lowerText.includes('where');
-
-    session.state = 'AWAITING_CONFIRMATION';
-    session.pendingIntent = {
-      type: isNextClass ? 'next_class' : isRoom ? 'room_navigation' : 'full_timetable',
-      quotedSummary: isNextClass
-        ? `Next upcoming class schedule for ${session.batchName}`
-        : isRoom
-        ? `Classroom venue & navigation guidance for ${session.batchName}`
-        : `Complete timetable for Batch ${session.batchName}`,
-    };
-
-    const reply = [
-      `🏛️ *Batch Identified:* ${session.batchName}`,
-      ``,
-      `❓ *Reconfirmation:*`,
-      `You are inquiring about: *${session.pendingIntent.quotedSummary}*.`,
-      `Please reply *'1'* or *'Yes'* to proceed and receive the exact details on WhatsApp.`,
-    ].join('\n');
-
-    return { replyText: reply, sessionState: session, dispatchedToPhone: phoneNumber };
-  }
-
-  // Check 3: Next Class Query (for existing batch or general)
+  // Query: Next Class / Immediate Lecture
   const isNextClassQuery = 
-    lowerText.includes('next class') || 
-    lowerText.includes('next lecture') || 
-    lowerText.includes('upcoming class') || 
-    lowerText.includes('agli class') || 
-    lowerText.includes('class right now') || 
+    lowerText.includes('next class') ||
+    lowerText.includes('next lecture') ||
+    lowerText.includes('upcoming class') ||
+    lowerText.includes('upcoming lecture') ||
+    lowerText.includes('what is my next') ||
+    lowerText.includes('what class do i have') ||
+    lowerText.includes('where do i go now') ||
+    lowerText.includes('where is my class') ||
+    lowerText.includes('right now') ||
+    lowerText.includes('agli class') ||
     lowerText.includes('next');
 
-  if (isNextClassQuery) {
-    const targetBatchId = session.batchId || batches[0]?.id;
-    const targetBatchName = session.batchName || batches[0]?.name || 'Current Batch';
+  // Query: Today's Schedule
+  const isTodayQuery = 
+    lowerText.includes('today') ||
+    lowerText.includes('aaj') ||
+    lowerText.includes("today's schedule") ||
+    lowerText.includes("today's class");
 
-    session.state = 'AWAITING_CONFIRMATION';
-    session.pendingIntent = {
-      type: 'next_class',
-      quotedSummary: `Next class details & room location for ${targetBatchName}`,
-    };
+  // Query: Tomorrow's Schedule
+  const isTomorrowQuery = 
+    lowerText.includes('tomorrow') ||
+    lowerText.includes('kal');
 
-    const reply = [
-      `⏰ *Next Class Inquiry Recognized!*`,
-      `Batch: *${targetBatchName}*`,
-      ``,
-      `❓ *Reconfirmation:*`,
-      `Do you want to see the details of your *Next Upcoming Class* (Time, Course, Faculty, Room & Floor)?`,
-      `Please reply *'1'* or *'Yes'* to confirm.`,
-    ].join('\n');
+  // Query: Specific Day of Week
+  const extractedDay = extractDayOfWeek(lowerText);
 
-    return { replyText: reply, sessionState: session, dispatchedToPhone: phoneNumber };
-  }
+  // Query: Full Timetable
+  const isFullTimetableQuery = 
+    lowerText.includes('full timetable') ||
+    lowerText.includes('whole timetable') ||
+    lowerText.includes('complete schedule') ||
+    lowerText.includes('weekly schedule') ||
+    lowerText.includes('all classes') ||
+    lowerText.includes('pura timetable') ||
+    lowerText.includes('timetable') ||
+    lowerText.includes('schedule');
 
-  // Check 4: Specific Room / Navigation Query
-  const matchedRoom = rooms.find((r) => {
-    const rName = clean(r.name);
-    const rId = clean(r.id.replace('room-', ''));
-    return lowerText.includes(rName) || lowerText.includes(rId) || lowerText.includes(r.id.toLowerCase());
-  });
-
-  const isRoomQuery = lowerText.includes('room') || lowerText.includes('location') || lowerText.includes('kahan') || lowerText.includes('where is') || lowerText.includes('navigate') || lowerText.includes('floor');
-
-  if (matchedRoom || isRoomQuery) {
-    const targetRoom = matchedRoom || rooms[0];
-    session.state = 'AWAITING_CONFIRMATION';
-    session.pendingIntent = {
-      type: 'room_navigation',
-      quotedSummary: `Room navigation & floor directions for ${targetRoom.name}`,
-      targetRoomId: targetRoom.id,
-    };
-
-    const reply = [
-      `📍 *Campus Room Navigation Request*`,
-      `Target Room: *${targetRoom.name}* (${targetRoom.building})`,
-      ``,
-      `❓ *Reconfirmation:*`,
-      `You are asking for *Step-by-step Floor Navigation & Venue Details* for Room *${targetRoom.name}*.`,
-      `Please reply *'1'* or *'Yes'* to get full directions.`,
-    ].join('\n');
-
-    return { replyText: reply, sessionState: session, dispatchedToPhone: phoneNumber };
-  }
-
-  // Check 5: Specific Course Query (e.g. "Accounting class timing", "CSC-110")
+  // Query: Specific Course Inquiry
   const matchedCourse = courses.find((c) => {
-    return lowerText.includes(clean(c.code)) || lowerText.includes(clean(c.name));
+    const cCodeAlpha = alphanumericOnly(c.code);
+    const cNameClean = clean(c.name);
+    return (
+      alphaText.includes(cCodeAlpha) ||
+      lowerText.includes(clean(c.code)) ||
+      (cNameClean.length > 5 && lowerText.includes(cNameClean))
+    );
   });
 
-  if (matchedCourse) {
-    session.state = 'AWAITING_CONFIRMATION';
-    session.pendingIntent = {
-      type: 'course_schedule',
-      quotedSummary: `Scheduled classes and room venues for Course "${matchedCourse.code} - ${matchedCourse.name}"`,
-      targetCourseId: matchedCourse.id,
-    };
+  // Query: Specific Faculty Inquiry (only if instructor keywords or explicitly asking about faculty)
+  const isFacultyQuery = 
+    lowerText.includes('prof') || 
+    lowerText.includes('dr.') || 
+    lowerText.includes('dr ') || 
+    lowerText.includes('faculty') || 
+    lowerText.includes('instructor') || 
+    lowerText.includes('teacher') || 
+    lowerText.includes('sir ') || 
+    lowerText.includes('miss ') || 
+    lowerText.includes('madam') ||
+    lowerText.includes('teaches') ||
+    lowerText.includes('classes of');
 
+  const matchedFaculty = isFacultyQuery ? faculty.find((f) => {
+    const fClean = clean(f.name);
+    const nameParts = fClean.split(' ');
+    return (
+      lowerText.includes(fClean) ||
+      nameParts.some((p) => p.length >= 4 && !['prof', 'dr', 'sir', 'madam'].includes(p) && lowerText.includes(p))
+    );
+  }) : undefined;
+
+  // -------------------------------------------------------------
+  // EXECUTION ROUTING
+  // -------------------------------------------------------------
+
+  // Case A: Room Navigation Query (Can be answered immediately even if unauthenticated)
+  if (matchedRoom || (isRoomQuery && !isNextClassQuery)) {
+    const targetRoom = matchedRoom || rooms[0];
+    const navDetails = getRoomNavigationDetails(targetRoom.id, targetRoom.name, targetRoom.building);
+    
     const reply = [
-      `📖 *Course Identified:* ${matchedCourse.code} (${matchedCourse.name})`,
-      ``,
-      `❓ *Reconfirmation:*`,
-      `You are asking for the *Lecture Schedule & Venues* for *${matchedCourse.code}*.`,
-      `Please reply *'1'* or *'Yes'* to view all sessions.`,
+      `🏛️ *SALIM HABIB UNIVERSITY (SHU) CAMPUS NAVIGATION*`,
+      `──────────────────────────`,
+      formatWhatsAppRoomNavigation(navDetails),
+      `──────────────────────────`,
+      `💡 *Need your next class?* Send your *Roll No* (e.g. \`AF-2026-001\`) or ask *"What is my next class?"* anytime!`,
     ].join('\n');
 
     return { replyText: reply, sessionState: session, dispatchedToPhone: phoneNumber };
   }
 
-  // Fallback: Welcome & Guide Message
-  const reply = [
-    `🎓 *Welcome to Salim Habib University (SHU) Timetable Assistant!*`,
+  // Case B: Student Just Provided Their Roll No / Name with NO other question
+  if (identifiedNow && !isNextClassQuery && !isTodayQuery && !isTomorrowQuery && !extractedDay && !isFullTimetableQuery && !matchedCourse && !matchedFaculty) {
+    const greetingHeader = buildIdentityConfirmationHeader(session);
+    const nextClassSummary = getNextClassText(session, { batches, courses, faculty, rooms, sessions, customTimeStr: ctx.customTimeStr, customDayOfWeek: ctx.customDayOfWeek });
+
+    const reply = [
+      greetingHeader,
+      ``,
+      `📌 *Quick Access for ${session.studentName}:*`,
+      nextClassSummary,
+      ``,
+      `──────────────────────────`,
+      `💬 *You can ask me anytime:*`,
+      `• *"What is my next class?"* ➔ Room & Instructor info`,
+      `• *"Today's classes"* ➔ Complete daily agenda`,
+      `• *"Full Timetable"* ➔ Entire weekly schedule`,
+      `• *"Where is room TF-308?"* ➔ Step-by-step navigation`,
+    ].join('\n');
+
+    return { replyText: reply, sessionState: session, dispatchedToPhone: phoneNumber };
+  }
+
+  // Case C: Check if we need student identification for personalized queries
+  const isPersonalizedQuery = isNextClassQuery || isTodayQuery || isTomorrowQuery || Boolean(extractedDay) || isFullTimetableQuery;
+
+  if (isPersonalizedQuery && !session.isIdentified) {
+    // Save pending intent
+    if (isNextClassQuery) session.pendingIntent = { type: 'next_class', originalQuestion: rawText };
+    else if (isTodayQuery) session.pendingIntent = { type: 'today_schedule', originalQuestion: rawText };
+    else if (isTomorrowQuery) session.pendingIntent = { type: 'tomorrow_schedule', originalQuestion: rawText };
+    else if (extractedDay) session.pendingIntent = { type: 'day_schedule', targetDay: extractedDay.dayId, originalQuestion: rawText };
+    else if (isFullTimetableQuery) session.pendingIntent = { type: 'full_timetable', originalQuestion: rawText };
+
+    const reply = [
+      `👋 *Assalam-o-Alaikum & Welcome to SHU Timetable Assistant!*`,
+      ``,
+      `To provide your exact schedule, room numbers, and navigation instructions, please confirm who you are:`,
+      ``,
+      `🎓 *Please send your:*`,
+      `1️⃣ *Student Roll Number / ID* (e.g. \`AF-2026-001\`, \`BAN-2026-015\`, \`BBA-2026-022\`)`,
+      `2️⃣ *Full Name* (e.g. \`Ayesha Siddiqui\`, \`Bilal Tariq\`)`,
+      `3️⃣ *Batch / Section* (e.g. \`Section 1A\`, \`BAN-2\`, \`BSAF-3A\`)`,
+      ``,
+      `Once confirmed, I'll deliver your schedule and room directions instantly!`,
+    ].join('\n');
+
+    return { replyText: reply, sessionState: session, dispatchedToPhone: phoneNumber };
+  }
+
+  // Case D: Next Class Query (Student is identified)
+  if (isNextClassQuery) {
+    const greetingHeader = identifiedNow ? buildIdentityConfirmationHeader(session) + '\n\n' : '';
+    const nextClassText = getNextClassText(session, { batches, courses, faculty, rooms, sessions, customTimeStr: ctx.customTimeStr, customDayOfWeek: ctx.customDayOfWeek });
+    
+    return {
+      replyText: greetingHeader + nextClassText,
+      sessionState: session,
+      dispatchedToPhone: phoneNumber,
+    };
+  }
+
+  // Case E: Today's Schedule
+  if (isTodayQuery) {
+    const now = new Date();
+    const currentDayOfWeek = ctx.customDayOfWeek || (now.getDay() === 0 ? 7 : now.getDay());
+    const dayName = TIMETABLE_DAYS.find((d) => d.id === currentDayOfWeek)?.name || 'Today';
+
+    const greetingHeader = identifiedNow ? buildIdentityConfirmationHeader(session) + '\n\n' : '';
+    const dayScheduleText = getDayScheduleText(session, currentDayOfWeek, `Today (${dayName})`, { batches, courses, faculty, rooms, sessions });
+
+    return {
+      replyText: greetingHeader + dayScheduleText,
+      sessionState: session,
+      dispatchedToPhone: phoneNumber,
+    };
+  }
+
+  // Case F: Tomorrow's Schedule
+  if (isTomorrowQuery) {
+    const now = new Date();
+    const currentDayOfWeek = ctx.customDayOfWeek || (now.getDay() === 0 ? 7 : now.getDay());
+    const tomorrowDayOfWeek = (currentDayOfWeek % 7) + 1;
+    const dayName = TIMETABLE_DAYS.find((d) => d.id === tomorrowDayOfWeek)?.name || 'Tomorrow';
+
+    const greetingHeader = identifiedNow ? buildIdentityConfirmationHeader(session) + '\n\n' : '';
+    const dayScheduleText = getDayScheduleText(session, tomorrowDayOfWeek, `Tomorrow (${dayName})`, { batches, courses, faculty, rooms, sessions });
+
+    return {
+      replyText: greetingHeader + dayScheduleText,
+      sessionState: session,
+      dispatchedToPhone: phoneNumber,
+    };
+  }
+
+  // Case G: Specific Day Schedule (e.g. Monday, Friday)
+  if (extractedDay) {
+    const greetingHeader = identifiedNow ? buildIdentityConfirmationHeader(session) + '\n\n' : '';
+    const dayScheduleText = getDayScheduleText(session, extractedDay.dayId, extractedDay.dayName, { batches, courses, faculty, rooms, sessions });
+
+    return {
+      replyText: greetingHeader + dayScheduleText,
+      sessionState: session,
+      dispatchedToPhone: phoneNumber,
+    };
+  }
+
+  // Case H: Full Weekly Timetable
+  if (isFullTimetableQuery) {
+    const greetingHeader = identifiedNow ? buildIdentityConfirmationHeader(session) + '\n\n' : '';
+    const fullTimetableText = getFullTimetableText(session, { batches, courses, faculty, rooms, sessions });
+
+    return {
+      replyText: greetingHeader + fullTimetableText,
+      sessionState: session,
+      dispatchedToPhone: phoneNumber,
+    };
+  }
+
+  // Case I: Specific Course Inquiry
+  if (matchedCourse) {
+    const courseScheduleText = getCourseScheduleText(matchedCourse, { batches, courses, faculty, rooms, sessions });
+    return {
+      replyText: courseScheduleText,
+      sessionState: session,
+      dispatchedToPhone: phoneNumber,
+    };
+  }
+
+  // Case J: Specific Faculty Inquiry
+  if (matchedFaculty) {
+    const facultyScheduleText = getFacultyScheduleText(matchedFaculty, { batches, courses, faculty, rooms, sessions });
+    return {
+      replyText: facultyScheduleText,
+      sessionState: session,
+      dispatchedToPhone: phoneNumber,
+    };
+  }
+
+  // Fallback: Welcome & Help Menu
+  const fallbackReply = [
+    `🎓 *Salim Habib University (SHU) Timetable Assistant*`,
+    `──────────────────────────`,
+    session.isIdentified 
+      ? `👤 *Active Profile:* ${session.studentName} (${session.batchName})\n🎓 *Roll No:* ${session.rollNumber || 'Enrolled'}`
+      : `👋 Welcome! To get your personalized schedule, please send your *Student Roll No* or *Batch Name*.`,
     ``,
-    `You can message me to ask for:`,
-    `1️⃣ *Your Timetable:* Send your *Student Roll No* (e.g., \`AF-2026-001\`) or *Batch* (e.g., \`Section 1A\`, \`BAN-2\`).`,
-    `2️⃣ *Next Class:* Ask *"What is my next class?"* or *"Next lecture"*.`,
-    `3️⃣ *Room & Navigation:* Ask *"Where is room A-04?"* or *"How to reach TF-308?"*.`,
-    `4️⃣ *Course Timing:* Ask *"When is Accounting class?"*.`,
-    ``,
-    `💡 *Note:* We will first reconfirm your inquiry and then deliver your results instantly!`,
+    `💬 *Available Commands:*`,
+    `1️⃣ *"What is my next class?"* ➔ Next lecture, room & floor guide`,
+    `2️⃣ *"Today's classes"* / *"Tomorrow schedule"* ➔ Daily timetable`,
+    `3️⃣ *"Full Timetable"* ➔ Complete weekly schedule`,
+    `4️⃣ *"Where is room TF-308?"* ➔ Step-by-step room walking directions`,
+    `5️⃣ *"Reset"* ➔ Switch student profile or roll number`,
+    `──────────────────────────`,
+    `💡 *Tip:* Send your query directly (e.g. \`AF-2026-001\`, \`Next class\`, \`Where is room A-04?\`).`,
   ].join('\n');
 
-  return { replyText: reply, sessionState: session, dispatchedToPhone: phoneNumber };
+  return { replyText: fallbackReply, sessionState: session, dispatchedToPhone: phoneNumber };
+}
+
+// -------------------------------------------------------------
+// HELPER FORMATTING FUNCTIONS
+// -------------------------------------------------------------
+
+function buildIdentityConfirmationHeader(session: WhatsAppConversationSession): string {
+  return [
+    `✅ *Student Identity Verified!*`,
+    `👤 *Name:* ${session.studentName}`,
+    session.rollNumber ? `🎓 *Roll No:* ${session.rollNumber}` : null,
+    `📚 *Batch:* ${session.batchName}`,
+    session.program ? `🏛️ *Program:* ${session.program}` : null,
+  ].filter(Boolean).join('\n');
 }
 
 /**
- * Executes the confirmed intent and builds the comprehensive WhatsApp response
+ * Calculates and formats Next Class details + walking directions
  */
-function executeConfirmedIntent(
-  intent: NonNullable<WhatsAppConversationSession['pendingIntent']>,
+function getNextClassText(
   session: WhatsAppConversationSession,
   data: {
-    students: Student[];
     batches: Batch[];
     courses: Course[];
     faculty: Faculty[];
@@ -323,225 +501,424 @@ function executeConfirmedIntent(
   }
 ): string {
   const { batches, courses, faculty, rooms, sessions } = data;
+  const batchId = session.batchId || batches[0]?.id;
+  const batchObj = batches.find((b) => b.id === batchId);
+  const publishedSessions = sessions.filter((s) => s.batch_id === batchId && s.status === 'published');
+
   const now = new Date();
-  const currentDayOfWeek = data.customDayOfWeek || (now.getDay() === 0 ? 7 : now.getDay()); // 1=Mon ... 7=Sun
+  const currentDayOfWeek = data.customDayOfWeek || (now.getDay() === 0 ? 7 : now.getDay());
   const currentMinutes = data.customTimeStr ? timeToMinutes(data.customTimeStr) : now.getHours() * 60 + now.getMinutes();
 
-  // ========================================================
-  // 1. FULL TIMETABLE DISPATCH
-  // ========================================================
-  if (intent.type === 'full_timetable') {
-    const batchId = session.batchId || batches[0]?.id;
-    const batchObj = batches.find((b) => b.id === batchId);
-    const batchSessions = sessions.filter((s) => s.batch_id === batchId && s.status === 'published');
+  // 1. Check for upcoming class today
+  const todaysUpcoming = publishedSessions
+    .filter((s) => s.day_of_week === currentDayOfWeek && timeToMinutes(s.start_time) >= currentMinutes)
+    .sort((a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time));
 
-    if (batchSessions.length === 0) {
-      return `📅 *Timetable for ${batchObj?.name || 'Batch'}:*\n\nNo active classes are currently scheduled for this batch.`;
-    }
+  let nextClass: ClassSession | null = todaysUpcoming[0] || null;
+  let whenLabel = 'Today';
 
-    const lines: string[] = [
-      `📅 *OFFICIAL TIMETABLE: ${batchObj?.name || 'Batch'}*`,
-      `🎓 *Program:* ${batchObj?.program || 'Academic Program'}`,
-      `🏢 *Campus:* Salim Habib University (SHU)`,
-      `──────────────────────────`,
-    ];
-
-    const sortedDays = [1, 2, 3, 4, 5, 6, 7];
-    for (const dayId of sortedDays) {
-      const dayName = TIMETABLE_DAYS.find((d) => d.id === dayId)?.name || `Day ${dayId}`;
-      const dayClasses = batchSessions
-        .filter((s) => s.day_of_week === dayId)
+  // 2. If no more classes today, look for subsequent days
+  if (!nextClass) {
+    for (let offset = 1; offset <= 7; offset++) {
+      const nextDayId = ((currentDayOfWeek + offset - 1) % 7) + 1;
+      const nextDayClasses = publishedSessions
+        .filter((s) => s.day_of_week === nextDayId)
         .sort((a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time));
 
-      if (dayClasses.length > 0) {
-        lines.push(``);
-        lines.push(`📌 *${dayName.toUpperCase()}:*`);
-        for (const cls of dayClasses) {
-          const crs = courses.find((c) => c.id === cls.course_id);
-          const fac = faculty.find((f) => f.id === cls.faculty_id);
-          const rm = rooms.find((r) => r.id === cls.room_id);
-          const nav = rm ? getRoomNavigationDetails(rm.id, rm.name, rm.building) : null;
-
-          const timeStr = formatTimeRange(cls.start_time, cls.end_time);
-          const roomLabel = rm ? `${rm.name} (${nav?.floorLabel || 'Level'})` : '⚠️ Venue TBA';
-
-          lines.push(`• *${crs?.code || 'Course'}* - ${crs?.name || 'Class'}`);
-          lines.push(`  ⏰ ${timeStr}`);
-          lines.push(`  👨‍🏫 Instructor: ${fac?.name || 'Faculty TBA'}`);
-          lines.push(`  🚪 Room: ${roomLabel}`);
-          if (nav && nav.specialtyTags.some((t) => t.includes('Lab'))) {
-            lines.push(`  💻 *Specialty:* ${nav.specialtyDescription}`);
-          }
-        }
+      if (nextDayClasses.length > 0) {
+        nextClass = nextDayClasses[0];
+        const dayName = TIMETABLE_DAYS.find((d) => d.id === nextDayId)?.name;
+        whenLabel = offset === 1 ? `Tomorrow (${dayName})` : `${dayName}`;
+        break;
       }
     }
-
-    lines.push(``);
-    lines.push(`──────────────────────────`);
-    lines.push(`📍 *Need Room Directions?* Reply with *"Where is [Room Name]?"* anytime!`);
-    return lines.join('\n');
   }
 
-  // ========================================================
-  // 2. NEXT CLASS INQUIRY DISPATCH
-  // ========================================================
-  if (intent.type === 'next_class') {
-    const batchId = session.batchId || batches[0]?.id;
-    const batchObj = batches.find((b) => b.id === batchId);
-    const publishedSessions = sessions.filter((s) => s.batch_id === batchId && s.status === 'published');
-
-    // Find upcoming classes today
-    const todaysUpcoming = publishedSessions
-      .filter((s) => s.day_of_week === currentDayOfWeek && timeToMinutes(s.start_time) >= currentMinutes)
-      .sort((a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time));
-
-    let nextClass: ClassSession | null = todaysUpcoming[0] || null;
-    let dayLabel = 'Today';
-
-    // If no more classes today, look for next day's first class
-    if (!nextClass) {
-      for (let offset = 1; offset <= 7; offset++) {
-        const nextDayId = ((currentDayOfWeek + offset - 1) % 7) + 1;
-        const nextDayClasses = publishedSessions
-          .filter((s) => s.day_of_week === nextDayId)
-          .sort((a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time));
-
-        if (nextDayClasses.length > 0) {
-          nextClass = nextDayClasses[0];
-          const dName = TIMETABLE_DAYS.find((d) => d.id === nextDayId)?.name;
-          dayLabel = offset === 1 ? `Tomorrow (${dName})` : `${dName}`;
-          break;
-        }
-      }
-    }
-
-    if (!nextClass) {
-      return `⏰ *Next Class Status:*\nNo upcoming scheduled classes found for *${batchObj?.name || 'your batch'}*. Enjoy your time!`;
-    }
-
-    const crs = courses.find((c) => c.id === nextClass.course_id);
-    const fac = faculty.find((f) => f.id === nextClass.faculty_id);
-    const rm = rooms.find((r) => r.id === nextClass.room_id);
-    const nav = rm ? getRoomNavigationDetails(rm.id, rm.name, rm.building) : null;
-
-    const timeRange = formatTimeRange(nextClass.start_time, nextClass.end_time);
-
-    const lines: string[] = [
-      `🔔 *YOUR NEXT CLASS DETAILS:*`,
-      `🎓 *Batch:* ${batchObj?.name || 'Batch'}`,
-      `🗓️ *When:* ${dayLabel} at *${timeRange}*`,
-      `📚 *Course:* *${crs?.code}* – ${crs?.name}`,
-      `👨‍🏫 *Instructor:* ${fac?.name} (${fac?.department})`,
-      ``,
-    ];
-
-    if (rm && nav) {
-      lines.push(formatWhatsAppRoomNavigation(nav));
-    } else {
-      lines.push(`🚪 *Room Status:* Venue pending allocation by Program Coordinator.`);
-    }
-
-    return lines.join('\n');
-  }
-
-  // ========================================================
-  // 3. ROOM NAVIGATION DISPATCH
-  // ========================================================
-  if (intent.type === 'room_navigation') {
-    const targetRoomId = intent.targetRoomId || rooms[0]?.id;
-    const rm = rooms.find((r) => r.id === targetRoomId) || rooms[0];
-    const nav = getRoomNavigationDetails(rm.id, rm.name, rm.building);
-
+  if (!nextClass) {
     return [
-      `🗺️ *CAMPUS VENUE NAVIGATION GUIDE*`,
-      `──────────────────────────`,
-      formatWhatsAppRoomNavigation(nav),
-      `──────────────────────────`,
-      `💡 *Did you know?* SHU is the Old Building (A=Ground, B=1st, C=2nd, D=3rd), and FPS is the New Building.`,
+      `⏰ *Next Class Status:*`,
+      `No upcoming classes found for *${batchObj?.name || 'your batch'}*.`,
+      `🎉 You have no scheduled classes remaining this week!`,
     ].join('\n');
   }
 
-  // ========================================================
-  // 4. SPECIFIC COURSE SCHEDULE DISPATCH
-  // ========================================================
-  if (intent.type === 'course_schedule') {
-    const crs = courses.find((c) => c.id === intent.targetCourseId);
-    if (!crs) return `Course information not found.`;
+  const crs = courses.find((c) => c.id === nextClass.course_id);
+  const fac = faculty.find((f) => f.id === nextClass.faculty_id);
+  const rm = rooms.find((r) => r.id === nextClass.room_id);
+  const nav = rm ? getRoomNavigationDetails(rm.id, rm.name, rm.building) : null;
+  const timeRange = formatTimeRange(nextClass.start_time, nextClass.end_time);
 
-    const courseSessions = sessions.filter((s) => s.course_id === crs.id && s.status === 'published');
+  const lines: string[] = [
+    `🔔 *YOUR NEXT CLASS DETAILS:*`,
+    `──────────────────────────`,
+    `🗓️ *When:* ${whenLabel} at *${timeRange}*`,
+    `📚 *Course:* *${crs?.code || 'Course'}* – ${crs?.name || 'Class'}`,
+    `👨‍🏫 *Instructor:* ${fac?.name || 'Faculty TBA'} (${fac?.department || 'Department'})`,
+    `🚪 *Classroom:* *${rm?.name || '⚠️ Venue Pending Allocation'}* ${nav ? `(${nav.floorLabel})` : ''}`,
+    ``,
+  ];
 
-    const lines: string[] = [
-      `📖 *COURSE TIMETABLE: ${crs.code}*`,
-      `📘 *Name:* ${crs.name} (${crs.credit_hours} Credit Hours)`,
-      `🏛️ *Department:* ${crs.department}`,
-      `──────────────────────────`,
-    ];
-
-    if (courseSessions.length === 0) {
-      lines.push(`No active sessions are scheduled for this course.`);
-    } else {
-      for (const cls of courseSessions) {
-        const dName = TIMETABLE_DAYS.find((d) => d.id === cls.day_of_week)?.name || `Day ${cls.day_of_week}`;
-        const b = batches.find((b) => b.id === cls.batch_id);
-        const fac = faculty.find((f) => f.id === cls.faculty_id);
-        const rm = rooms.find((r) => r.id === cls.room_id);
-        const nav = rm ? getRoomNavigationDetails(rm.id, rm.name, rm.building) : null;
-
-        lines.push(``);
-        lines.push(`🗓️ *${dName}* | ${formatTimeRange(cls.start_time, cls.end_time)}`);
-        lines.push(`  👥 Batch: ${b?.name} (${b?.program})`);
-        lines.push(`  👨‍🏫 Faculty: ${fac?.name}`);
-        lines.push(`  🚪 Room: ${rm?.name || 'TBA'} ${nav ? `(${nav.floorLabel})` : ''}`);
-      }
-    }
-
-    return lines.join('\n');
+  if (rm && nav) {
+    lines.push(formatWhatsAppRoomNavigation(nav));
+  } else {
+    lines.push(`⚠️ *Room Notice:* Venue allocation is being finalized by Program Coordinator.`);
   }
 
-  return `Request completed. If you need anything else, please message us anytime!`;
+  return lines.join('\n');
 }
 
 /**
- * Dispatches an outgoing message to the real WhatsApp Cloud API or Twilio
+ * Formats daily schedule for a specific day
+ */
+function getDayScheduleText(
+  session: WhatsAppConversationSession,
+  dayId: number,
+  dayTitle: string,
+  data: {
+    batches: Batch[];
+    courses: Course[];
+    faculty: Faculty[];
+    rooms: Room[];
+    sessions: ClassSession[];
+  }
+): string {
+  const { batches, courses, faculty, rooms, sessions } = data;
+  const batchId = session.batchId || batches[0]?.id;
+  const batchObj = batches.find((b) => b.id === batchId);
+
+  const dayClasses = sessions
+    .filter((s) => s.batch_id === batchId && s.day_of_week === dayId && s.status === 'published')
+    .sort((a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time));
+
+  const lines: string[] = [
+    `📅 *SCHEDULE FOR ${dayTitle.toUpperCase()}*`,
+    `🎓 *Batch:* ${batchObj?.name || 'Enrolled Batch'} (${batchObj?.program || 'SHU'})`,
+    `──────────────────────────`,
+  ];
+
+  if (dayClasses.length === 0) {
+    lines.push(``);
+    lines.push(`🌴 *No classes scheduled for this day.* Enjoy your free day!`);
+    return lines.join('\n');
+  }
+
+  for (let i = 0; i < dayClasses.length; i++) {
+    const cls = dayClasses[i];
+    const crs = courses.find((c) => c.id === cls.course_id);
+    const fac = faculty.find((f) => f.id === cls.faculty_id);
+    const rm = rooms.find((r) => r.id === cls.room_id);
+    const nav = rm ? getRoomNavigationDetails(rm.id, rm.name, rm.building) : null;
+    const timeStr = formatTimeRange(cls.start_time, cls.end_time);
+
+    lines.push(``);
+    lines.push(`*${i + 1}. ${crs?.code} – ${crs?.name}*`);
+    lines.push(`   ⏰ Time: *${timeStr}*`);
+    lines.push(`   👨‍🏫 Instructor: ${fac?.name || 'TBA'}`);
+    lines.push(`   🚪 Room: *${rm?.name || 'Venue TBA'}* ${nav ? `(${nav.floorLabel})` : ''}`);
+    if (nav && nav.specialtyTags.some((t) => t.includes('Lab'))) {
+      lines.push(`   💻 *Specialty:* ${nav.specialtyDescription}`);
+    }
+  }
+
+  lines.push(``);
+  lines.push(`──────────────────────────`);
+  lines.push(`📍 *Need Room Directions?* Send *"Where is [Room Name]?"* anytime!`);
+
+  return lines.join('\n');
+}
+
+/**
+ * Formats full weekly timetable
+ */
+function getFullTimetableText(
+  session: WhatsAppConversationSession,
+  data: {
+    batches: Batch[];
+    courses: Course[];
+    faculty: Faculty[];
+    rooms: Room[];
+    sessions: ClassSession[];
+  }
+): string {
+  const { batches, courses, faculty, rooms, sessions } = data;
+  const batchId = session.batchId || batches[0]?.id;
+  const batchObj = batches.find((b) => b.id === batchId);
+  const batchSessions = sessions.filter((s) => s.batch_id === batchId && s.status === 'published');
+
+  if (batchSessions.length === 0) {
+    return `📅 *Official Timetable for ${batchObj?.name || 'Batch'}:*\n\nNo published classes are currently found in the system.`;
+  }
+
+  const lines: string[] = [
+    `📅 *OFFICIAL WEEKLY TIMETABLE*`,
+    `🎓 *Batch:* ${batchObj?.name || 'Batch'}`,
+    `🏛️ *Program:* ${batchObj?.program || 'Faculty of Management Sciences'}`,
+    `🏢 *Campus:* Salim Habib University (SHU)`,
+    `──────────────────────────`,
+  ];
+
+  for (let dayId = 1; dayId <= 7; dayId++) {
+    const dayName = TIMETABLE_DAYS.find((d) => d.id === dayId)?.name || `Day ${dayId}`;
+    const dayClasses = batchSessions
+      .filter((s) => s.day_of_week === dayId)
+      .sort((a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time));
+
+    if (dayClasses.length > 0) {
+      lines.push(``);
+      lines.push(`📌 *${dayName.toUpperCase()}:*`);
+      for (const cls of dayClasses) {
+        const crs = courses.find((c) => c.id === cls.course_id);
+        const fac = faculty.find((f) => f.id === cls.faculty_id);
+        const rm = rooms.find((r) => r.id === cls.room_id);
+        const nav = rm ? getRoomNavigationDetails(rm.id, rm.name, rm.building) : null;
+        const timeStr = formatTimeRange(cls.start_time, cls.end_time);
+
+        lines.push(`• *${crs?.code}* (${timeStr})`);
+        lines.push(`  👨‍🏫 ${fac?.name || 'TBA'} | 🚪 ${rm?.name || 'Venue TBA'} ${nav ? `(${nav.floorLabel})` : ''}`);
+      }
+    }
+  }
+
+  lines.push(``);
+  lines.push(`──────────────────────────`);
+  lines.push(`💡 *Need directions?* Ask *"Where is room TF-308?"* or *"What is my next class?"*`);
+
+  return lines.join('\n');
+}
+
+/**
+ * Formats course timetable search
+ */
+function getCourseScheduleText(
+  course: Course,
+  data: {
+    batches: Batch[];
+    courses: Course[];
+    faculty: Faculty[];
+    rooms: Room[];
+    sessions: ClassSession[];
+  }
+): string {
+  const { batches, faculty, rooms, sessions } = data;
+  const courseSessions = sessions.filter((s) => s.course_id === course.id && s.status === 'published');
+
+  const lines: string[] = [
+    `📖 *COURSE TIMETABLE: ${course.code}*`,
+    `📘 *Title:* ${course.name} (${course.credit_hours} Cr. Hrs)`,
+    `🏛️ *Department:* ${course.department}`,
+    `──────────────────────────`,
+  ];
+
+  if (courseSessions.length === 0) {
+    lines.push(`No active sessions are scheduled for this course.`);
+  } else {
+    for (const cls of courseSessions) {
+      const dName = TIMETABLE_DAYS.find((d) => d.id === cls.day_of_week)?.name || `Day ${cls.day_of_week}`;
+      const b = batches.find((b) => b.id === cls.batch_id);
+      const fac = faculty.find((f) => f.id === cls.faculty_id);
+      const rm = rooms.find((r) => r.id === cls.room_id);
+      const nav = rm ? getRoomNavigationDetails(rm.id, rm.name, rm.building) : null;
+
+      lines.push(``);
+      lines.push(`🗓️ *${dName}* | ${formatTimeRange(cls.start_time, cls.end_time)}`);
+      lines.push(`  👥 Batch: ${b?.name} (${b?.program})`);
+      lines.push(`  👨‍🏫 Faculty: ${fac?.name}`);
+      lines.push(`  🚪 Room: ${rm?.name || 'TBA'} ${nav ? `(${nav.floorLabel})` : ''}`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Formats faculty timetable search
+ */
+function getFacultyScheduleText(
+  facMember: Faculty,
+  data: {
+    batches: Batch[];
+    courses: Course[];
+    faculty: Faculty[];
+    rooms: Room[];
+    sessions: ClassSession[];
+  }
+): string {
+  const { batches, courses, rooms, sessions } = data;
+  const facSessions = sessions.filter((s) => s.faculty_id === facMember.id && s.status === 'published');
+
+  const lines: string[] = [
+    `👨‍🏫 *FACULTY SCHEDULE: ${facMember.name}*`,
+    `🏛️ *Department:* ${facMember.department}`,
+    `──────────────────────────`,
+  ];
+
+  if (facSessions.length === 0) {
+    lines.push(`No active classes are assigned to this instructor.`);
+  } else {
+    for (const cls of facSessions) {
+      const dName = TIMETABLE_DAYS.find((d) => d.id === cls.day_of_week)?.name || `Day ${cls.day_of_week}`;
+      const b = batches.find((b) => b.id === cls.batch_id);
+      const crs = courses.find((c) => c.id === cls.course_id);
+      const rm = rooms.find((r) => r.id === cls.room_id);
+      const nav = rm ? getRoomNavigationDetails(rm.id, rm.name, rm.building) : null;
+
+      lines.push(``);
+      lines.push(`🗓️ *${dName}* | ${formatTimeRange(cls.start_time, cls.end_time)}`);
+      lines.push(`  📚 Course: ${crs?.code} – ${crs?.name}`);
+      lines.push(`  👥 Batch: ${b?.name}`);
+      lines.push(`  🚪 Room: ${rm?.name || 'TBA'} ${nav ? `(${nav.floorLabel})` : ''}`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Dispatches an outgoing message to the real WhatsApp provider:
+ * 1. Twilio WhatsApp API (No Facebook Dev account needed!)
+ * 2. UltraMsg / Green API (Instant QR code scan!)
+ * 3. Evolution API / Self-Hosted QR Gateway
+ * 4. Meta WhatsApp Cloud API
  */
 export async function sendRealWhatsAppMessage(toPhone: string, messageText: string): Promise<{ success: boolean; id?: string; error?: string }> {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const formattedPhone = toPhone.replace(/[^0-9]/g, '');
 
-  if (!token || !phoneNumberId) {
-    // If not yet configured in env, log to console for development
-    console.info(`[WhatsApp Cloud API Simulated Dispatch] To: ${toPhone} | Message Length: ${messageText.length}`);
-    return { success: true, id: `local-sim-${Date.now()}` };
-  }
+  // -------------------------------------------------------------
+  // PROVIDER 1: Twilio WhatsApp API (Easiest - No Meta Dev Account Required)
+  // -------------------------------------------------------------
+  const twilioSid = process.env.TWILIO_ACCOUNT_SID;
+  const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
+  const twilioFrom = process.env.TWILIO_WHATSAPP_NUMBER || process.env.TWILIO_PHONE_NUMBER;
 
-  try {
-    const formattedPhone = toPhone.replace(/[^0-9]/g, '');
-    const url = `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`;
+  if (twilioSid && twilioAuthToken && twilioFrom) {
+    try {
+      const url = `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`;
+      const fromFormatted = twilioFrom.startsWith('whatsapp:') ? twilioFrom : `whatsapp:${twilioFrom}`;
+      const toFormatted = `whatsapp:+${formattedPhone}`;
 
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        recipient_type: 'individual',
-        to: formattedPhone,
-        type: 'text',
-        text: { body: messageText },
-      }),
-    });
+      const params = new URLSearchParams();
+      params.append('From', fromFormatted);
+      params.append('To', toFormatted);
+      params.append('Body', messageText);
 
-    const data = await res.json();
-    if (!res.ok) {
-      console.error('Meta WhatsApp Cloud API error response:', data);
-      return { success: false, error: data?.error?.message || 'Meta API error' };
+      const authHeader = Buffer.from(`${twilioSid}:${twilioAuthToken}`).toString('base64');
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${authHeader}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: params.toString(),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        console.error('Twilio WhatsApp error response:', data);
+        return { success: false, error: data?.message || 'Twilio dispatch error' };
+      }
+
+      return { success: true, id: data.sid };
+    } catch (err: any) {
+      console.error('Twilio dispatch error:', err);
+      return { success: false, error: err?.message };
     }
-
-    return { success: true, id: data.messages?.[0]?.id };
-  } catch (err: any) {
-    console.error('Failed to dispatch real WhatsApp message:', err);
-    return { success: false, error: err?.message || 'Network error' };
   }
+
+  // -------------------------------------------------------------
+  // PROVIDER 2: UltraMsg API (Instant QR Code link)
+  // -------------------------------------------------------------
+  const ultraInstance = process.env.ULTRAMSG_INSTANCE_ID;
+  const ultraToken = process.env.ULTRAMSG_TOKEN;
+
+  if (ultraInstance && ultraToken) {
+    try {
+      const url = `https://api.ultramsg.com/${ultraInstance}/messages/chat`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          token: ultraToken,
+          to: formattedPhone,
+          body: messageText,
+        }).toString(),
+      });
+
+      const data = await res.json();
+      return { success: Boolean(data.sent || data.id), id: String(data.id || '') };
+    } catch (err: any) {
+      console.error('UltraMsg dispatch error:', err);
+      return { success: false, error: err?.message };
+    }
+  }
+
+  // -------------------------------------------------------------
+  // PROVIDER 3: Evolution API (Self-Hosted QR Code Gateway)
+  // -------------------------------------------------------------
+  const evoUrl = process.env.EVOLUTION_API_URL;
+  const evoKey = process.env.EVOLUTION_API_KEY;
+  const evoInstance = process.env.EVOLUTION_INSTANCE_NAME || 'shu-timetable';
+
+  if (evoUrl && evoKey) {
+    try {
+      const endpoint = `${evoUrl.replace(/\/$/, '')}/message/sendText/${evoInstance}`;
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': evoKey,
+        },
+        body: JSON.stringify({
+          number: formattedPhone,
+          text: messageText,
+        }),
+      });
+
+      const data = await res.json();
+      return { success: Boolean(data.key?.id), id: data.key?.id };
+    } catch (err: any) {
+      console.error('Evolution API error:', err);
+      return { success: false, error: err?.message };
+    }
+  }
+
+  // -------------------------------------------------------------
+  // PROVIDER 4: Meta WhatsApp Cloud API (Standard)
+  // -------------------------------------------------------------
+  const metaToken = process.env.WHATSAPP_ACCESS_TOKEN;
+  const metaPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+
+  if (metaToken && metaPhoneId) {
+    try {
+      const url = `https://graph.facebook.com/v19.0/${metaPhoneId}/messages`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${metaToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to: formattedPhone,
+          type: 'text',
+          text: { body: messageText },
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        console.error('Meta WhatsApp Cloud API error response:', data);
+        return { success: false, error: data?.error?.message || 'Meta API error' };
+      }
+
+      return { success: true, id: data.messages?.[0]?.id };
+    } catch (err: any) {
+      console.error('Failed to dispatch real WhatsApp message:', err);
+      return { success: false, error: err?.message || 'Network error' };
+    }
+  }
+
+  // Fallback for local simulation
+  console.info(`[WhatsApp Dispatch Simulation] To: ${toPhone} | Length: ${messageText.length}`);
+  return { success: true, id: `sim-${Date.now()}` };
 }

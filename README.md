@@ -82,6 +82,30 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-public-key
 
 ---
 
-## 🔔 n8n Automation & Backup Cron
-- **Webhook Endpoint**: `POST /api/n8n/webhook` dispatches schedule change events to n8n to send WhatsApp / Email alerts to faculty and batch reps.
+## 🔔 n8n Automation Hub & WhatsApp Chat Agent
+- **WhatsApp Chat Agent Workflow**: An importable n8n workflow is ready to connect incoming WhatsApp messages to the timetable backend at `/api/whatsapp/webhook`.
+- **Schedule Change Webhook**: `POST /api/n8n/webhook` dispatches schedule change events to n8n to send WhatsApp / Email alerts to faculty and batch reps.
 - **Backup Endpoint**: `GET /api/backup` can be triggered weekly via an n8n Cron node to archive table snapshots to free object storage.
+
+---
+
+## 📲 Connected WhatsApp Service (Meta / Twilio / n8n)
+Students can text directly from their WhatsApp phones to the university's designated number to query timetable schedules, immediate next class venues, and step-by-step campus room navigation.
+
+### Webhook Endpoint
+- **GET & POST `/api/whatsapp/webhook`**
+
+### Configuration (`.env.local`)
+```env
+WHATSAPP_ACCESS_TOKEN=your-meta-access-token
+WHATSAPP_PHONE_NUMBER_ID=your-meta-phone-number-id
+WHATSAPP_BUSINESS_PHONE_NUMBER=+92 300 1234567
+WHATSAPP_VERIFY_TOKEN=shu_timetable_webhook_secret_2026
+```
+
+### Features Supported via WhatsApp:
+1. **Student Identity Verification**: Confirmation by Roll No (`AF-2026-001`), Student Name (`Ayesha Siddiqui`), or Batch (`Section 1A`).
+2. **Next Class Alerts**: Class timing, course title, faculty member, room number, and walking directions.
+3. **Room & Floor Navigation**: Instant building (SHU Old vs FPS New) and floor directions (Level 0 to Level 4).
+4. **Day & Weekly Schedules**: Real-time lookup of today's, tomorrow's, or full weekly timetable.
+
