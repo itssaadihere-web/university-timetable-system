@@ -18,7 +18,8 @@ import {
   Sparkles,
   Monitor,
   Tv,
-  Cpu
+  Cpu,
+  X
 } from 'lucide-react';
 
 const ROOM_TYPE_OPTIONS: { id: RoomType; label: string; icon: any }[] = [
@@ -326,7 +327,7 @@ export const TimetableFilterBar: React.FC = () => {
           )}
 
           <div className="relative">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               placeholder="Search course, code..."
@@ -334,8 +335,18 @@ export const TimetableFilterBar: React.FC = () => {
               onChange={(e) =>
                 setFilterState((prev) => ({ ...prev, searchQuery: e.target.value }))
               }
-              className="pl-8.5 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-shu-700/20 focus:border-shu-700 w-44 sm:w-56 transition-all"
+              className="pl-9 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-shu-700/20 focus:border-shu-700 w-44 sm:w-56 transition-all"
             />
+            {filterState.searchQuery && (
+              <button
+                type="button"
+                onClick={() => setFilterState((prev) => ({ ...prev, searchQuery: '' }))}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                title="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
       </div>
