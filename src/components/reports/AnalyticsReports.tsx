@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react';
 import { useTimetable } from '@/context/TimetableContext';
-import { Faculty, Room, RoomType } from '@/types';
-import { timeToMinutes } from '@/lib/conflict-engine';
+import { Faculty, Room, RoomType, ClassSession } from '@/types';
+import { timeToMinutes, formatTimeRange, TIMETABLE_DAYS } from '@/lib/conflict-engine';
 import { exportTimetableToExcel, exportTimetableToPDF } from '@/lib/export-utils';
 import { 
   BarChart3, 
@@ -25,7 +25,11 @@ import {
   Cpu, 
   Monitor, 
   Tv, 
-  GraduationCap
+  GraduationCap,
+  ArrowRight,
+  Zap,
+  BookOpen,
+  AlertCircle
 } from 'lucide-react';
 
 const ALL_ROOM_TYPES: { id: RoomType; label: string; icon: any }[] = [
@@ -36,7 +40,15 @@ const ALL_ROOM_TYPES: { id: RoomType; label: string; icon: any }[] = [
   { id: 'computer_lab', label: 'Computer Lab', icon: Cpu },
 ];
 
-export const AnalyticsReports: React.FC = () => {
+interface AnalyticsReportsProps {
+  onOpenRoomAllocation?: () => void;
+  onOpenEditSession?: (session: ClassSession) => void;
+}
+
+export const AnalyticsReports: React.FC<AnalyticsReportsProps> = ({
+  onOpenRoomAllocation,
+  onOpenEditSession,
+}) => {
   const { 
     faculty, 
     rooms, 
@@ -64,9 +76,29 @@ export const AnalyticsReports: React.FC = () => {
   // Sort faculty alphabetically
   const sortedFaculty = [...faculty].sort((a, b) => a.name.localeCompare(b.name));
 
+  // Genuine physical rooms (Filter out any dummy/unassigned placeholders)
+  const realRooms = rooms.filter(
+    (r) =>
+      r.id !== 'a0000000-0000-0000-0000-000000000000' &&
+      r.id !== 'room-unassigned' &&
+      !r.name.toLowerCase().includes('room not assigned') &&
+      !r.name.toLowerCase().includes('pending') &&
+      r.building !== 'TBD'
+  );
+
   // Sort rooms alphabetically
-  const sortedRooms = [...rooms].sort((a, b) => 
+  const sortedRooms = [...realRooms].sort((a, b) => 
     a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+  );
+
+  // Scheduled sessions missing room assignments (treated as critical missing system details)
+  const unassignedSessions = sessions.filter(
+    (s) =>
+      (!s.room_id ||
+        !realRooms.some((r) => r.id === s.room_id) ||
+        s.room_id === 'a0000000-0000-0000-0000-000000000000' ||
+        s.room_id === 'room-unassigned') &&
+      s.status !== 'cancelled'
   );
 
   // Compute Faculty Load Analytics

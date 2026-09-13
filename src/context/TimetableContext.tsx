@@ -119,19 +119,45 @@ const sortBatchesAlphabetically = (list: Batch[]) => {
   );
 };
 
+const sanitizeRooms = (roomList: Room[]): Room[] => {
+  return roomList.filter(
+    (r) =>
+      r.id !== 'a0000000-0000-0000-0000-000000000000' &&
+      r.id !== 'room-unassigned' &&
+      !r.name.toLowerCase().includes('room not assigned') &&
+      !r.name.toLowerCase().includes('flexible') &&
+      !r.name.toLowerCase().includes('hall 101') &&
+      r.building !== 'TBD'
+  );
+};
+
+const sanitizeSessions = (sessionList: ClassSession[]): ClassSession[] => {
+  return sessionList.map((s) => {
+    if (
+      s.room_id === 'a0000000-0000-0000-0000-000000000000' ||
+      s.room_id === 'room-unassigned' ||
+      !s.room_id ||
+      s.room_id === ''
+    ) {
+      return { ...s, room_id: null };
+    }
+    return s;
+  });
+};
+
 export function TimetableProvider({ children }: { children: React.ReactNode }) {
   // State
   const [semesters, setSemesters] = useState<Semester[]>(INITIAL_SEMESTERS);
   const [activeSemester, setActiveSemester] = useState<Semester | null>(INITIAL_SEMESTERS[0]);
   const [calendarEvents, setCalendarEvents] = useState<SemesterCalendarEvent[]>(INITIAL_CALENDAR);
-  const [rooms, setRooms] = useState<Room[]>(INITIAL_ROOMS);
+  const [rooms, setRooms] = useState<Room[]>(() => sanitizeRooms(INITIAL_ROOMS));
   const [faculty, setFaculty] = useState<Faculty[]>(INITIAL_FACULTY);
   const [batches, setBatches] = useState<Batch[]>(() => sortBatchesAlphabetically(INITIAL_BATCHES));
   const [mergeGroups, setMergeGroups] = useState<BatchMergeGroup[]>(INITIAL_MERGE_GROUPS);
   const [courses, setCourses] = useState<Course[]>(INITIAL_COURSES);
   const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
   const [completedCourses, setCompletedCourses] = useState<StudentCourseCompleted[]>(INITIAL_COMPLETED_COURSES);
-  const [sessions, setSessions] = useState<ClassSession[]>(INITIAL_SESSIONS);
+  const [sessions, setSessions] = useState<ClassSession[]>(() => sanitizeSessions(INITIAL_SESSIONS));
   const [advisingSuggestions, setAdvisingSuggestions] = useState<AdvisingSuggestion[]>(INITIAL_ADVISING_SUGGESTIONS);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(INITIAL_AUDIT_LOG);
   const [versions, setVersions] = useState<TimetableVersion[]>([]);
@@ -163,7 +189,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     async function loadLiveSupabaseData() {
       if (!isSupabaseConfigured || !supabase) {
         const cached = loadTimetableFromCache();
-        if (cached?.sessions?.length) setSessions(cached.sessions);
+        if (cached?.sessions?.length) setSessions(sanitizeSessions(cached.sessions));
+        if (cached?.rooms?.length) setRooms(sanitizeRooms(cached.rooms));
         return;
       }
 
@@ -196,9 +223,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
         // Sanitize any legacy dummy records from old test databases
         if (roomData && roomData.length > 0) {
-          const cleanRooms = (roomData as Room[]).filter(
-            (r) => !r.name.toLowerCase().includes('flexible') && !r.name.toLowerCase().includes('hall 101')
-          );
+          const cleanRooms = sanitizeRooms(roomData as Room[]);
           if (cleanRooms.length > 0) setRooms(cleanRooms);
         }
 
@@ -218,7 +243,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           if (cleanCourses.length > 0) setCourses(cleanCourses);
         }
 
-        if (sessData && sessData.length > 0) setSessions(sessData as ClassSession[]);
+        if (sessData && sessData.length > 0) setSessions(sanitizeSessions(sessData as ClassSession[]));
         if (advData && advData.length > 0) setAdvisingSuggestions(advData as AdvisingSuggestion[]);
         if (mupData && mupData.length > 0) setMakeupRequests(mupData as MakeupRequest[]);
 
@@ -229,11 +254,11 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           console.info('Auto background sync: populating Supabase tables in background...');
           Promise.allSettled([
             supabase.from('semesters').upsert(INITIAL_SEMESTERS),
-            supabase.from('rooms').upsert(INITIAL_ROOMS),
+            supabase.from('rooms').upsert(sanitizeRooms(INITIAL_ROOMS)),
             supabase.from('faculty').upsert(INITIAL_FACULTY),
             supabase.from('batches').upsert(INITIAL_BATCHES),
             supabase.from('courses').upsert(INITIAL_COURSES),
-            supabase.from('class_sessions').upsert(INITIAL_SESSIONS),
+            supabase.from('class_sessions').upsert(sanitizeSessions(INITIAL_SESSIONS)),
             supabase.from('advising_suggestions').upsert(INITIAL_ADVISING_SUGGESTIONS),
             supabase.from('makeup_requests').upsert(INITIAL_MAKEUP_REQUESTS),
           ]).catch((e) => console.warn('Background sync notice:', e));
@@ -263,10 +288,12 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         { event: '*', schema: 'public', table: 'class_sessions' },
         (payload) => {
           if (payload.eventType === 'INSERT') {
-            const newSession = payload.new as ClassSession;
+            const rawSession = payload.new as ClassSession;
+            const newSession = sanitizeSessions([rawSession])[0];
             setSessions((prev) => [...prev.filter((s) => s.id !== newSession.id), newSession]);
           } else if (payload.eventType === 'UPDATE') {
-            const updated = payload.new as ClassSession;
+            const rawUpdated = payload.new as ClassSession;
+            const updated = sanitizeSessions([rawUpdated])[0];
             setSessions((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
           } else if (payload.eventType === 'DELETE') {
             const deletedId = (payload.old as { id: string }).id;

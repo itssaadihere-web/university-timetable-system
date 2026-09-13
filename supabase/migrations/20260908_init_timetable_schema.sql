@@ -165,7 +165,7 @@ CREATE TABLE IF NOT EXISTS class_sessions (
     semester_id UUID NOT NULL REFERENCES semesters(id) ON DELETE CASCADE,
     course_id UUID NOT NULL REFERENCES courses(id) ON DELETE RESTRICT,
     faculty_id UUID NOT NULL REFERENCES faculty(id) ON DELETE RESTRICT,
-    room_id UUID NOT NULL REFERENCES rooms(id) ON DELETE RESTRICT,
+    room_id UUID REFERENCES rooms(id) ON DELETE SET NULL,
     batch_id UUID NOT NULL REFERENCES batches(id) ON DELETE RESTRICT,
     batch_group_id UUID REFERENCES batch_merge_groups(id) ON DELETE SET NULL,
     day_of_week INTEGER NOT NULL CHECK (day_of_week BETWEEN 1 AND 7), -- 1 = Monday, 7 = Sunday

@@ -118,6 +118,8 @@ export const INITIAL_FACULTY: Faculty[] = [
   { id: 'fac-faisal-shaikh', name: 'Faisal Shaikh', email: 'faisal.shaikh@shu.edu.pk', department: 'Marketing Research', max_load_per_day: 3 },
   { id: 'fac-fahad-anwar', name: 'Dr. Muhammad Fahad Anwar', email: 'muhammad.fahad.anwar@shu.edu.pk', department: 'Supply Chain Management', max_load_per_day: 4 },
   { id: 'fac-saman', name: 'Saman Ismail', email: 'saman.ismail@shu.edu.pk', department: 'Management & Marketing', max_load_per_day: 4 },
+  { id: 'fac-muhammad-ahmed', name: 'Muhammad Ahmed', email: 'muhammad.ahmed@shu.edu.pk', department: 'Fintech & Computing', max_load_per_day: 4 },
+  { id: 'fac-fahad-riaz', name: 'Fahad Riaz', email: 'fahad.riaz@shu.edu.pk', department: 'Fintech & Blockchain', max_load_per_day: 4 },
 ];
 
 export const INITIAL_MERGE_GROUPS: BatchMergeGroup[] = [];
@@ -143,6 +145,13 @@ export const INITIAL_BATCHES: Batch[] = [
   { id: 'batch-bba-6', name: 'BBA - 6', program: 'BBA', semester: 6, student_count: 45 },
   { id: 'batch-bba-7', name: 'BBA - 7', program: 'BBA', semester: 7, student_count: 42 },
   { id: 'batch-bba-8', name: 'BBA - 8', program: 'BBA', semester: 8, student_count: 40 },
+
+  // Fintech (BS FT)
+  { id: 'batch-bsft-2', name: 'BS(FT) - 2', program: 'BS (Fintech)', semester: 2, student_count: 40 },
+  { id: 'batch-bsft-3', name: 'BS(FT) - 3', program: 'BS (Fintech)', semester: 3, student_count: 38 },
+  { id: 'batch-bsft-4', name: 'BS(FT) - 4', program: 'BS (Fintech)', semester: 4, student_count: 35 },
+  { id: 'batch-bsft-5', name: 'BS(FT) - 5', program: 'BS (Fintech)', semester: 5, student_count: 32 },
+  { id: 'batch-bsft-6', name: 'BS(FT) - 6', program: 'BS (Fintech)', semester: 6, student_count: 30 },
 
   // Accounting & Finance (BS AF)
   { id: 'batch-bsaf-2', name: 'BS(AF) - 2', program: 'BS (Accounting & Finance)', semester: 2, student_count: 50 },
@@ -172,6 +181,9 @@ export const INITIAL_COURSES: Course[] = [
   { id: 'crs-scm201', code: 'SCM-201', name: 'Introduction to Supply Chain Management', department: 'Supply Chain', credit_hours: 3, required_room_types: ['standard'] },
   { id: 'crs-ban101', code: 'BAN-101', name: 'Basics of Business Analytics', department: 'Business Analytics', credit_hours: 3, required_room_types: ['computer_lab'] },
   { id: 'crs-fte202', code: 'FTE-202', name: 'Introduction to Fintech', department: 'Fintech', credit_hours: 3, required_room_types: ['standard'] },
+  { id: 'crs-fte205', code: 'FTE-205', name: 'Programming for Fintech I', department: 'Fintech', credit_hours: 3, required_room_types: ['computer_lab', 'standard'] },
+  { id: 'crs-fte203', code: 'FTE-203', name: 'Blockchain Technology', department: 'Fintech', credit_hours: 3, required_room_types: ['standard'] },
+  { id: 'crs-fin313', code: 'FIN-313', name: 'Investment Management', department: 'Finance', credit_hours: 3, required_room_types: ['horseshoe'] },
 
   // Higher Semester Courses
   { id: 'crs-acc106', code: 'ACC-106', name: 'Financial Accounting and Corporate Reporting', department: 'Accounting', credit_hours: 3, required_room_types: ['standard'] },
@@ -265,34 +277,34 @@ export const INITIAL_SESSIONS: ClassSession[] = [
   // ==========================================
   { id: 'sess-1a-mon-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-acc101', faculty_id: 'fac-ghulam-mustafa', room_id: 'room-tf-302', batch_id: 'batch-sec-1a', day_of_week: 1, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
   { id: 'sess-1a-mon-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-csc110', faculty_id: 'fac-yasar-rizwan', room_id: 'room-tf-302', batch_id: 'batch-sec-1a', day_of_week: 1, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
-  { id: 'sess-1a-tue-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mgt101', faculty_id: 'fac-hassaan-ahmed', room_id: 'room-tf-302', batch_id: 'batch-sec-1a', day_of_week: 2, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1a-tue-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mgt101', faculty_id: 'fac-hassaan-ahmed', room_id: 'room-tf-302', batch_id: 'batch-sec-1a', day_of_week: 2, start_time: '08:30', end_time: '11:30', session_type: 'regular', status: 'published' },
   { id: 'sess-1a-tue-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-eng104', faculty_id: 'fac-aamir-langh', room_id: 'room-c-03', batch_id: 'batch-sec-1a', day_of_week: 2, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
   { id: 'sess-1a-wed-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-acc101', faculty_id: 'fac-ghulam-mustafa', room_id: 'room-tf-302', batch_id: 'batch-sec-1a', day_of_week: 3, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
   { id: 'sess-1a-wed-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-csc110', faculty_id: 'fac-yasar-rizwan', room_id: 'room-tf-308', batch_id: 'batch-sec-1a', day_of_week: 3, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
-  { id: 'sess-1a-thu-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-psy101', faculty_id: 'fac-rizwan-akram', room_id: 'room-frf-405', batch_id: 'batch-sec-1a', day_of_week: 4, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1a-thu-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-psy101', faculty_id: 'fac-rizwan-akram', room_id: 'room-frf-405', batch_id: 'batch-sec-1a', day_of_week: 4, start_time: '08:30', end_time: '11:30', session_type: 'regular', status: 'published' },
 
   // ==========================================
   // SEMESTER 1 - SECTION 1B: BS (BUSINESS ANALYTICS) & BBA
   // ==========================================
-  { id: 'sess-1b-mon-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-csc110', faculty_id: 'fac-ayesha-rafique', room_id: 'room-tf-311', batch_id: 'batch-sec-1b', day_of_week: 1, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1b-mon-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-csc110', faculty_id: 'fac-ayesha-rafique', room_id: 'room-tf-311', batch_id: 'batch-sec-1b', day_of_week: 1, start_time: '08:30', end_time: '11:00', session_type: 'regular', status: 'published' },
   { id: 'sess-1b-mon-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-acc101', faculty_id: 'fac-ghulam-mustafa', room_id: 'room-tf-311', batch_id: 'batch-sec-1b', day_of_week: 1, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
   { id: 'sess-1b-tue-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-eng104', faculty_id: 'fac-aamir-langh', room_id: 'room-frf-404', batch_id: 'batch-sec-1b', day_of_week: 2, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
   { id: 'sess-1b-tue-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-psy101', faculty_id: 'fac-yusra-tarique', room_id: 'room-tf-311', batch_id: 'batch-sec-1b', day_of_week: 2, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
-  { id: 'sess-1b-wed-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-csc110', faculty_id: 'fac-ayesha-rafique', room_id: 'room-tf-308', batch_id: 'batch-sec-1b', day_of_week: 3, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1b-wed-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-csc110', faculty_id: 'fac-ayesha-rafique', room_id: 'room-tf-308', batch_id: 'batch-sec-1b', day_of_week: 3, start_time: '08:30', end_time: '11:00', session_type: 'regular', status: 'published' },
   { id: 'sess-1b-wed-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-acc101', faculty_id: 'fac-ghulam-mustafa', room_id: 'room-tf-307', batch_id: 'batch-sec-1b', day_of_week: 3, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
-  { id: 'sess-1b-thu-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mgt101', faculty_id: 'fac-shamaila-burney', room_id: 'room-tf-311', batch_id: 'batch-sec-1b', day_of_week: 4, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1b-thu-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mgt101', faculty_id: 'fac-shamaila-burney', room_id: 'room-tf-311', batch_id: 'batch-sec-1b', day_of_week: 4, start_time: '08:30', end_time: '11:30', session_type: 'regular', status: 'published' },
   { id: 'sess-1b-thu-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-ban101', faculty_id: 'fac-musawwir', room_id: 'room-tf-308', batch_id: 'batch-sec-1b', day_of_week: 4, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
 
   // ==========================================
   // SEMESTER 1 - SECTION 1C: BBA & BS (SUPPLY CHAIN)
   // ==========================================
-  { id: 'sess-1c-mon-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mgt101', faculty_id: 'fac-priyanka-bajaj', room_id: 'room-tf-306', batch_id: 'batch-sec-1c', day_of_week: 1, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1c-mon-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mgt101', faculty_id: 'fac-priyanka-bajaj', room_id: 'room-tf-306', batch_id: 'batch-sec-1c', day_of_week: 1, start_time: '08:30', end_time: '11:30', session_type: 'regular', status: 'published' },
   { id: 'sess-1c-mon-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-eng104', faculty_id: 'fac-amna-alvi', room_id: 'room-frf-404', batch_id: 'batch-sec-1c', day_of_week: 1, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
-  { id: 'sess-1c-tue-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-acc101', faculty_id: 'fac-bina-junaid', room_id: 'room-frf-402', batch_id: 'batch-sec-1c', day_of_week: 2, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1c-tue-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-acc101', faculty_id: 'fac-bina-junaid', room_id: 'room-frf-402', batch_id: 'batch-sec-1c', day_of_week: 2, start_time: '08:30', end_time: '11:00', session_type: 'regular', status: 'published' },
   { id: 'sess-1c-tue-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-csc110', faculty_id: 'fac-yasar-rizwan', room_id: 'room-frf-402', batch_id: 'batch-sec-1c', day_of_week: 2, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
   { id: 'sess-1c-wed-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-psy101', faculty_id: 'fac-muhammad-yousuf', room_id: 'room-frf-405', batch_id: 'batch-sec-1c', day_of_week: 3, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
   { id: 'sess-1c-wed-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-scm201', faculty_id: 'fac-fahad-anwar', room_id: 'room-frf-401', batch_id: 'batch-sec-1c', day_of_week: 3, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
-  { id: 'sess-1c-thu-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-acc101', faculty_id: 'fac-bina-junaid', room_id: 'room-frf-402', batch_id: 'batch-sec-1c', day_of_week: 4, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1c-thu-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-acc101', faculty_id: 'fac-bina-junaid', room_id: 'room-frf-402', batch_id: 'batch-sec-1c', day_of_week: 4, start_time: '08:30', end_time: '11:00', session_type: 'regular', status: 'published' },
   { id: 'sess-1c-thu-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-csc110', faculty_id: 'fac-yasar-rizwan', room_id: 'room-tf-309', batch_id: 'batch-sec-1c', day_of_week: 4, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
 
   // ==========================================
@@ -302,7 +314,7 @@ export const INITIAL_SESSIONS: ClassSession[] = [
   { id: 'sess-1d-mon-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-psy101', faculty_id: 'fac-yusra-tarique', room_id: 'room-frf-406', batch_id: 'batch-sec-1d', day_of_week: 1, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
   { id: 'sess-1d-tue-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-csc110', faculty_id: 'fac-yasar-rizwan', room_id: 'room-frf-401', batch_id: 'batch-sec-1d', day_of_week: 2, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
   { id: 'sess-1d-tue-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-acc101', faculty_id: 'fac-tehseen-valji', room_id: 'room-frf-401', batch_id: 'batch-sec-1d', day_of_week: 2, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
-  { id: 'sess-1d-wed-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mgt101', faculty_id: 'fac-saman', room_id: 'room-frf-401', batch_id: 'batch-sec-1d', day_of_week: 3, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-1d-wed-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mgt101', faculty_id: 'fac-saman', room_id: 'room-frf-401', batch_id: 'batch-sec-1d', day_of_week: 3, start_time: '08:30', end_time: '11:30', session_type: 'regular', status: 'published' },
   { id: 'sess-1d-thu-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-csc110', faculty_id: 'fac-yasar-rizwan', room_id: 'room-tf-309', batch_id: 'batch-sec-1d', day_of_week: 4, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
   { id: 'sess-1d-thu-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-acc101', faculty_id: 'fac-tehseen-valji', room_id: 'room-frf-401', batch_id: 'batch-sec-1d', day_of_week: 4, start_time: '12:00', end_time: '14:30', session_type: 'regular', status: 'published' },
   { id: 'sess-1d-fri-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-fte202', faculty_id: 'fac-yahya-rashidi', room_id: 'room-tf-307', batch_id: 'batch-sec-1d', day_of_week: 5, start_time: '09:00', end_time: '11:30', session_type: 'regular', status: 'published' },
@@ -458,6 +470,33 @@ export const INITIAL_SESSIONS: ClassSession[] = [
   { id: 'sess-bba2-6', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mkt101', faculty_id: 'fac-saman', room_id: 'room-tf-301', batch_id: 'batch-bba-2', day_of_week: 2, start_time: '08:30', end_time: '11:30', session_type: 'regular', status: 'published' },
   { id: 'sess-bba2-7', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mth108', faculty_id: 'fac-musawwir', room_id: 'room-tf-301', batch_id: 'batch-bba-2', day_of_week: 1, start_time: '08:30', end_time: '11:30', session_type: 'regular', status: 'published' },
 
+  // BBA - 3A
+  { id: 'sess-bba3a-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-eng105', faculty_id: 'fac-sabeen-amjad', room_id: 'room-frf-404', batch_id: 'batch-bba-3a', day_of_week: 2, start_time: '12:00', end_time: '15:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-bba3a-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-fin206', faculty_id: 'fac-abdullah-idrees', room_id: 'room-tf-301', batch_id: 'batch-bba-3a', day_of_week: 3, start_time: '12:00', end_time: '15:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-bba3a-3', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-gen112', faculty_id: 'fac-hafiz-shayan', room_id: 'room-frf-405', batch_id: 'batch-bba-3a', day_of_week: 4, start_time: '13:00', end_time: '15:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-bba3a-4', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-hus202', faculty_id: 'fac-memoona-shahzad', room_id: null, batch_id: 'batch-bba-3a', day_of_week: 2, start_time: '08:30', end_time: '10:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-bba3a-5', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mgt201', faculty_id: 'fac-kousar-zaheer', room_id: 'room-tf-301', batch_id: 'batch-bba-3a', day_of_week: 4, start_time: '08:30', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-bba3a-6', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mth104', faculty_id: 'fac-mohammad-omar', room_id: 'room-tf-309', batch_id: 'batch-bba-3a', day_of_week: 1, start_time: '12:00', end_time: '15:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-bba3a-7', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-pst102', faculty_id: 'fac-zubair-shah', room_id: 'room-frf-404', batch_id: 'batch-bba-3a', day_of_week: 3, start_time: '08:30', end_time: '10:30', session_type: 'regular', status: 'published' },
+
+  // BBA - 3B
+  { id: 'sess-bba3b-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-eng105', faculty_id: 'fac-sabeen-amjad', room_id: 'room-frf-405', batch_id: 'batch-bba-3b', day_of_week: 2, start_time: '08:30', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-bba3b-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-fin206', faculty_id: 'fac-abdullah-idrees', room_id: 'room-frf-402', batch_id: 'batch-bba-3b', day_of_week: 3, start_time: '09:00', end_time: '12:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-bba3b-3', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-gen112', faculty_id: 'fac-hafiz-shayan', room_id: 'room-frf-405', batch_id: 'batch-bba-3b', day_of_week: 4, start_time: '13:00', end_time: '15:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-bba3b-4', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-hus202', faculty_id: 'fac-memoona-shahzad', room_id: null, batch_id: 'batch-bba-3b', day_of_week: 2, start_time: '13:00', end_time: '15:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-bba3b-5', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mgt201', faculty_id: 'fac-shah-saleem', room_id: 'room-frf-405', batch_id: 'batch-bba-3b', day_of_week: 3, start_time: '12:00', end_time: '15:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-bba3b-6', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mth104', faculty_id: 'fac-mohammad-omar', room_id: 'room-tf-309', batch_id: 'batch-bba-3b', day_of_week: 1, start_time: '08:30', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-bba3b-7', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-pst102', faculty_id: 'fac-zubair-shah', room_id: 'room-frf-406', batch_id: 'batch-bba-3b', day_of_week: 3, start_time: '08:30', end_time: '10:30', session_type: 'regular', status: 'published' },
+
+  // BBA - 3C
+  { id: 'sess-bba3c-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-eng105', faculty_id: 'fac-sana-javed', room_id: 'room-frf-406', batch_id: 'batch-bba-3c', day_of_week: 3, start_time: '12:00', end_time: '15:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-bba3c-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-fin206', faculty_id: 'fac-nayeem-ansari', room_id: 'room-tf-302', batch_id: 'batch-bba-3c', day_of_week: 5, start_time: '09:00', end_time: '12:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-bba3c-3', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-gen112', faculty_id: 'fac-hafiz-shayan', room_id: 'room-frf-406', batch_id: 'batch-bba-3c', day_of_week: 2, start_time: '08:30', end_time: '10:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-bba3c-4', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-hus202', faculty_id: 'fac-memoona-shahzad', room_id: null, batch_id: 'batch-bba-3c', day_of_week: 1, start_time: '13:00', end_time: '15:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-bba3c-5', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mgt201', faculty_id: 'fac-khalida-khan', room_id: null, batch_id: 'batch-bba-3c', day_of_week: 3, start_time: '08:30', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-bba3c-6', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mth104', faculty_id: 'fac-mohammad-omar', room_id: 'room-tf-309', batch_id: 'batch-bba-3c', day_of_week: 2, start_time: '12:00', end_time: '15:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-bba3c-7', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-pst102', faculty_id: 'fac-kanwal-munir', room_id: 'room-frf-406', batch_id: 'batch-bba-3c', day_of_week: 1, start_time: '08:30', end_time: '10:30', session_type: 'regular', status: 'published' },
+
   // BBA - 4
   { id: 'sess-bba4-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-eco203', faculty_id: 'fac-waleed-wasti', room_id: 'room-tf-308', batch_id: 'batch-bba-4', day_of_week: 2, start_time: '12:00', end_time: '15:00', session_type: 'regular', status: 'published' },
   { id: 'sess-bba4-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-fin204', faculty_id: 'fac-misbah-iqbal', room_id: 'room-tf-302', batch_id: 'batch-bba-4', day_of_week: 3, start_time: '12:00', end_time: '15:00', session_type: 'regular', status: 'published' },
@@ -498,6 +537,55 @@ export const INITIAL_SESSIONS: ClassSession[] = [
   { id: 'sess-bba8-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-hum401', faculty_id: 'fac-shah-saleem', room_id: null, batch_id: 'batch-bba-8', day_of_week: 2, start_time: '12:00', end_time: '15:00', session_type: 'regular', status: 'published' },
   { id: 'sess-bba8-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mgt406', faculty_id: 'fac-ekhlaque-ahmed', room_id: 'room-sf-201', batch_id: 'batch-bba-8', day_of_week: 4, start_time: '08:30', end_time: '11:30', session_type: 'regular', status: 'published' },
   { id: 'sess-bba8-3', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mgt408', faculty_id: 'fac-pervaiz-mobin', room_id: 'room-tf-307', batch_id: 'batch-bba-8', day_of_week: 4, start_time: '12:00', end_time: '15:00', session_type: 'regular', status: 'published' },
+
+  // ==========================================
+  // BS (FINTECH) - BS(FT)
+  // ==========================================
+  // BS(FT) - 2
+  { id: 'sess-ft2-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-acc106', faculty_id: 'fac-abid-khan', room_id: 'room-tf-301', batch_id: 'batch-bsft-2', day_of_week: 1, start_time: '13:00', end_time: '15:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft2-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-acc106', faculty_id: 'fac-abid-khan', room_id: 'room-tf-311', batch_id: 'batch-bsft-2', day_of_week: 3, start_time: '13:00', end_time: '15:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft2-3', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-eco102', faculty_id: 'fac-waleed-wasti', room_id: 'room-tf-301', batch_id: 'batch-bsft-2', day_of_week: 3, start_time: '08:30', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft2-4', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-gen111', faculty_id: 'fac-hafiz-shayan', room_id: 'room-frf-404', batch_id: 'batch-bsft-2', day_of_week: 4, start_time: '08:30', end_time: '10:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft2-5', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-ist101', faculty_id: 'fac-hafiz-shayan', room_id: 'room-frf-406', batch_id: 'batch-bsft-2', day_of_week: 2, start_time: '13:00', end_time: '15:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft2-6', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mkt101', faculty_id: 'fac-saman', room_id: 'room-tf-301', batch_id: 'batch-bsft-2', day_of_week: 2, start_time: '08:30', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft2-7', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mth108', faculty_id: 'fac-musawwir', room_id: 'room-tf-301', batch_id: 'batch-bsft-2', day_of_week: 1, start_time: '08:30', end_time: '11:30', session_type: 'regular', status: 'published' },
+
+  // BS(FT) - 3
+  { id: 'sess-ft3-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-eng105', faculty_id: 'fac-sabeen-amjad', room_id: 'room-frf-404', batch_id: 'batch-bsft-3', day_of_week: 2, start_time: '12:00', end_time: '15:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft3-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-fin206', faculty_id: 'fac-abdullah-idrees', room_id: 'room-tf-301', batch_id: 'batch-bsft-3', day_of_week: 3, start_time: '12:00', end_time: '15:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft3-3', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-gen112', faculty_id: 'fac-hafiz-shayan', room_id: 'room-frf-405', batch_id: 'batch-bsft-3', day_of_week: 4, start_time: '13:00', end_time: '15:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft3-4', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-hus202', faculty_id: 'fac-memoona-shahzad', room_id: 'room-a-04', batch_id: 'batch-bsft-3', day_of_week: 2, start_time: '08:30', end_time: '10:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft3-5', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mth210', faculty_id: 'fac-gul-munir', room_id: 'room-frf-401', batch_id: 'batch-bsft-3', day_of_week: 1, start_time: '08:30', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft3-6', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mth104', faculty_id: 'fac-mohammad-omar', room_id: 'room-tf-308', batch_id: 'batch-bsft-3', day_of_week: 1, start_time: '12:00', end_time: '15:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft3-7', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-pst102', faculty_id: 'fac-zubair-shah', room_id: 'room-frf-404', batch_id: 'batch-bsft-3', day_of_week: 3, start_time: '08:30', end_time: '10:30', session_type: 'regular', status: 'published' },
+
+  // BS(FT) - 4
+  { id: 'sess-ft4-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-eco203', faculty_id: 'fac-waleed-wasti', room_id: 'room-tf-308', batch_id: 'batch-bsft-4', day_of_week: 2, start_time: '12:00', end_time: '15:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft4-2', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-fin204', faculty_id: 'fac-misbah-iqbal', room_id: 'room-tf-302', batch_id: 'batch-bsft-4', day_of_week: 3, start_time: '12:00', end_time: '15:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft4-3', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-pdv203', faculty_id: 'fac-rizwan-akram', room_id: 'room-frf-405', batch_id: 'batch-bsft-4', day_of_week: 1, start_time: '13:00', end_time: '15:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft4-4a', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-fte205', faculty_id: 'fac-muhammad-ahmed', room_id: 'room-sf-206', batch_id: 'batch-bsft-4', day_of_week: 2, start_time: '08:30', end_time: '10:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft4-4b', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-fte205', faculty_id: 'fac-muhammad-ahmed', room_id: null, batch_id: 'batch-bsft-4', day_of_week: 5, start_time: '08:30', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft4-5', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-pst101', faculty_id: 'fac-mehak-kanwal', room_id: null, batch_id: 'batch-bsft-4', day_of_week: 1, start_time: '11:00', end_time: '13:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft4-6', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mth304', faculty_id: 'fac-mohammad-omar', room_id: 'room-sf-209', batch_id: 'batch-bsft-4', day_of_week: 3, start_time: '08:30', end_time: '11:30', session_type: 'regular', status: 'published' },
+
+  // BS(FT) - 5
+  { id: 'sess-ft5-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-fte203', faculty_id: 'fac-fahad-riaz', room_id: 'room-sf-209', batch_id: 'batch-bsft-5', day_of_week: 3, start_time: '12:00', end_time: '15:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft5-2a', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-fte205', faculty_id: 'fac-muhammad-ahmed', room_id: 'room-sf-206', batch_id: 'batch-bsft-5', day_of_week: 2, start_time: '08:30', end_time: '10:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft5-2b', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-fte205', faculty_id: 'fac-muhammad-ahmed', room_id: null, batch_id: 'batch-bsft-5', day_of_week: 5, start_time: '08:30', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft5-3', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-fin302', faculty_id: 'fac-nayeem-ansari', room_id: 'room-frf-401', batch_id: 'batch-bsft-5', day_of_week: 4, start_time: '08:30', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft5-4', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-law202', faculty_id: 'fac-jibran-sartaj', room_id: 'room-sf-201', batch_id: 'batch-bsft-5', day_of_week: 2, start_time: '08:30', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft5-5', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-eng306', faculty_id: 'fac-qaiser-hussain', room_id: 'room-frf-404', batch_id: 'batch-bsft-5', day_of_week: 4, start_time: '12:00', end_time: '15:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft5-6', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mth304', faculty_id: 'fac-mohammad-omar', room_id: null, batch_id: 'batch-bsft-5', day_of_week: 3, start_time: '08:30', end_time: '11:30', session_type: 'regular', status: 'published' },
+
+  // BS(FT) - 6
+  { id: 'sess-ft6-1', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-fte203', faculty_id: 'fac-fahad-riaz', room_id: 'room-sf-209', batch_id: 'batch-bsft-6', day_of_week: 3, start_time: '12:00', end_time: '15:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft6-2a', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-fte205', faculty_id: 'fac-muhammad-ahmed', room_id: 'room-sf-206', batch_id: 'batch-bsft-6', day_of_week: 2, start_time: '08:30', end_time: '10:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft6-2b', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-fte205', faculty_id: 'fac-muhammad-ahmed', room_id: null, batch_id: 'batch-bsft-6', day_of_week: 5, start_time: '08:30', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft6-3', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-mgt305', faculty_id: 'fac-khalida-khan', room_id: 'room-tf-310', batch_id: 'batch-bsft-6', day_of_week: 1, start_time: '08:30', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft6-4', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-eco401', faculty_id: 'fac-asif-shamim', room_id: 'room-sf-209', batch_id: 'batch-bsft-6', day_of_week: 2, start_time: '08:30', end_time: '11:30', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft6-5', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-hum205', faculty_id: 'fac-rizwan-akram', room_id: 'room-tf-302', batch_id: 'batch-bsft-6', day_of_week: 2, start_time: '12:00', end_time: '15:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft6-6', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-lan304', faculty_id: 'fac-hunain', room_id: 'room-tf-301', batch_id: 'batch-bsft-6', day_of_week: 5, start_time: '09:00', end_time: '12:00', session_type: 'regular', status: 'published' },
+  { id: 'sess-ft6-7', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-fin313', faculty_id: 'fac-nadeem-hanif', room_id: 'room-tf-302', batch_id: 'batch-bsft-6', day_of_week: 4, start_time: '08:30', end_time: '11:30', session_type: 'regular', status: 'published' },
 ];
 
 export const INITIAL_ADVISING_SUGGESTIONS: AdvisingSuggestion[] = [];
