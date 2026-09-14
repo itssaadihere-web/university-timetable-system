@@ -148,20 +148,20 @@ const sanitizeSessions = (sessionList: ClassSession[]): ClassSession[] => {
 
 export function TimetableProvider({ children }: { children: React.ReactNode }) {
   // State
-  const [semesters, setSemesters] = useState<Semester[]>(INITIAL_SEMESTERS);
-  const [activeSemester, setActiveSemester] = useState<Semester | null>(INITIAL_SEMESTERS[0]);
-  const [calendarEvents, setCalendarEvents] = useState<SemesterCalendarEvent[]>(INITIAL_CALENDAR);
-  const [rooms, setRooms] = useState<Room[]>(() => sanitizeRooms(INITIAL_ROOMS));
-  const [faculty, setFaculty] = useState<Faculty[]>(INITIAL_FACULTY);
-  const [batches, setBatches] = useState<Batch[]>(() => sortBatchesAlphabetically(INITIAL_BATCHES));
-  const [mergeGroups, setMergeGroups] = useState<BatchMergeGroup[]>(INITIAL_MERGE_GROUPS);
-  const [courses, setCourses] = useState<Course[]>(INITIAL_COURSES);
-  const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
-  const [completedCourses, setCompletedCourses] = useState<StudentCourseCompleted[]>(INITIAL_COMPLETED_COURSES);
-  const [sessions, setSessions] = useState<ClassSession[]>(() => sanitizeSessions(INITIAL_SESSIONS));
-  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(INITIAL_AUDIT_LOG);
+  const [semesters, setSemesters] = useState<Semester[]>([]);
+  const [activeSemester, setActiveSemester] = useState<Semester | null>(null);
+  const [calendarEvents, setCalendarEvents] = useState<SemesterCalendarEvent[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [faculty, setFaculty] = useState<Faculty[]>([]);
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [mergeGroups, setMergeGroups] = useState<BatchMergeGroup[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [completedCourses, setCompletedCourses] = useState<StudentCourseCompleted[]>([]);
+  const [sessions, setSessions] = useState<ClassSession[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [versions, setVersions] = useState<TimetableVersion[]>([]);
-  const [makeupRequests, setMakeupRequests] = useState<MakeupRequest[]>(INITIAL_MAKEUP_REQUESTS);
+  const [makeupRequests, setMakeupRequests] = useState<MakeupRequest[]>([]);
 
   // User & Roles
   const [currentRole, setCurrentRole] = useState<UserRole>('coordinator');
@@ -175,9 +175,9 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
   // Filters
   const [filterState, setFilterState] = useState<TimetableFilterState>({
     viewMode: 'batch',
-    selectedBatchId: INITIAL_BATCHES[0]?.id,
-    selectedFacultyId: INITIAL_FACULTY[0]?.id,
-    selectedRoomId: INITIAL_ROOMS[0]?.id || '',
+    selectedBatchId: undefined,
+    selectedFacultyId: undefined,
+    selectedRoomId: undefined,
     selectedRoomTypes: [],
     departmentFilter: 'ALL',
     showDrafts: true,
