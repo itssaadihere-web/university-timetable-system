@@ -21,6 +21,7 @@ import {
   Sparkles, 
   Copy, 
   Upload, 
+  FileSpreadsheet,
   CheckCircle2, 
   AlertTriangle,
   History,
@@ -108,9 +109,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <button
               onClick={onOpenImport}
               className="flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all cursor-pointer border border-white/10"
+              title="Import master data or timetable schedules from Excel"
             >
-              <Upload className="w-3.5 h-3.5 text-slate-300" />
-              <span>CSV Importer</span>
+              <FileSpreadsheet className="w-3.5 h-3.5 text-slate-300" />
+              <span>Excel Importer</span>
             </button>
           </div>
         </div>
@@ -282,17 +284,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-md transition-all space-y-3">
             <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold">
-              <Upload className="w-5 h-5" />
+              <FileSpreadsheet className="w-5 h-5" />
             </div>
-            <h3 className="font-bold text-slate-900 text-sm">Master CSV Importer</h3>
+            <h3 className="font-bold text-slate-900 text-sm">Master Excel Importer</h3>
             <p className="text-xs text-slate-500 leading-relaxed">
-              Bulk import Rooms with capability tags, Faculty with load limits, Batches, and Course catalogs.
+              Download pre-formatted Excel templates and bulk import Rooms, Faculty, Batches, Courses, and Schedules.
             </p>
             <button
               onClick={onOpenImport}
               className="text-xs font-bold text-teal-700 hover:text-teal-900 flex items-center gap-1 pt-1 cursor-pointer"
             >
-              <span>Import Master Data &rarr;</span>
+              <span>Import via Excel Template &rarr;</span>
             </button>
           </div>
         </div>

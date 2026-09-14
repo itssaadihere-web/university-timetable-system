@@ -99,7 +99,7 @@ interface TimetableContextType {
   approveMakeup: (requestId: string) => Promise<{ success: boolean; errors?: string[] }>;
   rejectMakeup: (requestId: string, reason?: string) => void;
   cloneSemesterRollover: (targetSemesterName: string, targetAcademicYear: string) => void;
-  bulkImportEntities: (type: 'rooms' | 'faculty' | 'batches' | 'courses', items: any[]) => void;
+  bulkImportEntities: (type: 'rooms' | 'faculty' | 'batches' | 'courses' | 'sessions', items: any[]) => Promise<{ success: boolean; count: number; error?: string }>;
   updateFaculty: (updated: Faculty) => Promise<{ success: boolean; errors?: string[] }>;
   updateRoom: (updated: Room) => Promise<{ success: boolean; errors?: string[] }>;
   syncAllToSupabase: () => Promise<{ success: boolean; message: string }>;
@@ -767,19 +767,66 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     setAuditLogs((prev) => [newLog, ...prev]);
   };
 
-  // Bulk Import Helper
-  const bulkImportEntities = async (type: 'rooms' | 'faculty' | 'batches' | 'courses', items: any[]) => {
-    if (type === 'rooms') setRooms((prev) => [...prev, ...items].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })));
-    if (type === 'faculty') setFaculty((prev) => [...prev, ...items]);
-    if (type === 'batches') setBatches((prev) => [...prev, ...items]);
-    if (type === 'courses') setCourses((prev) => [...prev, ...items]);
+  // Bulk Import Helper (Rooms, Faculty, Batches, Courses, Sessions)
+  const bulkImportEntities = async (
+    type: 'rooms' | 'faculty' | 'batches' | 'courses' | 'sessions',
+    items: any[]
+  ): Promise<{ success: boolean; count: number; error?: string }> => {
+    try {
+      if (!items || items.length === 0) return { success: true, count: 0 };
 
-    if (isSupabaseConfigured && supabase) {
-      try {
-        await supabase.from(type).upsert(items);
-      } catch (e) {
-        console.warn(`Supabase upsert error for ${type}:`, e);
+      if (type === 'rooms') {
+        setRooms((prev) => {
+          const incomingIds = new Set(items.map((i) => i.id));
+          const merged = [...prev.filter((r) => !incomingIds.has(r.id)), ...items];
+          return sanitizeRooms(merged).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+        });
+      } else if (type === 'faculty') {
+        setFaculty((prev) => {
+          const incomingIds = new Set(items.map((i) => i.id));
+          return [...prev.filter((f) => !incomingIds.has(f.id)), ...items];
+        });
+      } else if (type === 'batches') {
+        setBatches((prev) => {
+          const incomingIds = new Set(items.map((i) => i.id));
+          const merged = [...prev.filter((b) => !incomingIds.has(b.id)), ...items];
+          return sortBatchesAlphabetically(merged);
+        });
+      } else if (type === 'courses') {
+        setCourses((prev) => {
+          const incomingIds = new Set(items.map((i) => i.id));
+          return [...prev.filter((c) => !incomingIds.has(c.id)), ...items];
+        });
+      } else if (type === 'sessions') {
+        setSessions((prev) => {
+          const incomingIds = new Set(items.map((i) => i.id));
+          const merged = [...prev.filter((s) => !incomingIds.has(s.id)), ...items];
+          return sanitizeSessions(merged);
+        });
       }
+
+      if (isSupabaseConfigured && supabase) {
+        const tableName = type === 'sessions' ? 'class_sessions' : type;
+        const { error } = await supabase.from(tableName).upsert(items);
+        if (error) {
+          console.warn(`Supabase upsert error for ${type}:`, error);
+          return { success: false, count: items.length, error: error.message };
+        }
+      }
+
+      const newLog: AuditLogEntry = {
+        id: `log-${Date.now()}`,
+        changed_by: currentUserName,
+        change_type: 'INSERT',
+        description: `Bulk imported ${items.length} ${type} records via Excel`,
+        timestamp: new Date().toISOString(),
+      };
+      setAuditLogs((prev) => [newLog, ...prev]);
+
+      return { success: true, count: items.length };
+    } catch (err: any) {
+      console.error(`Bulk import failed for ${type}:`, err);
+      return { success: false, count: 0, error: err?.message || 'Import failed' };
     }
   };
 

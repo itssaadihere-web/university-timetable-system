@@ -11,7 +11,7 @@ import { CoordinatorDashboard } from '@/components/dashboards/CoordinatorDashboa
 import { AdminDashboard } from '@/components/dashboards/AdminDashboard';
 import { SessionEditModal } from '@/components/modals/SessionEditModal';
 import { VersionDiffModal } from '@/components/modals/VersionDiffModal';
-import { BulkCsvImportModal } from '@/components/modals/BulkCsvImportModal';
+import { BulkExcelImportModal } from '@/components/modals/BulkExcelImportModal';
 import { ClassSession } from '@/types';
 
 export default function AppMainPage() {
@@ -110,7 +110,7 @@ export default function AppMainPage() {
         onClose={() => setIsPublishModalOpen(false)}
       />
 
-      <BulkCsvImportModal
+      <BulkExcelImportModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
       />

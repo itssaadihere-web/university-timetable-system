@@ -20,6 +20,7 @@ import {
   Layers, 
   Copy, 
   Upload, 
+  FileSpreadsheet,
   AlertTriangle,
   DoorOpen,
   ArrowRight
@@ -127,9 +128,10 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
             <button
               onClick={onOpenImport}
               className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all cursor-pointer border border-white/10"
+              title="Import master data or timetable schedules from Excel"
             >
-              <Upload className="w-3.5 h-3.5 text-slate-300" />
-              <span>CSV</span>
+              <FileSpreadsheet className="w-3.5 h-3.5 text-slate-300" />
+              <span>Import Excel</span>
             </button>
           </div>
         </div>
