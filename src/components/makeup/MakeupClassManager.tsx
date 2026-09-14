@@ -45,6 +45,10 @@ export const MakeupClassManager: React.FC = () => {
     currentRole,
     addSession,
     activeSemester,
+    addCourse,
+    addFaculty,
+    addRoom,
+    addBatch,
   } = useTimetable();
 
   // New Request Form State
@@ -228,6 +232,12 @@ export const MakeupClassManager: React.FC = () => {
                   placeholder="Search course..."
                   icon={<BookOpen className="w-4 h-4 text-teal-600" />}
                   autoSortAlphabetical={true}
+                  allowCreate={isCoordinator}
+                  createLabel="Course"
+                  onCreateOption={async (query) => {
+                    const newCourse = await addCourse(query);
+                    return newCourse.id;
+                  }}
                 />
               </div>
 
@@ -248,6 +258,12 @@ export const MakeupClassManager: React.FC = () => {
                   placeholder="Search faculty..."
                   icon={<User className="w-4 h-4 text-teal-600" />}
                   autoSortAlphabetical={true}
+                  allowCreate={isCoordinator}
+                  createLabel="Faculty Member"
+                  onCreateOption={async (query) => {
+                    const newFac = await addFaculty(query);
+                    return newFac.id;
+                  }}
                 />
               </div>
 
@@ -270,6 +286,12 @@ export const MakeupClassManager: React.FC = () => {
                   placeholder="Search room..."
                   icon={<DoorOpen className="w-4 h-4 text-teal-600" />}
                   autoSortAlphabetical={true}
+                  allowCreate={isCoordinator}
+                  createLabel="Room / Venue"
+                  onCreateOption={async (query) => {
+                    const newRm = await addRoom(query);
+                    return newRm.id;
+                  }}
                 />
               </div>
 
@@ -292,6 +314,12 @@ export const MakeupClassManager: React.FC = () => {
                   placeholder="Search batch..."
                   icon={<Users className="w-4 h-4 text-teal-600" />}
                   autoSortAlphabetical={true}
+                  allowCreate={isCoordinator}
+                  createLabel="Batch"
+                  onCreateOption={async (query) => {
+                    const newBatch = await addBatch(query);
+                    return newBatch.id;
+                  }}
                 />
               </div>
 

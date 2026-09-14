@@ -100,6 +100,10 @@ interface TimetableContextType {
   rejectMakeup: (requestId: string, reason?: string) => void;
   cloneSemesterRollover: (targetSemesterName: string, targetAcademicYear: string) => void;
   bulkImportEntities: (type: 'rooms' | 'faculty' | 'batches' | 'courses' | 'sessions', items: any[]) => Promise<{ success: boolean; count: number; error?: string }>;
+  addCourse: (input: string | Partial<Course>) => Promise<Course>;
+  addFaculty: (input: string | Partial<Faculty>) => Promise<Faculty>;
+  addBatch: (input: string | Partial<Batch>) => Promise<Batch>;
+  addRoom: (input: string | Partial<Room>) => Promise<Room>;
   updateFaculty: (updated: Faculty) => Promise<{ success: boolean; errors?: string[] }>;
   updateRoom: (updated: Room) => Promise<{ success: boolean; errors?: string[] }>;
   syncAllToSupabase: () => Promise<{ success: boolean; message: string }>;
@@ -830,6 +834,166 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Quick Add Single Course (Inline "+ Add as New")
+  const addCourse = async (input: string | Partial<Course>): Promise<Course> => {
+    let newCourse: Course;
+    if (typeof input === 'string') {
+      const raw = input.trim();
+      const splitMatch = raw.match(/^([A-Za-z0-9\s-]+)[:|-]\s*(.+)$/);
+      const code = splitMatch ? splitMatch[1].trim().toUpperCase() : (raw.length <= 8 && !raw.includes(' ') ? raw.toUpperCase() : `CRS-${Date.now().toString().slice(-4)}`);
+      const name = splitMatch ? splitMatch[2].trim() : raw;
+
+      newCourse = {
+        id: `crs-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        code,
+        name,
+        department: 'Faculty of Management Sciences',
+        credit_hours: 3,
+        required_room_types: ['standard'],
+      };
+    } else {
+      newCourse = {
+        id: input.id || `crs-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        code: input.code || `CRS-${Date.now().toString().slice(-4)}`,
+        name: input.name || 'New Course',
+        department: input.department || 'Faculty of Management Sciences',
+        credit_hours: input.credit_hours || 3,
+        required_room_types: input.required_room_types || ['standard'],
+      };
+    }
+
+    setCourses((prev) => [...prev.filter((c) => c.id !== newCourse.id), newCourse]);
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('courses').upsert([newCourse]);
+      } catch (e) {
+        console.warn('Supabase course upsert error:', e);
+      }
+    }
+    return newCourse;
+  };
+
+  // Quick Add Single Faculty (Inline "+ Add as New")
+  const addFaculty = async (input: string | Partial<Faculty>): Promise<Faculty> => {
+    let newFaculty: Faculty;
+    if (typeof input === 'string') {
+      const raw = input.trim();
+      const cleanEmail = raw.toLowerCase().replace(/[^a-z0-9]/g, '.') + '@shu.edu.pk';
+      newFaculty = {
+        id: `fac-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        name: raw,
+        email: cleanEmail,
+        department: 'Faculty of Management Sciences',
+        max_load_per_day: 4,
+        is_active: true,
+      };
+    } else {
+      newFaculty = {
+        id: input.id || `fac-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        name: input.name || 'New Faculty',
+        email: input.email || `faculty.${Date.now()}@shu.edu.pk`,
+        department: input.department || 'Faculty of Management Sciences',
+        max_load_per_day: input.max_load_per_day || 4,
+        is_active: true,
+      };
+    }
+
+    setFaculty((prev) => [...prev.filter((f) => f.id !== newFaculty.id), newFaculty]);
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('faculty').upsert([newFaculty]);
+      } catch (e) {
+        console.warn('Supabase faculty upsert error:', e);
+      }
+    }
+    return newFaculty;
+  };
+
+  // Quick Add Single Batch (Inline "+ Add as New")
+  const addBatch = async (input: string | Partial<Batch>): Promise<Batch> => {
+    let newBatch: Batch;
+    if (typeof input === 'string') {
+      const raw = input.trim();
+      const semMatch = raw.match(/(\d+)/);
+      const semester = semMatch ? parseInt(semMatch[1], 10) : 1;
+      let program = 'Business Administration';
+      if (raw.toLowerCase().includes('bba')) program = 'BBA';
+      else if (raw.toLowerCase().includes('af') || raw.toLowerCase().includes('acc')) program = 'BS Accounting & Finance';
+      else if (raw.toLowerCase().includes('ban') || raw.toLowerCase().includes('analytics')) program = 'BS Business Analytics';
+      else if (raw.toLowerCase().includes('cs') || raw.toLowerCase().includes('comp')) program = 'BS Computer Science';
+
+      newBatch = {
+        id: `batch-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        name: raw,
+        program,
+        semester,
+        student_count: 40,
+        is_irregular: raw.toLowerCase().includes('irreg'),
+      };
+    } else {
+      newBatch = {
+        id: input.id || `batch-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        name: input.name || 'New Batch',
+        program: input.program || 'Business Administration',
+        semester: input.semester || 1,
+        student_count: input.student_count || 40,
+        is_irregular: input.is_irregular || false,
+      };
+    }
+
+    setBatches((prev) => sortBatchesAlphabetically([...prev.filter((b) => b.id !== newBatch.id), newBatch]));
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('batches').upsert([newBatch]);
+      } catch (e) {
+        console.warn('Supabase batch upsert error:', e);
+      }
+    }
+    return newBatch;
+  };
+
+  // Quick Add Single Room (Inline "+ Add as New")
+  const addRoom = async (input: string | Partial<Room>): Promise<Room> => {
+    let newRoom: Room;
+    if (typeof input === 'string') {
+      const raw = input.trim();
+      const floorMatch = raw.match(/(\d)/);
+      const floor = floorMatch ? parseInt(floorMatch[1], 10) : 1;
+      const isLab = raw.toLowerCase().includes('lab');
+      const isHorseshoe = raw.toLowerCase().includes('horseshoe');
+
+      newRoom = {
+        id: `room-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        name: raw,
+        building: 'Main Campus',
+        floor,
+        capacity: 50,
+        room_types: isLab ? ['computer_lab', 'multimedia'] : isHorseshoe ? ['horseshoe', 'multimedia'] : ['standard'],
+        is_active: true,
+      };
+    } else {
+      newRoom = {
+        id: input.id || `room-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        name: input.name || 'New Room',
+        building: input.building || 'Main Campus',
+        floor: input.floor || 1,
+        capacity: input.capacity || 50,
+        room_types: input.room_types || ['standard'],
+        is_active: true,
+      };
+    }
+
+    setRooms((prev) => sanitizeRooms([...prev.filter((r) => r.id !== newRoom.id), newRoom]).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })));
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('rooms').upsert([newRoom]);
+      } catch (e) {
+        console.warn('Supabase room upsert error:', e);
+      }
+    }
+    return newRoom;
+  };
+
   // Push / Seed All Current Local & Institutional Data to Supabase
   const syncAllToSupabase = async (): Promise<{ success: boolean; message: string }> => {
     if (!isSupabaseConfigured || !supabase) {
@@ -1006,6 +1170,10 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         rejectMakeup,
         cloneSemesterRollover,
         bulkImportEntities,
+        addCourse,
+        addFaculty,
+        addBatch,
+        addRoom,
         updateFaculty,
         updateRoom,
         syncAllToSupabase,

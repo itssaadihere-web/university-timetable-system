@@ -30,6 +30,9 @@ export const TimetableFilterBar: React.FC = () => {
     courses,
     sessions,
     currentRole,
+    addBatch,
+    addFaculty,
+    addRoom,
   } = useTimetable();
 
   // Batch Options (Alphabetically sorted + search keywords)
@@ -218,6 +221,12 @@ export const TimetableFilterBar: React.FC = () => {
               placeholder="Search or select batch..."
               icon={<Users className="w-4 h-4 text-shu-700" />}
               autoSortAlphabetical={true}
+              allowCreate={currentRole !== 'student'}
+              createLabel="Batch"
+              onCreateOption={async (query) => {
+                const newBatch = await addBatch(query);
+                return newBatch.id;
+              }}
             />
           )}
 
@@ -232,6 +241,12 @@ export const TimetableFilterBar: React.FC = () => {
               placeholder="Search or select faculty..."
               icon={<UserCheck className="w-4 h-4 text-shu-700" />}
               autoSortAlphabetical={true}
+              allowCreate={currentRole !== 'student'}
+              createLabel="Faculty Member"
+              onCreateOption={async (query) => {
+                const newFac = await addFaculty(query);
+                return newFac.id;
+              }}
             />
           )}
 
@@ -246,6 +261,12 @@ export const TimetableFilterBar: React.FC = () => {
               placeholder="Search or select room..."
               icon={<DoorOpen className="w-4 h-4 text-shu-700" />}
               autoSortAlphabetical={true}
+              allowCreate={currentRole !== 'student'}
+              createLabel="Room / Venue"
+              onCreateOption={async (query) => {
+                const newRm = await addRoom(query);
+                return newRm.id;
+              }}
             />
           )}
         </div>

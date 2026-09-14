@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Search, ChevronDown, Check, X } from 'lucide-react';
+import { Search, ChevronDown, Check, X, Plus, Loader2 } from 'lucide-react';
 
 export interface SearchableOption {
   id: string;
@@ -22,6 +22,9 @@ export interface SearchableSelectProps {
   autoSortAlphabetical?: boolean; // defaults to true
   align?: 'left' | 'right';
   noResultsText?: string;
+  allowCreate?: boolean;
+  createLabel?: string; // e.g., "Course", "Faculty", "Batch", "Room"
+  onCreateOption?: (query: string) => Promise<string | void> | string | void;
 }
 
 export const SearchableSelect: React.FC<SearchableSelectProps> = ({
@@ -36,10 +39,14 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   autoSortAlphabetical = true,
   align = 'left',
   noResultsText = 'No matching options found',
+  allowCreate = false,
+  createLabel,
+  onCreateOption,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
+  const [isCreating, setIsCreating] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -71,6 +78,16 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   const selectedOption = useMemo(() => {
     return sortedOptions.find((opt) => opt.id === value);
   }, [sortedOptions, value]);
+
+  // Check if an exact match already exists
+  const trimmedQuery = searchQuery.trim();
+  const hasExactMatch = useMemo(() => {
+    if (!trimmedQuery) return true;
+    const lower = trimmedQuery.toLowerCase();
+    return options.some((opt) => opt.title.trim().toLowerCase() === lower);
+  }, [options, trimmedQuery]);
+
+  const canCreate = Boolean(allowCreate && onCreateOption && trimmedQuery.length > 0 && !hasExactMatch);
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -109,6 +126,24 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     setHighlightedIndex(-1);
   };
 
+  const handleCreate = async () => {
+    if (!onCreateOption || !trimmedQuery || isCreating) return;
+    try {
+      setIsCreating(true);
+      const result = await onCreateOption(trimmedQuery);
+      if (typeof result === 'string' && result) {
+        onChange(result);
+      }
+      setIsOpen(false);
+      setSearchQuery('');
+      setHighlightedIndex(-1);
+    } catch (err) {
+      console.error('Error creating new option:', err);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!isOpen) {
       if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
@@ -118,7 +153,9 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
       return;
     }
 
-    const totalItems = (allOptionLabel ? 1 : 0) + filteredOptions.length;
+    const totalItems =
+      (allOptionLabel ? 1 : 0) + filteredOptions.length + (canCreate && filteredOptions.length > 0 ? 1 : 0);
+    const createItemIndex = (allOptionLabel ? 1 : 0) + filteredOptions.length;
 
     if (e.key === 'Escape') {
       e.preventDefault();
@@ -131,12 +168,18 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
       setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : totalItems - 1));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      if (allOptionLabel && highlightedIndex === 0) {
+      if (filteredOptions.length === 0 && canCreate) {
+        handleCreate();
+      } else if (canCreate && highlightedIndex === createItemIndex) {
+        handleCreate();
+      } else if (allOptionLabel && highlightedIndex === 0) {
         handleSelect('');
       } else {
         const optionIndex = allOptionLabel ? highlightedIndex - 1 : highlightedIndex;
         if (optionIndex >= 0 && optionIndex < filteredOptions.length) {
           handleSelect(filteredOptions[optionIndex].id);
+        } else if (canCreate) {
+          handleCreate();
         }
       }
     }
@@ -293,9 +336,31 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
             )}
 
             {filteredOptions.length === 0 ? (
-              <div className="py-6 px-4 text-center">
+              <div className="py-4 px-3 text-center space-y-2.5">
                 <p className="text-xs font-semibold text-slate-600">{noResultsText}</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">Try searching with a different term</p>
+                {canCreate ? (
+                  <button
+                    type="button"
+                    onClick={handleCreate}
+                    disabled={isCreating}
+                    className={`w-full flex items-center justify-center gap-2 px-3.5 py-2.5 bg-shu-700 hover:bg-shu-800 active:bg-shu-900 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer ${
+                      isCreating ? 'opacity-70 cursor-wait' : ''
+                    }`}
+                  >
+                    {isCreating ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-white shrink-0" />
+                    ) : (
+                      <Plus className="w-4 h-4 text-white shrink-0" />
+                    )}
+                    <span className="truncate">
+                      {isCreating
+                        ? `Adding ${createLabel || 'item'}...`
+                        : `+ Add "${trimmedQuery}" as a new ${createLabel || 'item'}`}
+                    </span>
+                  </button>
+                ) : (
+                  <p className="text-[11px] text-slate-400 mt-0.5">Try searching with a different term</p>
+                )}
               </div>
             ) : (
               filteredOptions.map((option, idx) => {
@@ -356,8 +421,38 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
               })
             )}
           </div>
+
+          {/* If there are filtered options but user typed a non-exact match, show "+ Add as a new" footer */}
+          {canCreate && filteredOptions.length > 0 && (
+            <div className="p-1.5 border-t border-slate-100 bg-slate-50/90 sticky bottom-0">
+              <button
+                type="button"
+                onClick={handleCreate}
+                disabled={isCreating}
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-left font-bold text-shu-800 hover:bg-shu-50 active:bg-shu-100 transition-all cursor-pointer border border-dashed border-shu-300/80 bg-white ${
+                  highlightedIndex === (allOptionLabel ? 1 : 0) + filteredOptions.length
+                    ? 'bg-shu-50 border-shu-600 ring-1 ring-shu-600 text-shu-900'
+                    : ''
+                } ${isCreating ? 'opacity-70 cursor-wait' : ''}`}
+              >
+                {isCreating ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-shu-700 shrink-0" />
+                ) : (
+                  <div className="w-4 h-4 rounded-md bg-shu-700 text-white flex items-center justify-center shrink-0">
+                    <Plus className="w-3 h-3" />
+                  </div>
+                )}
+                <div className="truncate flex-1">
+                  <span className="text-slate-600 font-normal">Add </span>
+                  <span className="text-shu-900 font-extrabold">"{trimmedQuery}"</span>
+                  <span className="text-slate-600 font-normal"> as a new {createLabel || 'option'}</span>
+                </div>
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 };
+

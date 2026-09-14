@@ -50,6 +50,10 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
     addSession,
     updateSession,
     mergeSessionBatches,
+    addCourse,
+    addFaculty,
+    addBatch,
+    addRoom,
   } = useTimetable();
 
   // Form State
@@ -339,6 +343,12 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
                 placeholder="Search or select course..."
                 icon={<BookOpen className="w-4 h-4 text-indigo-600" />}
                 autoSortAlphabetical={true}
+                allowCreate={true}
+                createLabel="Course"
+                onCreateOption={async (query) => {
+                  const newCourse = await addCourse(query);
+                  return newCourse.id;
+                }}
               />
               {selectedCourse?.required_room_types?.length ? (
                 <span className="block mt-1 text-[11px] text-amber-700 font-medium">
@@ -364,6 +374,12 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
                 placeholder="Search or select faculty..."
                 icon={<User className="w-4 h-4 text-indigo-600" />}
                 autoSortAlphabetical={true}
+                allowCreate={true}
+                createLabel="Faculty Member"
+                onCreateOption={async (query) => {
+                  const newFaculty = await addFaculty(query);
+                  return newFaculty.id;
+                }}
               />
             </div>
           </div>
@@ -390,6 +406,12 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
                 placeholder="Search or select room..."
                 icon={<MapPin className="w-4 h-4 text-indigo-600" />}
                 autoSortAlphabetical={true}
+                allowCreate={true}
+                createLabel="Room / Venue"
+                onCreateOption={async (query) => {
+                  const newRoom = await addRoom(query);
+                  return newRoom.id;
+                }}
               />
             </div>
 
@@ -412,6 +434,12 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
                 placeholder="Search or select batch..."
                 icon={<Users className="w-4 h-4 text-indigo-600" />}
                 autoSortAlphabetical={true}
+                allowCreate={true}
+                createLabel="Batch"
+                onCreateOption={async (query) => {
+                  const newBatch = await addBatch(query);
+                  return newBatch.id;
+                }}
               />
             </div>
           </div>
