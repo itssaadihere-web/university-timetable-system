@@ -34,7 +34,7 @@ import {
   INITIAL_MAKEUP_REQUESTS,
 } from '@/lib/mock-data';
 import { validateSessionConflicts } from '@/lib/conflict-engine';
-import { saveTimetableToCache, loadTimetableFromCache } from '@/lib/offline-cache';
+import { saveTimetableToCache, loadTimetableFromCache, clearAllTimetableCache } from '@/lib/offline-cache';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 interface SoftLockInfo {
@@ -200,7 +200,9 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           { data: roomData },
           { data: facData },
           { data: batchData },
+          { data: grpData },
           { data: crsData },
+          { data: stdData },
           { data: sessData },
           { data: mupData }
         ] = await Promise.all([
@@ -208,41 +210,56 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           supabase.from('rooms').select('*'),
           supabase.from('faculty').select('*'),
           supabase.from('batches').select('*'),
+          supabase.from('batch_merge_groups').select('*'),
           supabase.from('courses').select('*'),
+          supabase.from('students').select('*'),
           supabase.from('class_sessions').select('*'),
           supabase.from('makeup_requests').select('*'),
         ]);
 
-        if (semData && semData.length > 0) {
+        if (semData) {
           setSemesters(semData as Semester[]);
-          const active = semData.find((s) => s.is_active) || semData[0];
+          const active = semData.find((s) => s.is_active) || semData[0] || null;
           setActiveSemester(active as Semester);
         }
 
-        // Sanitize any legacy dummy records from old test databases
-        if (roomData && roomData.length > 0) {
-          const cleanRooms = sanitizeRooms(roomData as Room[]);
-          if (cleanRooms.length > 0) setRooms(cleanRooms);
+        if (roomData) {
+          setRooms(sanitizeRooms(roomData as Room[]));
         }
 
-        if (facData && facData.length > 0) {
+        if (facData) {
           const cleanFaculty = (facData as Faculty[]).filter(
             (f) => !f.name.toLowerCase().includes('turing') && !f.name.toLowerCase().includes('hopper')
           );
-          if (cleanFaculty.length > 0) setFaculty(cleanFaculty);
+          setFaculty(cleanFaculty);
         }
 
-        if (batchData && batchData.length > 0) setBatches(sortBatchesAlphabetically(batchData as Batch[]));
+        if (batchData) {
+          setBatches(sortBatchesAlphabetically(batchData as Batch[]));
+        }
 
-        if (crsData && crsData.length > 0) {
+        if (grpData) {
+          setMergeGroups(grpData as BatchMergeGroup[]);
+        }
+
+        if (crsData) {
           const cleanCourses = (crsData as Course[]).filter(
             (c) => !c.code.toLowerCase().includes('cs-301') && !c.name.toLowerCase().includes('compiler')
           );
-          if (cleanCourses.length > 0) setCourses(cleanCourses);
+          setCourses(cleanCourses);
+        }
+
+        if (stdData) {
+          setStudents(stdData as Student[]);
         }
 
         if (sessData) setSessions(sanitizeSessions(sessData as ClassSession[]));
         if (mupData) setMakeupRequests(mupData as MakeupRequest[]);
+
+        // If the database has 0 sessions and 0 rooms (i.e. DB cleared), also clear local cache
+        if (sessData && sessData.length === 0 && roomData && roomData.length === 0) {
+          clearAllTimetableCache();
+        }
       } catch (err) {
         console.warn('Supabase fetch notice (using cached/fallback state):', err);
       }
@@ -253,7 +270,11 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
   // Save to cache whenever published sessions change
   useEffect(() => {
-    saveTimetableToCache({ sessions, rooms, faculty, batches, courses });
+    if (sessions.length > 0 || rooms.length > 0) {
+      saveTimetableToCache({ sessions, rooms, faculty, batches, courses });
+    } else {
+      clearAllTimetableCache();
+    }
     setLastSyncTime(new Date().toLocaleTimeString());
   }, [sessions, rooms, faculty, batches, courses]);
 

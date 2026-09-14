@@ -43,6 +43,16 @@ export function clearStaleCache(): void {
   }
 }
 
+export function clearAllTimetableCache(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    Object.values(CACHE_KEYS).forEach((key) => localStorage.removeItem(key));
+    STALE_LEGACY_KEYS.forEach((key) => localStorage.removeItem(key));
+  } catch (err) {
+    // Ignore storage errors
+  }
+}
+
 export function saveTimetableToCache(data: {
   sessions: ClassSession[];
   rooms: Room[];
