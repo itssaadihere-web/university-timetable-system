@@ -125,7 +125,7 @@ export default function LoginPage() {
               </p>
               <div className="w-12 h-1 bg-shu-600 rounded-full my-4"></div>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Centralized timetable scheduling, classroom allocation management, and faculty advising workflow system.
+                Centralized timetable scheduling, classroom allocation management, and faculty workload distribution system.
               </p>
             </div>
 

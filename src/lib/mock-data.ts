@@ -9,7 +9,6 @@ import {
   SemesterCalendarEvent, 
   Student, 
   StudentCourseCompleted, 
-  AdvisingSuggestion, 
   AuditLogEntry, 
   TimetableVersion,
   MakeupRequest
@@ -587,8 +586,6 @@ export const INITIAL_SESSIONS: ClassSession[] = [
   { id: 'sess-ft6-6', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-lan304', faculty_id: 'fac-hunain', room_id: 'room-tf-301', batch_id: 'batch-bsft-6', day_of_week: 5, start_time: '09:00', end_time: '12:00', session_type: 'regular', status: 'published' },
   { id: 'sess-ft6-7', semester_id: '11111111-1111-1111-1111-111111111111', course_id: 'crs-fin313', faculty_id: 'fac-nadeem-hanif', room_id: 'room-tf-302', batch_id: 'batch-bsft-6', day_of_week: 4, start_time: '08:30', end_time: '11:30', session_type: 'regular', status: 'published' },
 ];
-
-export const INITIAL_ADVISING_SUGGESTIONS: AdvisingSuggestion[] = [];
 
 export const INITIAL_AUDIT_LOG: AuditLogEntry[] = [
   {

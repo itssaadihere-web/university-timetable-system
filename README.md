@@ -23,12 +23,7 @@ A zero-operational-cost, real-time web portal for automating university course, 
    - Side-by-side **Version Diff Modal** showing all modified items before broadcast.
    - Snapshot archiving with 1-click historical rollback.
 
-4. **Special-Case & Irregular Student Advising**
-   - Coordinator-only advising console.
-   - Cross-references completed student course history against prerequisite chains.
-   - Flags cross-batch elective clashes and provides clash-free alternative recommendations based on faculty availability windows.
-
-5. **Makeup & Floating Class Coordination**
+4. **Makeup & Floating Class Coordination**
    - Floating adjustment classes tied to specific calendar dates.
    - **Room Availability Matrix**: Real-time lookup of free venues filterable by equipment capabilities.
 

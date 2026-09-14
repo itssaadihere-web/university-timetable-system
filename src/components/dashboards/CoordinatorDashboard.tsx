@@ -5,7 +5,6 @@ import { useAuth } from '@/context/AuthContext';
 import { useTimetable } from '@/context/TimetableContext';
 import { TimetableFilterBar } from '@/components/timetable/TimetableFilterBar';
 import { TimetableGrid } from '@/components/timetable/TimetableGrid';
-import { StudentAdvisingModule } from '@/components/advising/StudentAdvisingModule';
 import { MakeupClassManager } from '@/components/makeup/MakeupClassManager';
 import { AnalyticsReports } from '@/components/reports/AnalyticsReports';
 import { RoomAllocationModal } from '@/components/modals/RoomAllocationModal';
@@ -13,7 +12,6 @@ import { ClassSession } from '@/types';
 import { 
   Sparkles, 
   Calendar, 
-  GraduationCap, 
   Clock, 
   BarChart3, 
   Plus, 
@@ -44,13 +42,12 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
   onOpenImport,
 }) => {
   const { currentUser } = useAuth();
-  const { sessions, rooms, advisingSuggestions, makeupRequests, activeSemester } = useTimetable();
+  const { sessions, rooms, makeupRequests, activeSemester } = useTimetable();
 
-  const [activeTab, setActiveTab] = useState<'matrix' | 'advising' | 'makeup' | 'analytics'>('matrix');
+  const [activeTab, setActiveTab] = useState<'matrix' | 'makeup' | 'analytics'>('matrix');
   const [isRoomAllocationOpen, setIsRoomAllocationOpen] = useState<boolean>(false);
 
   const draftSessionsCount = sessions.filter((s) => s.status === 'draft').length;
-  const pendingAdvisingCount = advisingSuggestions.filter((a) => a.status === 'pending').length;
   const pendingMakeupCount = makeupRequests.filter((m) => m.status === 'pending').length;
 
   const unassignedSessions = sessions.filter((s) => {
@@ -188,23 +185,6 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
         </button>
 
         <button
-          onClick={() => setActiveTab('advising')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeTab === 'advising'
-              ? 'bg-shu-700 text-white shadow-2xs'
-              : 'text-slate-600 hover:bg-slate-100'
-          }`}
-        >
-          <GraduationCap className="w-4 h-4" />
-          <span>Student Advising</span>
-          {pendingAdvisingCount > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-400 text-slate-900 font-bold">
-              {pendingAdvisingCount}
-            </span>
-          )}
-        </button>
-
-        <button
           onClick={() => setActiveTab('makeup')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             activeTab === 'makeup'
@@ -249,8 +229,6 @@ export const CoordinatorDashboard: React.FC<CoordinatorDashboardProps> = ({
           />
         </div>
       )}
-
-      {activeTab === 'advising' && <StudentAdvisingModule />}
 
       {activeTab === 'makeup' && <MakeupClassManager />}
 

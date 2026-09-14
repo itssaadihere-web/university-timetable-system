@@ -12,7 +12,6 @@ import {
   SemesterCalendarEvent,
   Student,
   StudentCourseCompleted,
-  AdvisingSuggestion,
   AuditLogEntry,
   TimetableVersion,
   MakeupRequest,
@@ -31,7 +30,6 @@ import {
   INITIAL_STUDENTS,
   INITIAL_COMPLETED_COURSES,
   INITIAL_SESSIONS,
-  INITIAL_ADVISING_SUGGESTIONS,
   INITIAL_AUDIT_LOG,
   INITIAL_MAKEUP_REQUESTS,
 } from '@/lib/mock-data';
@@ -59,7 +57,6 @@ interface TimetableContextType {
   students: Student[];
   completedCourses: StudentCourseCompleted[];
   sessions: ClassSession[];
-  advisingSuggestions: AdvisingSuggestion[];
   auditLogs: AuditLogEntry[];
   versions: TimetableVersion[];
   makeupRequests: MakeupRequest[];
@@ -99,7 +96,6 @@ interface TimetableContextType {
   ) => Promise<{ success: boolean; mergeGroupId?: string; errors?: string[] }>;
   publishCurrentDraft: (summary?: string) => Promise<{ success: boolean; versionNumber: number }>;
   revertToVersion: (version: TimetableVersion) => Promise<{ success: boolean }>;
-  resolveAdvising: (id: string, notes?: string) => void;
   approveMakeup: (requestId: string) => Promise<{ success: boolean; errors?: string[] }>;
   rejectMakeup: (requestId: string, reason?: string) => void;
   cloneSemesterRollover: (targetSemesterName: string, targetAcademicYear: string) => void;
@@ -163,7 +159,6 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
   const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
   const [completedCourses, setCompletedCourses] = useState<StudentCourseCompleted[]>(INITIAL_COMPLETED_COURSES);
   const [sessions, setSessions] = useState<ClassSession[]>(() => sanitizeSessions(INITIAL_SESSIONS));
-  const [advisingSuggestions, setAdvisingSuggestions] = useState<AdvisingSuggestion[]>(INITIAL_ADVISING_SUGGESTIONS);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(INITIAL_AUDIT_LOG);
   const [versions, setVersions] = useState<TimetableVersion[]>([]);
   const [makeupRequests, setMakeupRequests] = useState<MakeupRequest[]>(INITIAL_MAKEUP_REQUESTS);
@@ -207,7 +202,6 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           { data: batchData },
           { data: crsData },
           { data: sessData },
-          { data: advData },
           { data: mupData }
         ] = await Promise.all([
           supabase.from('semesters').select('*'),
@@ -216,7 +210,6 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           supabase.from('batches').select('*'),
           supabase.from('courses').select('*'),
           supabase.from('class_sessions').select('*'),
-          supabase.from('advising_suggestions').select('*'),
           supabase.from('makeup_requests').select('*'),
         ]);
 
@@ -249,7 +242,6 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (sessData && sessData.length > 0) setSessions(sanitizeSessions(sessData as ClassSession[]));
-        if (advData && advData.length > 0) setAdvisingSuggestions(advData as AdvisingSuggestion[]);
         if (mupData && mupData.length > 0) setMakeupRequests(mupData as MakeupRequest[]);
 
         // AUTOMATIC BACKGROUND SYNC: If Supabase tables are completely empty, seed them automatically
@@ -264,7 +256,6 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
             supabase.from('batches').upsert(INITIAL_BATCHES),
             supabase.from('courses').upsert(INITIAL_COURSES),
             supabase.from('class_sessions').upsert(sanitizeSessions(INITIAL_SESSIONS)),
-            supabase.from('advising_suggestions').upsert(INITIAL_ADVISING_SUGGESTIONS),
             supabase.from('makeup_requests').upsert(INITIAL_MAKEUP_REQUESTS),
           ]).catch((e) => console.warn('Background sync notice:', e));
         }
@@ -644,16 +635,6 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     return { success: true };
   };
 
-  // Resolve Advising Queue Item
-  const resolveAdvising = async (id: string, notes?: string) => {
-    setAdvisingSuggestions((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status: 'resolved' as const, notes: notes || a.notes } : a))
-    );
-    if (isSupabaseConfigured && supabase) {
-      await supabase.from('advising_suggestions').update({ status: 'resolved', notes }).eq('id', id);
-    }
-  };
-
   // Makeup Class Approval Workflow
   const approveMakeup = async (requestId: string): Promise<{ success: boolean; errors?: string[] }> => {
     const req = makeupRequests.find((r) => r.id === requestId);
@@ -948,7 +929,6 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         students,
         completedCourses,
         sessions,
-        advisingSuggestions,
         auditLogs,
         versions,
         makeupRequests,
@@ -970,7 +950,6 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         mergeSessionBatches,
         publishCurrentDraft,
         revertToVersion,
-        resolveAdvising,
         approveMakeup,
         rejectMakeup,
         cloneSemesterRollover,

@@ -145,23 +145,6 @@ export interface TimetableVersion {
   published_at: string;
 }
 
-export interface AdvisingSuggestion {
-  id: string;
-  student_id: string;
-  flagged_course_id: string;
-  clashing_course_id?: string | null;
-  reason: string;
-  suggested_alternative?: {
-    action?: string;
-    recommended_course?: string;
-    alternative_slots?: Array<{ day: number; start: string; end: string; room?: string }>;
-    available_faculty_slots?: Array<{ day: number; start: string; end: string; faculty: string }>;
-  };
-  status: 'pending' | 'resolved' | 'dismissed';
-  notes?: string;
-  created_at: string;
-}
-
 export interface MakeupRequest {
   id: string;
   semester_id: string;
