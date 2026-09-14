@@ -241,24 +241,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           if (cleanCourses.length > 0) setCourses(cleanCourses);
         }
 
-        if (sessData && sessData.length > 0) setSessions(sanitizeSessions(sessData as ClassSession[]));
-        if (mupData && mupData.length > 0) setMakeupRequests(mupData as MakeupRequest[]);
-
-        // AUTOMATIC BACKGROUND SYNC: If Supabase tables are completely empty, seed them automatically
-        const hasLiveSessions = sessData && sessData.length > 0;
-        const hasLiveRooms = roomData && roomData.length > 0;
-        if (!hasLiveSessions && !hasLiveRooms) {
-          console.info('Auto background sync: populating Supabase tables in background...');
-          Promise.allSettled([
-            supabase.from('semesters').upsert(INITIAL_SEMESTERS),
-            supabase.from('rooms').upsert(sanitizeRooms(INITIAL_ROOMS)),
-            supabase.from('faculty').upsert(INITIAL_FACULTY),
-            supabase.from('batches').upsert(INITIAL_BATCHES),
-            supabase.from('courses').upsert(INITIAL_COURSES),
-            supabase.from('class_sessions').upsert(sanitizeSessions(INITIAL_SESSIONS)),
-            supabase.from('makeup_requests').upsert(INITIAL_MAKEUP_REQUESTS),
-          ]).catch((e) => console.warn('Background sync notice:', e));
-        }
+        if (sessData) setSessions(sanitizeSessions(sessData as ClassSession[]));
+        if (mupData) setMakeupRequests(mupData as MakeupRequest[]);
       } catch (err) {
         console.warn('Supabase fetch notice (using cached/fallback state):', err);
       }
