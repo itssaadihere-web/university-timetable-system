@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTimetable } from '@/context/TimetableContext';
 import { ClassSession, TimetableVersion } from '@/types';
 import { 
@@ -12,7 +12,8 @@ import {
   CheckCircle2, 
   PlusCircle, 
   ArrowRight, 
-  History 
+  History,
+  Search
 } from 'lucide-react';
 import { formatTimeRange } from '@/lib/conflict-engine';
 
@@ -37,14 +38,47 @@ export const VersionDiffModal: React.FC<VersionDiffModalProps> = ({ isOpen, onCl
 
   const [summary, setSummary] = useState<string>('Weekly timetable adjustment and lab allocation');
   const [activeTab, setActiveTab] = useState<'diff' | 'history'>('diff');
+  const [draftSearch, setDraftSearch] = useState<string>('');
+  const [historySearch, setHistorySearch] = useState<string>('');
   const [isPublishing, setIsPublishing] = useState<boolean>(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-
-  if (!isOpen) return null;
 
   const draftSessions = sessions.filter((s) => s.status === 'draft');
   const publishedSessions = sessions.filter((s) => s.status === 'published');
   const latestVersion = versions[0];
+
+  const filteredDraftSessions = useMemo(() => {
+    return draftSessions.filter((draft) => {
+      if (!draftSearch.trim()) return true;
+      const q = draftSearch.toLowerCase();
+      const course = courses.find((c) => c.id === draft.course_id);
+      const teacher = faculty.find((f) => f.id === draft.faculty_id);
+      const room = rooms.find((r) => r.id === draft.room_id);
+      const batch = batches.find((b) => b.id === draft.batch_id);
+
+      return (
+        course?.code.toLowerCase().includes(q) ||
+        course?.name.toLowerCase().includes(q) ||
+        teacher?.name.toLowerCase().includes(q) ||
+        room?.name.toLowerCase().includes(q) ||
+        batch?.name.toLowerCase().includes(q)
+      );
+    });
+  }, [draftSessions, draftSearch, courses, faculty, rooms, batches]);
+
+  const filteredVersions = useMemo(() => {
+    return versions.filter((ver) => {
+      if (!historySearch.trim()) return true;
+      const q = historySearch.toLowerCase();
+      return (
+        ver.version_number.toString().includes(q) ||
+        (ver.changes_summary && ver.changes_summary.toLowerCase().includes(q)) ||
+        (ver.published_by && ver.published_by.toLowerCase().includes(q))
+      );
+    });
+  }, [versions, historySearch]);
+
+  if (!isOpen) return null;
 
   const handlePublish = async () => {
     setIsPublishing(true);
@@ -151,48 +185,69 @@ export const VersionDiffModal: React.FC<VersionDiffModalProps> = ({ isOpen, onCl
                     </div>
                   </div>
 
-                  {/* List of draft changes */}
+                  {/* List of draft changes with live search */}
                   <div className="space-y-2">
-                    <h5 className="font-bold text-slate-700 uppercase tracking-wider text-[10px]">
-                      Staged Draft Items
-                    </h5>
-                    <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
-                      {draftSessions.map((draft) => {
-                        const course = courses.find((c) => c.id === draft.course_id);
-                        const teacher = faculty.find((f) => f.id === draft.faculty_id);
-                        const room = rooms.find((r) => r.id === draft.room_id);
-                        const batch = batches.find((b) => b.id === draft.batch_id);
+                    <div className="flex items-center justify-between gap-2">
+                      <h5 className="font-bold text-slate-700 uppercase tracking-wider text-[10px]">
+                        Staged Draft Items ({filteredDraftSessions.length})
+                      </h5>
+                      {draftSessions.length > 2 && (
+                        <div className="relative w-48 sm:w-56">
+                          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                          <input
+                            type="text"
+                            placeholder="Filter staged draft..."
+                            value={draftSearch}
+                            onChange={(e) => setDraftSearch(e.target.value)}
+                            className="w-full pl-8 pr-2 py-1 text-xs bg-white border border-slate-200 rounded-lg text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          />
+                        </div>
+                      )}
+                    </div>
 
-                        return (
-                          <div
-                            key={draft.id}
-                            className="p-3 bg-white flex items-center justify-between gap-4 hover:bg-slate-50"
-                          >
-                            <div className="flex items-center gap-3">
-                              <span className="p-1.5 rounded-lg bg-amber-100 text-amber-800 font-bold font-mono text-[11px]">
-                                {course?.code || 'CRS'}
-                              </span>
-                              <div>
-                                <h6 className="font-bold text-slate-800 text-xs">
-                                  {course?.name}
-                                </h6>
-                                <p className="text-[11px] text-slate-500">
-                                  {batch?.name} • {teacher?.name} • Room: {room?.name}
-                                </p>
+                    <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden max-h-60 overflow-y-auto">
+                      {filteredDraftSessions.length === 0 ? (
+                        <div className="p-4 text-center text-slate-400 text-xs">
+                          No staged items matching &quot;{draftSearch}&quot;
+                        </div>
+                      ) : (
+                        filteredDraftSessions.map((draft) => {
+                          const course = courses.find((c) => c.id === draft.course_id);
+                          const teacher = faculty.find((f) => f.id === draft.faculty_id);
+                          const room = rooms.find((r) => r.id === draft.room_id);
+                          const batch = batches.find((b) => b.id === draft.batch_id);
+
+                          return (
+                            <div
+                              key={draft.id}
+                              className="p-3 bg-white flex items-center justify-between gap-4 hover:bg-slate-50"
+                            >
+                              <div className="flex items-center gap-3">
+                                <span className="p-1.5 rounded-lg bg-amber-100 text-amber-800 font-bold font-mono text-[11px]">
+                                  {course?.code || 'CRS'}
+                                </span>
+                                <div>
+                                  <h6 className="font-bold text-slate-800 text-xs">
+                                    {course?.name}
+                                  </h6>
+                                  <p className="text-[11px] text-slate-500">
+                                    {batch?.name} • {teacher?.name} • Room: {room?.name || 'Unassigned'}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="text-right">
+                                <span className="font-bold text-slate-800 font-mono text-xs">
+                                  {DAYS[draft.day_of_week - 1]} {formatTimeRange(draft.start_time, draft.end_time)}
+                                </span>
+                                <span className="block text-[10px] text-amber-600 font-semibold">
+                                  Draft Staged
+                                </span>
                               </div>
                             </div>
-
-                            <div className="text-right">
-                              <span className="font-bold text-slate-800 font-mono text-xs">
-                                {DAYS[draft.day_of_week - 1]} {formatTimeRange(draft.start_time, draft.end_time)}
-                              </span>
-                              <span className="block text-[10px] text-amber-600 font-semibold">
-                                Draft Staged
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })
+                      )}
                     </div>
                   </div>
 
@@ -222,7 +277,7 @@ export const VersionDiffModal: React.FC<VersionDiffModalProps> = ({ isOpen, onCl
                     <button
                       onClick={handlePublish}
                       disabled={isPublishing}
-                      className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-lg shadow-md shadow-emerald-100 transition-all"
+                      className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-lg shadow-md shadow-emerald-100 transition-all cursor-pointer"
                     >
                       <UploadCloud className="w-4 h-4" />
                       <span>{isPublishing ? 'Publishing...' : 'Publish Live Now'}</span>
@@ -235,13 +290,30 @@ export const VersionDiffModal: React.FC<VersionDiffModalProps> = ({ isOpen, onCl
 
           {activeTab === 'history' && (
             <div className="space-y-4">
+              {versions.length > 2 && (
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search version snapshots upon typing..."
+                    value={historySearch}
+                    onChange={(e) => setHistorySearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              )}
+
               {versions.length === 0 ? (
                 <p className="text-center py-8 text-slate-400">
                   No snapshot versions recorded yet. Publishing draft changes will create version checkpoints.
                 </p>
+              ) : filteredVersions.length === 0 ? (
+                <p className="text-center py-8 text-slate-400">
+                  No versions matching &quot;{historySearch}&quot;
+                </p>
               ) : (
-                <div className="space-y-3">
-                  {versions.map((ver) => (
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {filteredVersions.map((ver) => (
                     <div
                       key={ver.id}
                       className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-4"
@@ -263,7 +335,7 @@ export const VersionDiffModal: React.FC<VersionDiffModalProps> = ({ isOpen, onCl
 
                       <button
                         onClick={() => handleRollback(ver)}
-                        className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg shadow-xs"
+                        className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg shadow-xs cursor-pointer"
                       >
                         <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
                         <span>Rollback to v{ver.version_number}</span>

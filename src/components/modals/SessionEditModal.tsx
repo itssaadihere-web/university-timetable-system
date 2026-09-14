@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { TIMETABLE_DAYS, formatTo12Hour, findBatchMergeCandidate, BatchMergeCandidate } from '@/lib/conflict-engine';
 import { BatchMergeModal } from '@/components/modals/BatchMergeModal';
+import { SearchableSelect } from '@/components/timetable/SearchableSelect';
 
 interface SessionEditModalProps {
   isOpen: boolean;
@@ -320,22 +321,25 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
           {/* Row 1: Course & Faculty */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+              <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
                 <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
                 <span>Course</span>
               </label>
-              <select
+              <SearchableSelect
+                options={courses.map((c) => ({
+                  id: c.id,
+                  title: `${c.code} - ${c.name}`,
+                  subtitle: `${c.department} • ${c.credit_hours} Cr`,
+                  badge: c.required_room_types?.length ? c.required_room_types.join(', ') : undefined,
+                  badgeColor: 'indigo',
+                  searchTerms: `${c.code} ${c.name} ${c.department}`,
+                }))}
                 value={courseId}
-                onChange={(e) => setCourseId(e.target.value)}
-                required
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              >
-                {courses.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.code} - {c.name} ({c.credit_hours} Cr)
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setCourseId(val)}
+                placeholder="Search or select course..."
+                icon={<BookOpen className="w-4 h-4 text-indigo-600" />}
+                autoSortAlphabetical={true}
+              />
               {selectedCourse?.required_room_types?.length ? (
                 <span className="block mt-1 text-[11px] text-amber-700 font-medium">
                   Requires: {selectedCourse.required_room_types.join(', ')}
@@ -344,63 +348,71 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+              <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
                 <User className="w-3.5 h-3.5 text-indigo-600" />
                 <span>Faculty / Instructor</span>
               </label>
-              <select
+              <SearchableSelect
+                options={faculty.map((f) => ({
+                  id: f.id,
+                  title: f.name,
+                  subtitle: `${f.department} • Max ${f.max_load_per_day}h/day`,
+                  searchTerms: `${f.name} ${f.department} ${f.email}`,
+                }))}
                 value={facultyId}
-                onChange={(e) => setFacultyId(e.target.value)}
-                required
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              >
-                {faculty.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.name} ({f.department}) - Max {f.max_load_per_day}h/day
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setFacultyId(val)}
+                placeholder="Search or select faculty..."
+                icon={<User className="w-4 h-4 text-indigo-600" />}
+                autoSortAlphabetical={true}
+              />
             </div>
           </div>
 
           {/* Row 2: Room & Batch */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+              <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5 text-indigo-600" />
                 <span>Room / Venue</span>
               </label>
-              <select
+              <SearchableSelect
+                options={rooms.map((r) => ({
+                  id: r.id,
+                  title: r.name,
+                  subtitle: `${r.building} • Cap: ${r.capacity}`,
+                  badge: r.room_types.join(', '),
+                  badgeColor: 'primary',
+                  searchTerms: `${r.name} ${r.building} ${r.room_types.join(' ')}`,
+                }))}
                 value={roomId || ''}
-                onChange={(e) => setRoomId(e.target.value)}
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              >
-                <option value="">-- No Room Assigned (Pending) --</option>
-                {rooms.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name} ({r.building}, Cap: {r.capacity}) [{r.room_types.join(', ')}]
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setRoomId(val)}
+                allOptionLabel="-- No Room Assigned (Pending) --"
+                placeholder="Search or select room..."
+                icon={<MapPin className="w-4 h-4 text-indigo-600" />}
+                autoSortAlphabetical={true}
+              />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+              <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
                 <Users className="w-3.5 h-3.5 text-indigo-600" />
                 <span>Student Batch</span>
               </label>
-              <select
+              <SearchableSelect
+                options={batches.map((b) => ({
+                  id: b.id,
+                  title: b.name,
+                  subtitle: `${b.program} • Sem ${b.semester}`,
+                  badge: b.is_irregular ? 'Irregular' : undefined,
+                  badgeColor: 'amber',
+                  searchTerms: `${b.name} ${b.program} ${b.semester} sem-${b.semester}`,
+                }))}
                 value={batchId}
-                onChange={(e) => setBatchId(e.target.value)}
-                required
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              >
-                {batches.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name} ({b.program} - Sem {b.semester}) {b.is_irregular ? '[Irregular/Special]' : ''}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setBatchId(val)}
+                placeholder="Search or select batch..."
+                icon={<Users className="w-4 h-4 text-indigo-600" />}
+                autoSortAlphabetical={true}
+              />
             </div>
           </div>
 
@@ -413,18 +425,19 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
               </label>
               <span className="text-[11px] text-slate-500">Share class with another batch</span>
             </div>
-            <select
-              value={batchGroupId}
-              onChange={(e) => setBatchGroupId(e.target.value)}
-              className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 focus:ring-2 focus:ring-purple-500 focus:outline-none"
-            >
-              <option value="">-- No Batch Merging (Single Batch Only) --</option>
-              {mergeGroups.map((mg) => (
-                <option key={mg.id} value={mg.id}>
-                  {mg.name}
-                </option>
-              ))}
-            </select>
+            <SearchableSelect
+              options={mergeGroups.map((mg) => ({
+                id: mg.id,
+                title: mg.name,
+                searchTerms: mg.name,
+              }))}
+              value={batchGroupId || ''}
+              onChange={(val) => setBatchGroupId(val)}
+              allOptionLabel="-- No Batch Merging (Single Batch Only) --"
+              placeholder="Search or select merged group..."
+              icon={<Sparkles className="w-4 h-4 text-purple-600" />}
+              autoSortAlphabetical={true}
+            />
           </div>
 
           {/* Row 4: Day & Time Range */}

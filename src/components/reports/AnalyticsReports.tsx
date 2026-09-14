@@ -197,6 +197,20 @@ export const AnalyticsReports: React.FC<AnalyticsReportsProps> = ({
     return true;
   });
 
+  const filteredUnassignedSessions = unassignedSessions.filter((s) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    const crs = courses.find((c) => c.id === s.course_id);
+    const fac = faculty.find((f) => f.id === s.faculty_id);
+    const bth = batches.find((b) => b.id === s.batch_id);
+    return (
+      crs?.code.toLowerCase().includes(q) ||
+      crs?.name.toLowerCase().includes(q) ||
+      fac?.name.toLowerCase().includes(q) ||
+      bth?.name.toLowerCase().includes(q)
+    );
+  });
+
   // KPI calculations
   const highLoadTeachersCount = facultyLoadData.filter((f) => f.isNearLimit || f.isOverload).length;
   const bottleneckRoomsCount = roomUtilizationData.filter((r) => r.isBottleneck).length;
@@ -595,7 +609,14 @@ export const AnalyticsReports: React.FC<AnalyticsReportsProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-amber-100/80 font-medium text-slate-800">
-                      {unassignedSessions.map((session) => {
+                      {filteredUnassignedSessions.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="py-4 text-center text-slate-400">
+                            No unassigned sessions matching &quot;{searchQuery}&quot;
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredUnassignedSessions.map((session) => {
                         const crs = courses.find((c) => c.id === session.course_id);
                         const fac = faculty.find((f) => f.id === session.faculty_id);
                         const bth = batches.find((b) => b.id === session.batch_id);
@@ -642,7 +663,7 @@ export const AnalyticsReports: React.FC<AnalyticsReportsProps> = ({
                             )}
                           </tr>
                         );
-                      })}
+                      }))}
                     </tbody>
                   </table>
                 </div>

@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTimetable } from '@/context/TimetableContext';
 import { RoomType, ClassSession } from '@/types';
 import { timeToMinutes, formatTo12Hour, formatTimeRange } from '@/lib/conflict-engine';
+import { SearchableSelect } from '@/components/timetable/SearchableSelect';
 import { 
   Calendar as CalendarIcon, 
   Clock, 
@@ -15,7 +16,11 @@ import {
   Plus, 
   User, 
   DoorOpen, 
-  AlertCircle 
+  AlertCircle,
+  Search,
+  X,
+  BookOpen,
+  Users
 } from 'lucide-react';
 
 const MAKEUP_TIME_SLOTS = [
@@ -55,17 +60,50 @@ export const MakeupClassManager: React.FC = () => {
   // Interactive Room Availability Finder state
   const [finderDate, setFinderDate] = useState<string>('2026-09-25');
   const [finderTag, setFinderTag] = useState<string>('ALL');
+  const [matrixSearch, setMatrixSearch] = useState<string>('');
+  const [requestSearch, setRequestSearch] = useState<string>('');
   const [actionAlert, setActionAlert] = useState<string | null>(null);
 
   const isCoordinator = currentRole === 'coordinator' || currentRole === 'admin';
 
-  // Compute Room Availability Matrix for finderDate
-  const availableRoomsMatrix = rooms.filter((r) => {
-    if (finderTag !== 'ALL' && !r.room_types.includes(finderTag as RoomType)) {
-      return false;
-    }
-    return true;
-  });
+  // Compute Room Availability Matrix for finderDate with live search
+  const availableRoomsMatrix = useMemo(() => {
+    return rooms.filter((r) => {
+      if (finderTag !== 'ALL' && !r.room_types.includes(finderTag as RoomType)) {
+        return false;
+      }
+      if (matrixSearch.trim()) {
+        const q = matrixSearch.toLowerCase();
+        return (
+          r.name.toLowerCase().includes(q) ||
+          r.building.toLowerCase().includes(q) ||
+          r.room_types.some((t) => t.toLowerCase().includes(q))
+        );
+      }
+      return true;
+    });
+  }, [rooms, finderTag, matrixSearch]);
+
+  const filteredRequests = useMemo(() => {
+    return makeupRequests.filter((req) => {
+      if (!requestSearch.trim()) return true;
+      const q = requestSearch.toLowerCase();
+      const crs = courses.find((c) => c.id === req.course_id);
+      const rm = rooms.find((r) => r.id === req.room_id);
+      const tch = faculty.find((f) => f.id === req.faculty_id);
+      const bth = batches.find((b) => b.id === req.batch_id);
+
+      return (
+        crs?.code.toLowerCase().includes(q) ||
+        crs?.name.toLowerCase().includes(q) ||
+        rm?.name.toLowerCase().includes(q) ||
+        tch?.name.toLowerCase().includes(q) ||
+        bth?.name.toLowerCase().includes(q) ||
+        req.reason.toLowerCase().includes(q) ||
+        req.status.toLowerCase().includes(q)
+      );
+    });
+  }, [makeupRequests, requestSearch, courses, rooms, faculty, batches]);
 
   const handleApprove = async (requestId: string) => {
     const res = await approveMakeup(requestId);
@@ -172,144 +210,199 @@ export const MakeupClassManager: React.FC = () => {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Course</label>
-                <select
+                <label className="block font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                  <BookOpen className="w-3.5 h-3.5 text-teal-600" />
+                  <span>Course</span>
+                </label>
+                <SearchableSelect
+                  options={courses.map((c) => ({
+                    id: c.id,
+                    title: `${c.code} - ${c.name}`,
+                    subtitle: `${c.department} • ${c.credit_hours} Cr`,
+                    badge: c.required_room_types?.join(', '),
+                    badgeColor: 'primary',
+                    searchTerms: `${c.code} ${c.name} ${c.department}`,
+                  }))}
                   value={selectedCourseId}
-                  onChange={(e) => setSelectedCourseId(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-medium text-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                >
-                  {courses.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.code} - {c.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setSelectedCourseId(val)}
+                  placeholder="Search course..."
+                  icon={<BookOpen className="w-4 h-4 text-teal-600" />}
+                  autoSortAlphabetical={true}
+                />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Faculty</label>
-                <select
+                <label className="block font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-teal-600" />
+                  <span>Faculty</span>
+                </label>
+                <SearchableSelect
+                  options={faculty.map((f) => ({
+                    id: f.id,
+                    title: f.name,
+                    subtitle: `${f.department} • Max ${f.max_load_per_day}h/day`,
+                    searchTerms: `${f.name} ${f.department} ${f.email}`,
+                  }))}
                   value={selectedFacultyId}
-                  onChange={(e) => setSelectedFacultyId(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-medium text-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                >
-                  {faculty.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.name} ({f.department})
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setSelectedFacultyId(val)}
+                  placeholder="Search faculty..."
+                  icon={<User className="w-4 h-4 text-teal-600" />}
+                  autoSortAlphabetical={true}
+                />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Room / Venue</label>
-                <select
+                <label className="block font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                  <DoorOpen className="w-3.5 h-3.5 text-teal-600" />
+                  <span>Room / Venue</span>
+                </label>
+                <SearchableSelect
+                  options={rooms.map((r) => ({
+                    id: r.id,
+                    title: r.name,
+                    subtitle: `${r.building} • Cap: ${r.capacity}`,
+                    badge: r.room_types.join(', '),
+                    badgeColor: 'primary',
+                    searchTerms: `${r.name} ${r.building} ${r.room_types.join(' ')}`,
+                  }))}
                   value={selectedRoomId}
-                  onChange={(e) => setSelectedRoomId(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-medium text-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                >
-                  {rooms.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name} ({r.building}, Cap: {r.capacity}) [{r.room_types.join(', ')}]
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setSelectedRoomId(val)}
+                  placeholder="Search room..."
+                  icon={<DoorOpen className="w-4 h-4 text-teal-600" />}
+                  autoSortAlphabetical={true}
+                />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Batch</label>
-                <select
+                <label className="block font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-teal-600" />
+                  <span>Batch</span>
+                </label>
+                <SearchableSelect
+                  options={batches.map((b) => ({
+                    id: b.id,
+                    title: b.name,
+                    subtitle: `${b.program} • Sem ${b.semester}`,
+                    badge: b.is_irregular ? 'Irregular' : undefined,
+                    badgeColor: 'amber',
+                    searchTerms: `${b.name} ${b.program} ${b.semester}`,
+                  }))}
                   value={selectedBatchId}
-                  onChange={(e) => setSelectedBatchId(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-medium text-slate-800 focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                >
-                  {batches.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setSelectedBatchId(val)}
+                  placeholder="Search batch..."
+                  icon={<Users className="w-4 h-4 text-teal-600" />}
+                  autoSortAlphabetical={true}
+                />
               </div>
 
               <button
                 type="submit"
-                className="w-full py-2.5 px-4 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg shadow-sm hover:shadow transition-all"
+                className="w-full py-2.5 px-4 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg shadow-sm hover:shadow transition-all cursor-pointer"
               >
                 Schedule Floating Class
               </button>
             </form>
           </div>
 
-          {/* Pending Makeup Requests */}
+          {/* Pending Makeup Requests with live search */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
-            <h3 className="font-bold text-slate-900 text-sm flex items-center justify-between">
-              <span>Faculty Adjustment Requests</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
-                {makeupRequests.length}
-              </span>
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                <span>Faculty Adjustment Requests</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
+                  {filteredRequests.length}
+                </span>
+              </h3>
+            </div>
 
-            <div className="space-y-3">
-              {makeupRequests.map((req) => {
-                const crs = courses.find((c) => c.id === req.course_id);
-                const rm = rooms.find((r) => r.id === req.room_id);
-                const tch = faculty.find((f) => f.id === req.faculty_id);
-                const bth = batches.find((b) => b.id === req.batch_id);
-
-                return (
-                  <div
-                    key={req.id}
-                    className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs"
+            {makeupRequests.length > 2 && (
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Filter adjustment requests..."
+                  value={requestSearch}
+                  onChange={(e) => setRequestSearch(e.target.value)}
+                  className="w-full pl-8 pr-7 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+                {requestSearch && (
+                  <button
+                    onClick={() => setRequestSearch('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-900 font-mono text-xs">
-                        {crs?.code} ({req.requested_date})
-                      </span>
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          req.status === 'pending'
-                            ? 'bg-amber-100 text-amber-800'
-                            : req.status === 'approved'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-rose-100 text-rose-800'
-                        }`}
-                      >
-                        {req.status.toUpperCase()}
-                      </span>
-                    </div>
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            )}
 
-                    <p className="text-slate-600 text-[11px]">{req.reason}</p>
-                    <div className="text-[10px] text-slate-500">
-                      Instructor: <span className="font-medium text-slate-700">{tch?.name}</span> •{' '}
-                      Slot: {formatTimeRange(req.start_time, req.end_time)} • Room: {rm?.name}
-                    </div>
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {filteredRequests.length === 0 ? (
+                <p className="text-center py-6 text-xs text-slate-400">
+                  {makeupRequests.length === 0 ? 'No makeup requests found.' : 'No requests matching search.'}
+                </p>
+              ) : (
+                filteredRequests.map((req) => {
+                  const crs = courses.find((c) => c.id === req.course_id);
+                  const rm = rooms.find((r) => r.id === req.room_id);
+                  const tch = faculty.find((f) => f.id === req.faculty_id);
+                  const bth = batches.find((b) => b.id === req.batch_id);
 
-                    {req.status === 'pending' && isCoordinator && (
-                      <div className="flex items-center gap-2 pt-2 border-t border-slate-200">
-                        <button
-                          onClick={() => handleApprove(req.id)}
-                          className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-center"
+                  return (
+                    <div
+                      key={req.id}
+                      className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-900 font-mono text-xs">
+                          {crs?.code} ({req.requested_date})
+                        </span>
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            req.status === 'pending'
+                              ? 'bg-amber-100 text-amber-800'
+                              : req.status === 'approved'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-rose-100 text-rose-800'
+                          }`}
                         >
-                          Approve & Schedule
-                        </button>
-                        <button
-                          onClick={() => rejectMakeup(req.id)}
-                          className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-lg"
-                        >
-                          Reject
-                        </button>
+                          {req.status.toUpperCase()}
+                        </span>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
+
+                      <p className="text-slate-600 text-[11px]">{req.reason}</p>
+                      <div className="text-[10px] text-slate-500">
+                        Instructor: <span className="font-medium text-slate-700">{tch?.name}</span> •{' '}
+                        Slot: {formatTimeRange(req.start_time, req.end_time)} • Room: {rm?.name}
+                      </div>
+
+                      {req.status === 'pending' && isCoordinator && (
+                        <div className="flex items-center gap-2 pt-2 border-t border-slate-200">
+                          <button
+                            onClick={() => handleApprove(req.id)}
+                            className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-center cursor-pointer"
+                          >
+                            Approve & Schedule
+                          </button>
+                          <button
+                            onClick={() => rejectMakeup(req.id)}
+                            className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-lg cursor-pointer"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
 
         {/* Right 2-Columns: Live Room Availability Finder Matrix */}
         <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100">
             <div>
               <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
                 <DoorOpen className="w-4 h-4 text-teal-600" />
@@ -320,18 +413,38 @@ export const MakeupClassManager: React.FC = () => {
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Live search input for rooms in matrix */}
+              <div className="relative">
+                <Search className="w-3 h-3 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Filter rooms..."
+                  value={matrixSearch}
+                  onChange={(e) => setMatrixSearch(e.target.value)}
+                  className="pl-7 pr-6 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg text-slate-800 font-medium focus:bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none w-36"
+                />
+                {matrixSearch && (
+                  <button
+                    onClick={() => setMatrixSearch('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
               <input
                 type="date"
                 value={finderDate}
                 onChange={(e) => setFinderDate(e.target.value)}
-                className="px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg text-slate-800 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                className="px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg text-slate-800 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none cursor-pointer"
               />
 
               <select
                 value={finderTag}
                 onChange={(e) => setFinderTag(e.target.value)}
-                className="px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg text-slate-800 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                className="px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg text-slate-800 font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none cursor-pointer"
               >
                 <option value="ALL">All Equipment</option>
                 <option value="multimedia">Multimedia Only</option>

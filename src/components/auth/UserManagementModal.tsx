@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useTimetable } from '@/context/TimetableContext';
 import { UserRole } from '@/types';
+import { SearchableSelect } from '@/components/timetable/SearchableSelect';
 import { 
   X, 
   UserPlus, 
@@ -12,11 +13,13 @@ import {
   UserCheck, 
   Trash2, 
   CheckCircle2, 
-  AlertCircle,
-  Mail,
-  User,
-  Building,
-  Lock
+  AlertCircle, 
+  Mail, 
+  User, 
+  Building, 
+  Lock,
+  Search,
+  Filter
 } from 'lucide-react';
 
 interface UserManagementModalProps {
@@ -34,9 +37,34 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({ isOpen
   const [role, setRole] = useState<UserRole>('faculty');
   const [department, setDepartment] = useState<string>('Management Sciences');
   const [facultyId, setFacultyId] = useState<string>('');
+  const [accountSearch, setAccountSearch] = useState<string>('');
+  const [roleFilter, setRoleFilter] = useState<string>('ALL');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const filteredAccounts = useMemo(() => {
+    return userAccounts.filter((acc) => {
+      if (roleFilter !== 'ALL' && acc.role !== roleFilter) return false;
+      if (!accountSearch.trim()) return true;
+      const q = accountSearch.toLowerCase();
+      return (
+        acc.name.toLowerCase().includes(q) ||
+        acc.email.toLowerCase().includes(q) ||
+        (acc.department && acc.department.toLowerCase().includes(q)) ||
+        acc.role.toLowerCase().includes(q)
+      );
+    });
+  }, [userAccounts, accountSearch, roleFilter]);
+
+  const facultyOptions = useMemo(() => {
+    return faculty.map((f) => ({
+      id: f.id,
+      title: f.name,
+      subtitle: `${f.department} • Max ${f.max_load_per_day}h/day`,
+      searchTerms: `${f.name} ${f.department} ${f.email}`,
+    }));
+  }, [faculty]);
 
   if (!isOpen) return null;
 
@@ -226,19 +254,19 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({ isOpen
 
             {role === 'faculty' && (
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Link to Faculty Profile (Optional)</label>
-                <select
+                <label className="block font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                  <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Link to Faculty Profile (Optional)</span>
+                </label>
+                <SearchableSelect
+                  options={facultyOptions}
                   value={facultyId}
-                  onChange={(e) => setFacultyId(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="">-- Link to existing Faculty Profile --</option>
-                  {faculty.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.name} ({f.department})
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setFacultyId(val)}
+                  allOptionLabel="-- Link to existing Faculty Profile --"
+                  placeholder="Search faculty profile..."
+                  icon={<UserCheck className="w-4 h-4 text-indigo-600" />}
+                  autoSortAlphabetical={true}
+                />
               </div>
             )}
 
@@ -246,76 +274,116 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({ isOpen
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-sm hover:shadow transition-all"
+                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-sm hover:shadow transition-all cursor-pointer"
               >
                 {isSubmitting ? 'Creating...' : 'Provision User Account'}
               </button>
             </div>
           </form>
 
-          {/* User List */}
+          {/* User List with live search and role filter */}
           <div className="space-y-3">
-            <h4 className="font-bold text-slate-900 text-xs flex items-center justify-between">
-              <span>Registered System Accounts ({userAccounts.length})</span>
-            </h4>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <h4 className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                <span>Registered System Accounts ({filteredAccounts.length})</span>
+              </h4>
 
-            <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden bg-white">
-              {userAccounts.map((acc) => (
-                <div
-                  key={acc.id}
-                  className="p-3.5 flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
-                        acc.role === 'admin'
-                          ? 'bg-purple-100 text-purple-700'
-                          : acc.role === 'coordinator'
-                          ? 'bg-indigo-100 text-indigo-700'
-                          : 'bg-teal-100 text-teal-700'
-                      }`}
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1 sm:w-52">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search accounts upon typing..."
+                    value={accountSearch}
+                    onChange={(e) => setAccountSearch(e.target.value)}
+                    className="w-full pl-8 pr-7 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  {accountSearch && (
+                    <button
+                      onClick={() => setAccountSearch('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                     >
-                      {acc.role === 'admin' ? (
-                        <ShieldCheck className="w-4 h-4" />
-                      ) : acc.role === 'coordinator' ? (
-                        <Sparkles className="w-4 h-4" />
-                      ) : (
-                        <UserCheck className="w-4 h-4" />
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+
+                <select
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                  className="px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                >
+                  <option value="ALL">All Roles</option>
+                  <option value="admin">Admin</option>
+                  <option value="coordinator">Coordinator</option>
+                  <option value="faculty">Faculty</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden bg-white max-h-72 overflow-y-auto">
+              {filteredAccounts.length === 0 ? (
+                <div className="p-8 text-center text-xs text-slate-400">
+                  No accounts found matching your search.
+                </div>
+              ) : (
+                filteredAccounts.map((acc) => (
+                  <div
+                    key={acc.id}
+                    className="p-3.5 flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
+                          acc.role === 'admin'
+                            ? 'bg-purple-100 text-purple-700'
+                            : acc.role === 'coordinator'
+                            ? 'bg-indigo-100 text-indigo-700'
+                            : 'bg-teal-100 text-teal-700'
+                        }`}
+                      >
+                        {acc.role === 'admin' ? (
+                          <ShieldCheck className="w-4 h-4" />
+                        ) : acc.role === 'coordinator' ? (
+                          <Sparkles className="w-4 h-4" />
+                        ) : (
+                          <UserCheck className="w-4 h-4" />
+                        )}
+                      </div>
+                      <div>
+                        <h5 className="font-bold text-slate-900 text-xs">{acc.name}</h5>
+                        <p className="text-[11px] text-slate-500">
+                          {acc.email} • <span className="font-medium">{acc.department}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                          acc.role === 'admin'
+                            ? 'bg-purple-100 text-purple-800'
+                            : acc.role === 'coordinator'
+                            ? 'bg-indigo-100 text-indigo-800'
+                            : 'bg-teal-100 text-teal-800'
+                        }`}
+                      >
+                        {acc.role}
+                      </span>
+
+                      {isAdmin && acc.id !== currentUser?.id && (
+                        <button
+                          onClick={() => handleDelete(acc.id, acc.name)}
+                          title="Delete User Account"
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       )}
                     </div>
-                    <div>
-                      <h5 className="font-bold text-slate-900 text-xs">{acc.name}</h5>
-                      <p className="text-[11px] text-slate-500">
-                        {acc.email} • <span className="font-medium">{acc.department}</span>
-                      </p>
-                    </div>
                   </div>
-
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                        acc.role === 'admin'
-                          ? 'bg-purple-100 text-purple-800'
-                          : acc.role === 'coordinator'
-                          ? 'bg-indigo-100 text-indigo-800'
-                          : 'bg-teal-100 text-teal-800'
-                      }`}
-                    >
-                      {acc.role}
-                    </span>
-
-                    {isAdmin && acc.id !== currentUser?.id && (
-                      <button
-                        onClick={() => handleDelete(acc.id, acc.name)}
-                        title="Delete User Account"
-                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>

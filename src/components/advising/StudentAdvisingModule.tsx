@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTimetable } from '@/context/TimetableContext';
+import { SearchableSelect } from '@/components/timetable/SearchableSelect';
 import { 
   ShieldAlert, 
   GraduationCap, 
@@ -13,7 +14,9 @@ import {
   Sparkles, 
   ArrowRight,
   Filter,
-  Check
+  Check,
+  Search,
+  X
 } from 'lucide-react';
 
 export const StudentAdvisingModule: React.FC = () => {
@@ -32,6 +35,9 @@ export const StudentAdvisingModule: React.FC = () => {
     students.find((s) => s.is_irregular)?.id || students[0]?.id || ''
   );
   const [resolutionNotes, setResolutionNotes] = useState<Record<string, string>>({});
+  const [completedSearch, setCompletedSearch] = useState<string>('');
+  const [prereqSearch, setPrereqSearch] = useState<string>('');
+  const [advisingSearch, setAdvisingSearch] = useState<string>('');
 
   const isCoordinator = currentRole === 'coordinator' || currentRole === 'admin';
 
@@ -48,13 +54,56 @@ export const StudentAdvisingModule: React.FC = () => {
   }
 
   const selectedStudent = students.find((s) => s.id === selectedStudentId);
+
   const studentCompletedList = completedCourses.filter(
     (c) => c.student_id === selectedStudentId
   );
 
+  const filteredCompletedList = studentCompletedList.filter((sc) => {
+    if (!completedSearch.trim()) return true;
+    const q = completedSearch.toLowerCase();
+    const course = courses.find((c) => c.id === sc.course_id);
+    return (
+      course?.code.toLowerCase().includes(q) ||
+      course?.name.toLowerCase().includes(q) ||
+      sc.semester_completed.toLowerCase().includes(q) ||
+      sc.grade.toLowerCase().includes(q)
+    );
+  });
+
   const studentAdvisingQueue = advisingSuggestions.filter(
     (a) => a.student_id === selectedStudentId
   );
+
+  const filteredAdvisingQueue = studentAdvisingQueue.filter((item) => {
+    if (!advisingSearch.trim()) return true;
+    const q = advisingSearch.toLowerCase();
+    const flaggedCourse = courses.find((c) => c.id === item.flagged_course_id);
+    const clashingCourse = item.clashing_course_id ? courses.find((c) => c.id === item.clashing_course_id) : null;
+    return (
+      flaggedCourse?.code.toLowerCase().includes(q) ||
+      flaggedCourse?.name.toLowerCase().includes(q) ||
+      clashingCourse?.code.toLowerCase().includes(q) ||
+      clashingCourse?.name.toLowerCase().includes(q) ||
+      item.reason.toLowerCase().includes(q) ||
+      item.status.toLowerCase().includes(q)
+    );
+  });
+
+  const filteredPrereqCourses = courses.filter((crs) => {
+    if (!prereqSearch.trim()) return true;
+    const q = prereqSearch.toLowerCase();
+    return crs.code.toLowerCase().includes(q) || crs.name.toLowerCase().includes(q);
+  });
+
+  const studentOptions = students.map((std) => ({
+    id: std.id,
+    title: std.name,
+    subtitle: `Roll: ${std.roll_number}`,
+    badge: std.is_irregular ? 'Irregular/Transfer' : undefined,
+    badgeColor: 'amber' as const,
+    searchTerms: `${std.name} ${std.roll_number} ${std.is_irregular ? 'irregular transfer' : ''}`,
+  }));
 
   const handleResolve = (suggestionId: string) => {
     resolveAdvising(suggestionId, resolutionNotes[suggestionId] || 'Resolved by Coordinator');
@@ -80,22 +129,20 @@ export const StudentAdvisingModule: React.FC = () => {
             </p>
           </div>
 
-          {/* Student Selector */}
-          <div className="bg-white/10 backdrop-blur rounded-xl p-3 border border-white/10">
-            <label className="block text-[11px] font-bold text-indigo-200 uppercase tracking-wider mb-1">
-              Select Student Profile:
+          {/* Student Selector (Searchable upon typing) */}
+          <div className="bg-white/10 backdrop-blur rounded-xl p-3 border border-white/10 min-w-[280px]">
+            <label className="block text-[11px] font-bold text-indigo-200 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5" />
+              <span>Select Student Profile:</span>
             </label>
-            <select
+            <SearchableSelect
+              options={studentOptions}
               value={selectedStudentId}
-              onChange={(e) => setSelectedStudentId(e.target.value)}
-              className="px-3 py-1.5 bg-white text-slate-900 text-xs font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400"
-            >
-              {students.map((std) => (
-                <option key={std.id} value={std.id}>
-                  {std.name} ({std.roll_number}) {std.is_irregular ? '[Irregular/Transfer]' : ''}
-                </option>
-              ))}
-            </select>
+              onChange={(id) => setSelectedStudentId(id || students[0]?.id || '')}
+              placeholder="Search student or roll no..."
+              icon={<GraduationCap className="w-4 h-4 text-indigo-600" />}
+              autoSortAlphabetical={true}
+            />
           </div>
         </div>
       </div>
@@ -121,83 +168,145 @@ export const StudentAdvisingModule: React.FC = () => {
             </p>
           </div>
 
-          {/* Completed Courses */}
+          {/* Completed Courses with live search filter */}
           <div>
-            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-              Completed Courses ({studentCompletedList.length})
-            </h4>
-            <div className="space-y-1.5">
-              {studentCompletedList.map((sc) => {
-                const course = courses.find((c) => c.id === sc.course_id);
-                return (
-                  <div
-                    key={sc.id}
-                    className="p-2.5 bg-slate-50 rounded-lg border border-slate-200/80 flex items-center justify-between text-xs"
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Completed Courses ({studentCompletedList.length})
+              </h4>
+              {studentCompletedList.length > 2 && (
+                <span className="text-[10px] text-slate-400 font-mono">
+                  {filteredCompletedList.length} shown
+                </span>
+              )}
+            </div>
+
+            {studentCompletedList.length > 2 && (
+              <div className="relative mb-2">
+                <Search className="w-3 h-3 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Filter completed courses..."
+                  value={completedSearch}
+                  onChange={(e) => setCompletedSearch(e.target.value)}
+                  className="w-full pl-7 pr-6 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+                {completedSearch && (
+                  <button
+                    onClick={() => setCompletedSearch('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                   >
-                    <div>
-                      <span className="font-bold text-slate-800 font-mono">
-                        {course?.code || 'CRS'}
-                      </span>{' '}
-                      <span className="text-slate-600 font-medium">{course?.name}</span>
-                      <p className="text-[10px] text-slate-400">
-                        Term: {sc.semester_completed}
-                      </p>
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-1.5 max-h-56 overflow-y-auto">
+              {filteredCompletedList.length === 0 ? (
+                <p className="text-center py-3 text-[11px] text-slate-400">No matching completed courses</p>
+              ) : (
+                filteredCompletedList.map((sc) => {
+                  const course = courses.find((c) => c.id === sc.course_id);
+                  return (
+                    <div
+                      key={sc.id}
+                      className="p-2.5 bg-slate-50 rounded-lg border border-slate-200/80 flex items-center justify-between text-xs"
+                    >
+                      <div>
+                        <span className="font-bold text-slate-800 font-mono">
+                          {course?.code || 'CRS'}
+                        </span>{' '}
+                        <span className="text-slate-600 font-medium">{course?.name}</span>
+                        <p className="text-[10px] text-slate-400">
+                          Term: {sc.semester_completed}
+                        </p>
+                      </div>
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold font-mono text-[11px]">
+                        {sc.grade}
+                      </span>
                     </div>
-                    <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold font-mono text-[11px]">
-                      {sc.grade}
-                    </span>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
 
-          {/* Prerequisite Chain Status */}
+          {/* Prerequisite Chain Status with live search filter */}
           <div className="pt-3 border-t border-slate-100">
-            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-              Prerequisite Eligibility Matrix
-            </h4>
-            <div className="space-y-2 text-xs">
-              {courses.map((crs) => {
-                const completedIds = studentCompletedList.map((sc) => sc.course_id);
-                const isCompleted = completedIds.includes(crs.id);
-                const prereqs = crs.prerequisites || [];
-                const missingPrereqs = prereqs.filter((pid) => !completedIds.includes(pid));
-                const isEligible = missingPrereqs.length === 0;
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Prerequisite Eligibility Matrix
+              </h4>
+              <span className="text-[10px] text-slate-400 font-mono">
+                {filteredPrereqCourses.length} courses
+              </span>
+            </div>
 
-                return (
-                  <div
-                    key={crs.id}
-                    className={`p-2 rounded-lg border flex items-center justify-between ${
-                      isCompleted
-                        ? 'bg-emerald-50/50 border-emerald-200 text-emerald-900'
-                        : isEligible
-                        ? 'bg-indigo-50/50 border-indigo-200 text-indigo-900'
-                        : 'bg-rose-50/50 border-rose-200 text-rose-900'
-                    }`}
-                  >
-                    <div>
-                      <span className="font-bold font-mono">{crs.code}</span> - {crs.name}
-                      {!isEligible && (
-                        <p className="text-[10px] text-rose-700 font-semibold">
-                          Missing: {missingPrereqs.map((pid) => courses.find((c) => c.id === pid)?.code).join(', ')}
-                        </p>
-                      )}
+            <div className="relative mb-2">
+              <Search className="w-3 h-3 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Filter courses & prerequisites..."
+                value={prereqSearch}
+                onChange={(e) => setPrereqSearch(e.target.value)}
+                className="w-full pl-7 pr-6 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+              {prereqSearch && (
+                <button
+                  onClick={() => setPrereqSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-2 text-xs max-h-64 overflow-y-auto">
+              {filteredPrereqCourses.length === 0 ? (
+                <p className="text-center py-3 text-[11px] text-slate-400">No matching prerequisite courses</p>
+              ) : (
+                filteredPrereqCourses.map((crs) => {
+                  const completedIds = studentCompletedList.map((sc) => sc.course_id);
+                  const isCompleted = completedIds.includes(crs.id);
+                  const prereqs = crs.prerequisites || [];
+                  const missingPrereqs = prereqs.filter((pid) => !completedIds.includes(pid));
+                  const isEligible = missingPrereqs.length === 0;
+
+                  return (
+                    <div
+                      key={crs.id}
+                      className={`p-2 rounded-lg border flex items-center justify-between ${
+                        isCompleted
+                          ? 'bg-emerald-50/50 border-emerald-200 text-emerald-900'
+                          : isEligible
+                          ? 'bg-indigo-50/50 border-indigo-200 text-indigo-900'
+                          : 'bg-rose-50/50 border-rose-200 text-rose-900'
+                      }`}
+                    >
+                      <div>
+                        <span className="font-bold font-mono">{crs.code}</span> - {crs.name}
+                        {!isEligible && (
+                          <p className="text-[10px] text-rose-700 font-semibold">
+                            Missing: {missingPrereqs.map((pid) => courses.find((c) => c.id === pid)?.code).join(', ')}
+                          </p>
+                        )}
+                      </div>
+                      <span className="text-[10px] font-bold uppercase">
+                        {isCompleted ? 'Passed' : isEligible ? 'Eligible' : 'Blocked'}
+                      </span>
                     </div>
-                    <span className="text-[10px] font-bold uppercase">
-                      {isCompleted ? 'Passed' : isEligible ? 'Eligible' : 'Blocked'}
-                    </span>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
 
-        {/* Right 2-Columns: Advising Suggestions & Soft-Conflict Resolution Queue */}
+        {/* Right 2-Columns: Advising Suggestions & Soft-Conflict Resolution Queue with live search */}
         <div className="lg:col-span-2 space-y-4">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <div>
                 <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 text-amber-600" />
@@ -207,6 +316,27 @@ export const StudentAdvisingModule: React.FC = () => {
                   Coordinator-only advising decisions for {selectedStudent?.name}
                 </p>
               </div>
+
+              {studentAdvisingQueue.length > 0 && (
+                <div className="relative w-full sm:w-60">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Filter flags & clashes..."
+                    value={advisingSearch}
+                    onChange={(e) => setAdvisingSearch(e.target.value)}
+                    className="w-full pl-8 pr-7 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  {advisingSearch && (
+                    <button
+                      onClick={() => setAdvisingSearch('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             {studentAdvisingQueue.length === 0 ? (
@@ -217,9 +347,13 @@ export const StudentAdvisingModule: React.FC = () => {
                   This student currently has zero unfulfilled prerequisites or cross-batch elective clashes.
                 </p>
               </div>
+            ) : filteredAdvisingQueue.length === 0 ? (
+              <div className="text-center py-8 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                <p className="text-xs text-slate-500">No advising flags matching &quot;{advisingSearch}&quot;</p>
+              </div>
             ) : (
               <div className="space-y-4">
-                {studentAdvisingQueue.map((item) => {
+                {filteredAdvisingQueue.map((item) => {
                   const flaggedCourse = courses.find((c) => c.id === item.flagged_course_id);
                   const clashingCourse = item.clashing_course_id
                     ? courses.find((c) => c.id === item.clashing_course_id)

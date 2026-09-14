@@ -25,7 +25,10 @@ import {
   PlusCircle, 
   Sparkles,
   Layers,
-  AlertTriangle
+  AlertTriangle,
+  Search,
+  X,
+  Filter
 } from 'lucide-react';
 
 export const FacultyDashboard: React.FC = () => {
@@ -98,6 +101,19 @@ export const FacultyDashboard: React.FC = () => {
 
   const [activeSubTab, setActiveSubTab] = useState<'schedule' | 'room_lookup'>('schedule');
   const [lookupDate, setLookupDate] = useState<string>('2026-09-25');
+  const [roomSearch, setRoomSearch] = useState<string>('');
+  const [roomTypeFilter, setRoomTypeFilter] = useState<string>('ALL');
+
+  const filteredRooms = rooms.filter((r) => {
+    if (roomTypeFilter !== 'ALL' && !r.room_types.includes(roomTypeFilter as any)) return false;
+    if (!roomSearch.trim()) return true;
+    const q = roomSearch.toLowerCase();
+    return (
+      r.name.toLowerCase().includes(q) ||
+      r.building.toLowerCase().includes(q) ||
+      r.room_types.some((t) => t.toLowerCase().includes(q))
+    );
+  });
 
   const handleExport = (type: 'excel' | 'pdf') => {
     const title = `Faculty_${teacherProfile?.name || 'Instructor'}`;
@@ -436,44 +452,105 @@ export const FacultyDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Tab 2: Free Room Finder */}
+      {/* Tab 2: Free Room Finder with live search & type-to-filter */}
       {activeSubTab === 'room_lookup' && (
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-6 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div>
               <h3 className="text-sm font-bold text-slate-900">Campus Venue & Lab Availability</h3>
               <p className="text-xs text-slate-500">Query available lecture halls and computer labs for classes or makeup sessions</p>
             </div>
-            <input
-              type="date"
-              value={lookupDate}
-              onChange={(e) => setLookupDate(e.target.value)}
-              className="px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-shu-700/20 focus:border-shu-700 transition-all cursor-pointer"
-            />
+            
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Live search input */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Type to filter rooms..."
+                  value={roomSearch}
+                  onChange={(e) => setRoomSearch(e.target.value)}
+                  className="pl-8 pr-7 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-shu-700/20 focus:border-shu-700 w-44 sm:w-56 transition-all"
+                />
+                {roomSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setRoomSearch('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
+              {/* Room type filter */}
+              <select
+                value={roomTypeFilter}
+                onChange={(e) => setRoomTypeFilter(e.target.value)}
+                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-shu-700/20 focus:border-shu-700 transition-all cursor-pointer"
+              >
+                <option value="ALL">All Equipment</option>
+                <option value="standard">Standard</option>
+                <option value="multimedia">Multimedia</option>
+                <option value="interactive_lcd">Interactive LCD</option>
+                <option value="horseshoe">Horseshoe</option>
+                <option value="computer_lab">Computer Lab</option>
+              </select>
+
+              {/* Date selector */}
+              <input
+                type="date"
+                value={lookupDate}
+                onChange={(e) => setLookupDate(e.target.value)}
+                className="px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-shu-700/20 focus:border-shu-700 transition-all cursor-pointer"
+              />
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 text-xs">
-            {rooms.map((r) => (
-              <div key={r.id} className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-slate-300 hover:shadow-2xs transition-all space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-slate-900">{r.name}</h4>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-bold">
-                    Available
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500">
-                  {r.building} • Floor {r.floor} • Capacity {r.capacity}
-                </p>
-                <div className="flex items-center gap-1 flex-wrap pt-1 border-t border-slate-200/60">
-                  {r.room_types.map((t) => (
-                    <span key={t} className="px-1.5 py-0.2 rounded-md bg-white text-slate-600 text-[10px] font-medium border border-slate-200">
-                      {t.replace('_', ' ')}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
+          <div className="flex items-center justify-between text-xs text-slate-500 font-medium pt-1">
+            <span>Showing {filteredRooms.length} of {rooms.length} campus venues</span>
+            {(roomSearch || roomTypeFilter !== 'ALL') && (
+              <button
+                onClick={() => {
+                  setRoomSearch('');
+                  setRoomTypeFilter('ALL');
+                }}
+                className="text-xs font-bold text-shu-700 hover:underline"
+              >
+                Reset Filters
+              </button>
+            )}
           </div>
+
+          {filteredRooms.length === 0 ? (
+            <div className="text-center py-10 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+              <p className="text-xs font-bold text-slate-700">No rooms matching your search</p>
+              <p className="text-[11px] text-slate-400 mt-1">Try a different keyword or equipment filter.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 text-xs">
+              {filteredRooms.map((r) => (
+                <div key={r.id} className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-slate-300 hover:shadow-2xs transition-all space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-slate-900">{r.name}</h4>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-bold">
+                      Available
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    {r.building} • Floor {r.floor} • Capacity {r.capacity}
+                  </p>
+                  <div className="flex items-center gap-1 flex-wrap pt-1 border-t border-slate-200/60">
+                    {r.room_types.map((t) => (
+                      <span key={t} className="px-1.5 py-0.2 rounded-md bg-white text-slate-600 text-[10px] font-medium border border-slate-200">
+                        {t.replace('_', ' ')}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
