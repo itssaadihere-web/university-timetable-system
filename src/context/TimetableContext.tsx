@@ -99,7 +99,7 @@ interface TimetableContextType {
   approveMakeup: (requestId: string) => Promise<{ success: boolean; errors?: string[] }>;
   rejectMakeup: (requestId: string, reason?: string) => void;
   cloneSemesterRollover: (targetSemesterName: string, targetAcademicYear: string) => void;
-  bulkImportEntities: (type: 'rooms' | 'faculty' | 'batches' | 'courses' | 'sessions', items: any[]) => Promise<{ success: boolean; count: number; error?: string }>;
+  bulkImportEntities: (type: 'rooms' | 'faculty' | 'batches' | 'courses' | 'sessions' | 'students', items: any[]) => Promise<{ success: boolean; count: number; error?: string }>;
   addCourse: (input: string | Partial<Course>) => Promise<Course>;
   addFaculty: (input: string | Partial<Faculty>) => Promise<Faculty>;
   addBatch: (input: string | Partial<Batch>) => Promise<Batch>;
@@ -117,6 +117,46 @@ interface TimetableContextType {
 }
 
 const TimetableContext = createContext<TimetableContextType | null>(null);
+
+const computeRealBatchCounts = (batchList: Batch[], studentList: Student[]): Batch[] => {
+  if (!studentList || studentList.length === 0) return batchList;
+  
+  // Count students assigned to each batch_id directly
+  const countsByBatchId: Record<string, number> = {};
+  // Also count by program_code or program name match as fallback
+  const countsByProgramCode: Record<string, number> = {};
+
+  studentList.forEach((st) => {
+    if (st.batch_id) {
+      countsByBatchId[st.batch_id] = (countsByBatchId[st.batch_id] || 0) + 1;
+    }
+    if (st.program) {
+      const pNorm = st.program.toLowerCase();
+      let code = '';
+      if (pNorm.includes('analytic') || pNorm.includes('ban')) code = 'BAN';
+      else if (pNorm.includes('account') || pNorm.includes('bac') || pNorm.includes('af')) code = 'BAC';
+      else if (pNorm.includes('business admin') || pNorm.includes('bba')) code = 'BBA';
+      else if (pNorm.includes('fintech') || pNorm.includes('fin')) code = 'FIN';
+      else if (pNorm.includes('supply chain') || pNorm.includes('scm')) code = 'SCM';
+      if (code) {
+        countsByProgramCode[code] = (countsByProgramCode[code] || 0) + 1;
+      }
+    }
+  });
+
+  return batchList.map((b) => {
+    // 1. Direct match by batch_id
+    if (countsByBatchId[b.id] !== undefined && countsByBatchId[b.id] > 0) {
+      return { ...b, student_count: countsByBatchId[b.id] };
+    }
+    // 2. Direct match by batch name
+    const matchingByName = studentList.filter((st) => st.batch_id === b.name).length;
+    if (matchingByName > 0) {
+      return { ...b, student_count: matchingByName };
+    }
+    return b;
+  });
+};
 
 const sortBatchesAlphabetically = (list: Batch[]) => {
   return [...list].sort((a, b) =>
@@ -195,6 +235,11 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         const cached = loadTimetableFromCache();
         if (cached?.sessions?.length) setSessions(sanitizeSessions(cached.sessions));
         if (cached?.rooms?.length) setRooms(sanitizeRooms(cached.rooms));
+        if (cached?.students?.length) setStudents(cached.students);
+        if (cached?.batches?.length) {
+          const syncedBatches = computeRealBatchCounts(cached.batches, cached.students || []);
+          setBatches(sortBatchesAlphabetically(syncedBatches));
+        }
         return;
       }
 
@@ -238,8 +283,15 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           setFaculty(cleanFaculty);
         }
 
+        const loadedStudents = (stdData as Student[]) || [];
+        if (stdData) {
+          setStudents(loadedStudents);
+        }
+
         if (batchData) {
-          setBatches(sortBatchesAlphabetically(batchData as Batch[]));
+          const rawBatches = batchData as Batch[];
+          const realCountBatches = computeRealBatchCounts(rawBatches, loadedStudents);
+          setBatches(sortBatchesAlphabetically(realCountBatches));
         }
 
         if (grpData) {
@@ -251,10 +303,6 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
             (c) => !c.code.toLowerCase().includes('cs-301') && !c.name.toLowerCase().includes('compiler')
           );
           setCourses(cleanCourses);
-        }
-
-        if (stdData) {
-          setStudents(stdData as Student[]);
         }
 
         if (sessData) setSessions(sanitizeSessions(sessData as ClassSession[]));
@@ -274,13 +322,13 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
   // Save to cache whenever published sessions change
   useEffect(() => {
-    if (sessions.length > 0 || rooms.length > 0) {
-      saveTimetableToCache({ sessions, rooms, faculty, batches, courses });
+    if (sessions.length > 0 || rooms.length > 0 || students.length > 0) {
+      saveTimetableToCache({ sessions, rooms, faculty, batches, courses, students });
     } else {
       clearAllTimetableCache();
     }
     setLastSyncTime(new Date().toLocaleTimeString());
-  }, [sessions, rooms, faculty, batches, courses]);
+  }, [sessions, rooms, faculty, batches, courses, students]);
 
   // Supabase Realtime Subscription setup (if configured)
   useEffect(() => {
@@ -771,9 +819,9 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     setAuditLogs((prev) => [newLog, ...prev]);
   };
 
-  // Bulk Import Helper (Rooms, Faculty, Batches, Courses, Sessions)
+  // Bulk Import Helper (Rooms, Faculty, Batches, Courses, Sessions, Students)
   const bulkImportEntities = async (
-    type: 'rooms' | 'faculty' | 'batches' | 'courses' | 'sessions',
+    type: 'rooms' | 'faculty' | 'batches' | 'courses' | 'sessions' | 'students',
     items: any[]
   ): Promise<{ success: boolean; count: number; error?: string }> => {
     try {
@@ -794,7 +842,24 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         setBatches((prev) => {
           const incomingIds = new Set(items.map((i) => i.id));
           const merged = [...prev.filter((b) => !incomingIds.has(b.id)), ...items];
-          return sortBatchesAlphabetically(merged);
+          // Recalculate based on real students in the database/state
+          const withRealCounts = computeRealBatchCounts(merged, students);
+          return sortBatchesAlphabetically(withRealCounts);
+        });
+      } else if (type === 'students') {
+        setStudents((prev) => {
+          const incomingIds = new Set(items.map((i) => i.id));
+          const incomingRolls = new Set(items.map((i) => i.roll_number));
+          const filteredPrev = prev.filter((s) => !incomingIds.has(s.id) && !incomingRolls.has(s.roll_number));
+          const mergedStudents = [...filteredPrev, ...items];
+          
+          // Re-calculate all batch counts from updated student list
+          setBatches((prevBatches) => {
+            const updated = computeRealBatchCounts(prevBatches, mergedStudents);
+            return sortBatchesAlphabetically(updated);
+          });
+
+          return mergedStudents;
         });
       } else if (type === 'courses') {
         setCourses((prev) => {
@@ -965,6 +1030,13 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         merge_group_id: input.merge_group_id || null,
         parent_batch_id: input.parent_batch_id || null,
       };
+    }
+    // Compute actual assigned students count if student list is available
+    const realStudentsCount = students.filter(
+      (st) => st.batch_id === newBatch.id || st.batch_id === newBatch.name
+    ).length;
+    if (realStudentsCount > 0) {
+      newBatch.student_count = realStudentsCount;
     }
 
     setBatches((prev) => sortBatchesAlphabetically([...prev.filter((b) => b.id !== newBatch.id), newBatch]));

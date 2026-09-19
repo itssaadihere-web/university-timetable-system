@@ -18,7 +18,7 @@ import {
   Info
 } from 'lucide-react';
 
-export type ImportEntityType = 'rooms' | 'faculty' | 'batches' | 'courses' | 'sessions';
+export type ImportEntityType = 'rooms' | 'faculty' | 'batches' | 'courses' | 'sessions' | 'students';
 
 interface BulkExcelImportModalProps {
   isOpen: boolean;
@@ -161,6 +161,47 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
               department: 'Management Sciences',
               credit_hours: 3,
               required_room_types: 'horseshoe, multimedia',
+            },
+          ],
+        };
+      case 'students':
+        return {
+          filename: 'SHU_Student_Roster_List_Template.xlsx',
+          description: 'Official student admission roster with Institution, Student ID, Name, Campus ID, Email, Phone, Status, and Program Descr.',
+          columns: ['Institution', 'ID', 'Name', 'Campus ID', 'Email', 'Phone', 'Status', 'Descr', 'Batch Name'],
+          sampleData: [
+            {
+              Institution: 'BHUNV',
+              ID: 'F26BAC001',
+              Name: 'Muhammad Saad',
+              'Campus ID': '35374',
+              Email: 'saadsajid1520@gmail.com',
+              Phone: '923362336749',
+              Status: 'Active in Program',
+              Descr: 'Bachelor of Science in Accounting & Finance',
+              'Batch Name': 'Batch-1A-BAC',
+            },
+            {
+              Institution: 'BHUNV',
+              ID: 'F26BAN001',
+              Name: 'Ansharah Shazim',
+              'Campus ID': '40728',
+              Email: 'ansharahshazim@gmail.com',
+              Phone: '923198494668',
+              Status: 'Active in Program',
+              Descr: 'BS Business Analytics',
+              'Batch Name': 'Batch-1B-BAN',
+            },
+            {
+              Institution: 'BHUNV',
+              ID: 'F26BBA049',
+              Name: 'Naima Yousuf',
+              'Campus ID': '41336',
+              Email: 'naimakhan2265@gmail.com',
+              Phone: '923423040585',
+              Status: 'Active in Program',
+              Descr: 'Bachelor of Business Administration',
+              'Batch Name': 'Batch-1B-BBA',
             },
           ],
         };
@@ -366,6 +407,65 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
         };
       }
 
+      if (type === 'students') {
+        const roll_number = getVal('id', 'student_id', 'roll_number', 'roll_no', 'rollno', 'campus_id') || `STD-${index + 1}`;
+        const name = getVal('name', 'student_name', 'fullname') || 'Student';
+        const campus_id = getVal('campus_id', 'campusid', 'id');
+        const email = getVal('email', 'email_address') || `${roll_number.toLowerCase()}@shu.edu.pk`;
+        const phone = getVal('phone', 'mobile', 'contact', 'phone_number') || '';
+        const status = getVal('status', 'student_status') || 'Active in Program';
+        const descr = getVal('descr', 'program', 'degree', 'department') || '';
+        const explicitBatch = getVal('batch_name', 'batch', 'section', 'batch_id');
+
+        // Automatically match or resolve batch_id from explicitBatch, ID prefix, or program descr
+        let targetBatchId = '';
+        if (explicitBatch) {
+          const directMatch = batches.find((b) => b.name.toLowerCase() === explicitBatch.toLowerCase() || b.id === explicitBatch);
+          if (directMatch) targetBatchId = directMatch.id;
+        }
+
+        if (!targetBatchId) {
+          const rollUpper = roll_number.toUpperCase();
+          const descrLower = descr.toLowerCase();
+
+          // Try to match based on roll number code or description
+          if (rollUpper.includes('BAC') || descrLower.includes('accounting') || descrLower.includes('finance')) {
+            const b = batches.find((b) => b.name.includes('BAC') || b.program_code === 'BAC');
+            if (b) targetBatchId = b.id;
+          } else if (rollUpper.includes('BAN') || descrLower.includes('analytics')) {
+            const b = batches.find((b) => b.name.includes('BAN') || b.program_code === 'BAN');
+            if (b) targetBatchId = b.id;
+          } else if (rollUpper.includes('BBA') || descrLower.includes('business administration')) {
+            const b = batches.find((b) => b.name.includes('BBA') || b.program_code === 'BBA');
+            if (b) targetBatchId = b.id;
+          } else if (rollUpper.includes('FIN') || descrLower.includes('fintech')) {
+            const b = batches.find((b) => b.name.includes('FIN') || b.program_code === 'FIN');
+            if (b) targetBatchId = b.id;
+          } else if (rollUpper.includes('SCM') || descrLower.includes('supply chain')) {
+            const b = batches.find((b) => b.name.includes('SCM') || b.program_code === 'SCM');
+            if (b) targetBatchId = b.id;
+          }
+        }
+
+        // Fallback to first batch or placeholder
+        if (!targetBatchId) {
+          targetBatchId = batches[0]?.id || 'batch-1';
+        }
+
+        return {
+          id: getVal('id') || `std-${roll_number.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
+          roll_number,
+          name,
+          campus_id,
+          email,
+          phone,
+          status,
+          program: descr,
+          batch_id: targetBatchId,
+          is_irregular: status.toLowerCase().includes('irreg'),
+        };
+      }
+
       if (type === 'sessions') {
         // Resolve foreign keys by matching names/emails
         const batchName = getVal('batch_name', 'batch', 'batchname', 'section');
@@ -521,9 +621,10 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {[
+                    { type: 'students', label: 'Student Lists / Roster', icon: '👥' },
+                    { type: 'batches', label: 'Student Batches', icon: '🎓' },
                     { type: 'rooms', label: 'Rooms & Venues', icon: '🏢' },
                     { type: 'faculty', label: 'Faculty Members', icon: '👨‍🏫' },
-                    { type: 'batches', label: 'Student Batches', icon: '🎓' },
                     { type: 'courses', label: 'Courses Catalog', icon: '📚' },
                     { type: 'sessions', label: 'Class Sessions', icon: '📅' },
                   ].map((item) => (

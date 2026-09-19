@@ -1,4 +1,4 @@
-import { ClassSession, Room, Faculty, Batch, Course } from '@/types';
+import { ClassSession, Room, Faculty, Batch, Course, Student } from '@/types';
 
 const CACHE_KEYS = {
   SESSIONS: 'fbs_shu_v4_sessions',
@@ -6,6 +6,7 @@ const CACHE_KEYS = {
   FACULTY: 'fbs_shu_v4_faculty',
   BATCHES: 'fbs_shu_v4_batches',
   COURSES: 'fbs_shu_v4_courses',
+  STUDENTS: 'fbs_shu_v4_students',
   LAST_SYNC: 'fbs_shu_v4_last_sync_time',
 };
 
@@ -31,6 +32,7 @@ export interface CachedTimetableData {
   faculty: Faculty[];
   batches: Batch[];
   courses: Course[];
+  students: Student[];
   lastSync: string;
 }
 
@@ -59,6 +61,7 @@ export function saveTimetableToCache(data: {
   faculty: Faculty[];
   batches: Batch[];
   courses: Course[];
+  students?: Student[];
 }): void {
   if (typeof window === 'undefined') return;
   try {
@@ -69,6 +72,9 @@ export function saveTimetableToCache(data: {
     localStorage.setItem(CACHE_KEYS.FACULTY, JSON.stringify(data.faculty));
     localStorage.setItem(CACHE_KEYS.BATCHES, JSON.stringify(data.batches));
     localStorage.setItem(CACHE_KEYS.COURSES, JSON.stringify(data.courses));
+    if (data.students) {
+      localStorage.setItem(CACHE_KEYS.STUDENTS, JSON.stringify(data.students));
+    }
     localStorage.setItem(CACHE_KEYS.LAST_SYNC, new Date().toISOString());
   } catch (err) {
     console.warn('Failed to cache timetable to localStorage:', err);
@@ -88,6 +94,7 @@ export function loadTimetableFromCache(): CachedTimetableData | null {
       faculty: JSON.parse(localStorage.getItem(CACHE_KEYS.FACULTY) || '[]'),
       batches: JSON.parse(localStorage.getItem(CACHE_KEYS.BATCHES) || '[]'),
       courses: JSON.parse(localStorage.getItem(CACHE_KEYS.COURSES) || '[]'),
+      students: JSON.parse(localStorage.getItem(CACHE_KEYS.STUDENTS) || '[]'),
       lastSync: localStorage.getItem(CACHE_KEYS.LAST_SYNC) || '',
     };
   } catch (err) {

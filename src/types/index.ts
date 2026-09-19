@@ -73,7 +73,11 @@ export interface Student {
   id: string;
   roll_number: string;
   name: string;
+  campus_id?: string;
   email: string;
+  phone?: string;
+  status?: string;
+  program?: string;
   batch_id: string;
   is_irregular: boolean;
 }

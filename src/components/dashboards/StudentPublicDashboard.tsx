@@ -305,6 +305,11 @@ export const StudentPublicDashboard: React.FC = () => {
               <span className="font-bold text-slate-900 text-sm">
                 Weekly Timetable: {selectedBatch?.name} — {selectedBatch?.program}
               </span>
+              {selectedBatch?.student_count !== undefined && (
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  👥 {selectedBatch.student_count} Enrolled Students
+                </span>
+              )}
             </div>
             <span className="text-xs font-medium text-slate-500 font-mono">
               08:30 AM – 03:00 PM • {batchSessions.length} Active Class Sections
