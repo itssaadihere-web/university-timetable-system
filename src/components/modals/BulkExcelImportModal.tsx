@@ -40,6 +40,7 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isImporting, setIsImporting] = useState<boolean>(false);
   const [successCount, setSuccessCount] = useState<number | null>(null);
+  const [warningMsg, setWarningMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState<boolean>(false);
 
