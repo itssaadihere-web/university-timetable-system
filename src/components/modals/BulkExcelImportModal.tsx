@@ -310,11 +310,40 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
       if (type === 'batches') {
         const rawIrreg = getVal('is_irregular', 'irregular', 'is_irreg').toLowerCase();
         const is_irregular = rawIrreg === 'true' || rawIrreg === 'yes' || rawIrreg === '1';
+        const batchName = getVal('name', 'batchname', 'batch', 'section') || `Batch-${index + 1}`;
+        const rawProg = getVal('program', 'degree', 'department') || '';
+        let program_code = getVal('program_code', 'code', 'tag').toUpperCase();
+        let program = rawProg || 'Bachelor of Business Administration';
+
+        if (!program_code) {
+          const combined = `${batchName} ${rawProg}`.toLowerCase();
+          if (combined.includes('ban') || combined.includes('analytic')) {
+            program_code = 'BAN';
+            if (!rawProg) program = 'BS Business Analytics';
+          } else if (combined.includes('bac') || combined.includes('af') || combined.includes('acc')) {
+            program_code = 'BAC';
+            if (!rawProg) program = 'Bachelor of Science in Accounting & Finance';
+          } else if (combined.includes('fin')) {
+            program_code = 'FIN';
+            if (!rawProg) program = 'BS Fintech';
+          } else if (combined.includes('scm')) {
+            program_code = 'SCM';
+            if (!rawProg) program = 'BS Supply Chain Management';
+          } else if (combined.includes('bba')) {
+            program_code = 'BBA';
+            if (!rawProg) program = 'Bachelor of Business Administration';
+          }
+        }
+
+        const secMatch = batchName.match(/\b(?:sec|section|-)?\s*([A-Za-z])\b/i);
+        const section = getVal('section') || (secMatch ? secMatch[1].toUpperCase() : undefined);
 
         return {
           id: getVal('id') || id,
-          name: getVal('name', 'batchname', 'batch', 'section') || `Batch-${index + 1}`,
-          program: getVal('program', 'degree', 'department') || 'Business Administration',
+          name: batchName,
+          program,
+          program_code,
+          section,
           semester: parseInt(getVal('semester', 'sem'), 10) || 1,
           student_count: parseInt(getVal('student_count', 'students', 'strength', 'capacity'), 10) || 40,
           is_irregular,

@@ -916,16 +916,38 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       const raw = input.trim();
       const semMatch = raw.match(/(\d+)/);
       const semester = semMatch ? parseInt(semMatch[1], 10) : 1;
-      let program = 'Business Administration';
-      if (raw.toLowerCase().includes('bba')) program = 'BBA';
-      else if (raw.toLowerCase().includes('af') || raw.toLowerCase().includes('acc')) program = 'BS Accounting & Finance';
-      else if (raw.toLowerCase().includes('ban') || raw.toLowerCase().includes('analytics')) program = 'BS Business Analytics';
-      else if (raw.toLowerCase().includes('cs') || raw.toLowerCase().includes('comp')) program = 'BS Computer Science';
+      let program = 'Bachelor of Business Administration';
+      let program_code = 'BBA';
+      if (raw.toLowerCase().includes('bba')) {
+        program = 'Bachelor of Business Administration';
+        program_code = 'BBA';
+      } else if (raw.toLowerCase().includes('ban') || raw.toLowerCase().includes('analytic')) {
+        program = 'BS Business Analytics';
+        program_code = 'BAN';
+      } else if (raw.toLowerCase().includes('bac') || raw.toLowerCase().includes('af') || raw.toLowerCase().includes('acc')) {
+        program = 'Bachelor of Science in Accounting & Finance';
+        program_code = 'BAC';
+      } else if (raw.toLowerCase().includes('fin')) {
+        program = 'BS Fintech';
+        program_code = 'FIN';
+      } else if (raw.toLowerCase().includes('scm')) {
+        program = 'BS Supply Chain Management';
+        program_code = 'SCM';
+      } else if (raw.toLowerCase().includes('cs') || raw.toLowerCase().includes('comp')) {
+        program = 'BS Computer Science';
+        program_code = 'CS';
+      }
+
+      // Extract section if present (e.g. "1A", "1B", "Sec A", "Section B")
+      const secMatch = raw.match(/\b(?:sec|section|-)?\s*([A-Za-z])\b/i);
+      const section = secMatch ? secMatch[1].toUpperCase() : undefined;
 
       newBatch = {
         id: `batch-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         name: raw,
         program,
+        program_code,
+        section,
         semester,
         student_count: 40,
         is_irregular: raw.toLowerCase().includes('irreg'),
@@ -934,10 +956,14 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       newBatch = {
         id: input.id || `batch-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         name: input.name || 'New Batch',
-        program: input.program || 'Business Administration',
+        program: input.program || 'Bachelor of Business Administration',
+        program_code: input.program_code || 'BBA',
+        section: input.section,
         semester: input.semester || 1,
         student_count: input.student_count || 40,
         is_irregular: input.is_irregular || false,
+        merge_group_id: input.merge_group_id || null,
+        parent_batch_id: input.parent_batch_id || null,
       };
     }
 

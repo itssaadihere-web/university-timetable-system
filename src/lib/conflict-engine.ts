@@ -289,9 +289,17 @@ export function validateSessionConflicts(ctx: ConflictCheckContext): ConflictVal
       }
 
       // 3. Student's Clash (Batch Double-Booking)
+      // A student cannot be in two places at once:
+      // (a) Exact same batch
+      // (b) Or session is a joint group that includes this batch, but isn't an approved joint merge
+      // (c) Or existing session belongs to the same parent section/batch and neither is an approved merge
       const isSameBatch = existing.batch_id === batchId;
+      const isSubBatchInJointClass =
+        (Boolean(batchGroupId) && Boolean(existing.batch_group_id) && existing.batch_group_id === batchGroupId) ||
+        (existing.batch_group_id && batch?.merge_group_id && existing.batch_group_id === batch.merge_group_id) ||
+        (batchGroupId && exBatch?.merge_group_id && batchGroupId === exBatch.merge_group_id);
 
-      if (isSameBatch || isSameMergeGroup) {
+      if (isSameBatch || isSameMergeGroup || isSubBatchInJointClass) {
         if (!isApprovedMergeSession) {
           errors.push(
             `[Batch Clash]: Students in "${batchName}" already have ${exCourseName} in ${exRoomName} (${exTimeFormatted}).`

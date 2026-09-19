@@ -37,14 +37,25 @@ export const TimetableFilterBar: React.FC = () => {
 
   // Batch Options (Alphabetically sorted + search keywords)
   const batchOptions = useMemo(() => {
-    return batches.map((b) => ({
-      id: b.id,
-      title: b.name,
-      subtitle: `${b.program} • Sem ${b.semester}`,
-      badge: b.is_irregular ? 'Irregular' : undefined,
-      badgeColor: 'amber' as const,
-      searchTerms: `${b.name} ${b.program} ${b.semester} sem-${b.semester}`,
-    }));
+    return batches.map((b) => {
+      const codeTag = b.program_code || (b.name.includes('BAN') ? 'BAN' : b.name.includes('BBA') ? 'BBA' : b.name.includes('BAC') ? 'BAC' : '');
+      const subtitle = [
+        codeTag ? `[${codeTag}]` : '',
+        b.program,
+        b.section ? `Sec ${b.section}` : '',
+        `Sem ${b.semester}`,
+        `${b.student_count || 0} students`
+      ].filter(Boolean).join(' • ');
+
+      return {
+        id: b.id,
+        title: b.name,
+        subtitle,
+        badge: b.is_irregular ? 'Irregular' : codeTag || undefined,
+        badgeColor: (codeTag === 'BAN' ? 'purple' : codeTag === 'BBA' ? 'blue' : codeTag === 'BAC' ? 'emerald' : 'amber') as any,
+        searchTerms: `${b.name} ${b.program} ${b.program_code || ''} ${b.section || ''} ${b.semester} sem-${b.semester}`,
+      };
+    });
   }, [batches]);
 
   // Faculty Options (Alphabetically sorted + search keywords)

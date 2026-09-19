@@ -488,6 +488,21 @@ function buildIdentityConfirmationHeader(session: WhatsAppConversationSession): 
 /**
  * Calculates and formats Next Class details + walking directions
  */
+function getStudentBatchSessions(
+  batchId: string | undefined,
+  batches: Batch[],
+  sessions: ClassSession[]
+): ClassSession[] {
+  if (!batchId) return [];
+  const batchObj = batches.find((b) => b.id === batchId);
+  return sessions.filter((s) => {
+    if (s.status !== 'published') return false;
+    const isDirectMatch = s.batch_id === batchId;
+    const isJointMatch = Boolean(batchObj?.merge_group_id && s.batch_group_id && s.batch_group_id === batchObj.merge_group_id);
+    return isDirectMatch || isJointMatch;
+  });
+}
+
 function getNextClassText(
   session: WhatsAppConversationSession,
   data: {
@@ -503,7 +518,7 @@ function getNextClassText(
   const { batches, courses, faculty, rooms, sessions } = data;
   const batchId = session.batchId || batches[0]?.id;
   const batchObj = batches.find((b) => b.id === batchId);
-  const publishedSessions = sessions.filter((s) => s.batch_id === batchId && s.status === 'published');
+  const publishedSessions = getStudentBatchSessions(batchId, batches, sessions);
 
   const now = new Date();
   const currentDayOfWeek = data.customDayOfWeek || (now.getDay() === 0 ? 7 : now.getDay());
@@ -538,33 +553,34 @@ function getNextClassText(
     return [
       `⏰ *Next Class Status:*`,
       `No upcoming classes found for *${batchObj?.name || 'your batch'}*.`,
-      `🎉 You have no scheduled classes remaining this week!`,
+      `Enjoy your time off! 🌴`,
     ].join('\n');
   }
 
-  const crs = courses.find((c) => c.id === nextClass.course_id);
-  const fac = faculty.find((f) => f.id === nextClass.faculty_id);
-  const rm = rooms.find((r) => r.id === nextClass.room_id);
-  const nav = rm ? getRoomNavigationDetails(rm.id, rm.name, rm.building) : null;
-  const timeRange = formatTimeRange(nextClass.start_time, nextClass.end_time);
+  const crs = courses.find((c) => c.id === nextClass!.course_id);
+  const fac = faculty.find((f) => f.id === nextClass!.faculty_id);
+  const rm = rooms.find((r) => r.id === nextClass!.room_id);
+  const timeStr = formatTimeRange(nextClass.start_time, nextClass.end_time);
+  const isJoint = Boolean(nextClass.batch_group_id);
 
-  const lines: string[] = [
-    `🔔 *YOUR NEXT CLASS DETAILS:*`,
+  const replyLines: string[] = [
+    `⏰ *NEXT CLASS DETAILS* (${whenLabel})`,
+    `🎓 *Batch:* ${batchObj?.name || 'Batch'}${isJoint ? ' _(Joint Section Class)_' : ''}`,
     `──────────────────────────`,
-    `🗓️ *When:* ${whenLabel} at *${timeRange}*`,
-    `📚 *Course:* *${crs?.code || 'Course'}* – ${crs?.name || 'Class'}`,
-    `👨‍🏫 *Instructor:* ${fac?.name || 'Faculty TBA'} (${fac?.department || 'Department'})`,
-    `🚪 *Classroom:* *${rm?.name || '⚠️ Venue Pending Allocation'}* ${nav ? `(${nav.floorLabel})` : ''}`,
-    ``,
+    `📖 *Course:* ${crs?.code} – ${crs?.name}`,
+    `⏰ *Time:* ${timeStr}`,
+    `👨‍🏫 *Instructor:* ${fac?.name || 'TBA'}`,
+    `🚪 *Room:* *${rm?.name || 'Venue TBA'}*`,
   ];
 
-  if (rm && nav) {
-    lines.push(formatWhatsAppRoomNavigation(nav));
-  } else {
-    lines.push(`⚠️ *Room Notice:* Venue allocation is being finalized by Program Coordinator.`);
+  if (rm) {
+    const navDetails = getRoomNavigationDetails(rm.id, rm.name, rm.building);
+    replyLines.push(``);
+    replyLines.push(`📍 *Location & Route:*`);
+    replyLines.push(formatWhatsAppRoomNavigation(navDetails));
   }
 
-  return lines.join('\n');
+  return replyLines.join('\n');
 }
 
 /**
@@ -585,9 +601,10 @@ function getDayScheduleText(
   const { batches, courses, faculty, rooms, sessions } = data;
   const batchId = session.batchId || batches[0]?.id;
   const batchObj = batches.find((b) => b.id === batchId);
+  const publishedSessions = getStudentBatchSessions(batchId, batches, sessions);
 
-  const dayClasses = sessions
-    .filter((s) => s.batch_id === batchId && s.day_of_week === dayId && s.status === 'published')
+  const dayClasses = publishedSessions
+    .filter((s) => s.day_of_week === dayId)
     .sort((a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time));
 
   const lines: string[] = [
@@ -643,7 +660,7 @@ function getFullTimetableText(
   const { batches, courses, faculty, rooms, sessions } = data;
   const batchId = session.batchId || batches[0]?.id;
   const batchObj = batches.find((b) => b.id === batchId);
-  const batchSessions = sessions.filter((s) => s.batch_id === batchId && s.status === 'published');
+  const batchSessions = getStudentBatchSessions(batchId, batches, sessions);
 
   if (batchSessions.length === 0) {
     return `📅 *Official Timetable for ${batchObj?.name || 'Batch'}:*\n\nNo published classes are currently found in the system.`;

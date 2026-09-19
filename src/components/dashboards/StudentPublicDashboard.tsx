@@ -42,22 +42,38 @@ export const StudentPublicDashboard: React.FC = () => {
   const [viewLayout, setViewLayout] = useState<'weekly_grid' | 'day_list'>('weekly_grid');
   // Batch Options for student dashboard (Alphabetically sorted)
   const batchOptions = useMemo(() => {
-    return batches.map((b) => ({
-      id: b.id,
-      title: b.name,
-      subtitle: `${b.program} • Semester ${b.semester}`,
-      badge: b.is_irregular ? 'Irregular' : undefined,
-      badgeColor: 'amber' as const,
-      searchTerms: `${b.name} ${b.program} ${b.semester} sem-${b.semester}`,
-    }));
+    return batches.map((b) => {
+      const codeTag = b.program_code || (b.name.includes('BAN') ? 'BAN' : b.name.includes('BBA') ? 'BBA' : b.name.includes('BAC') ? 'BAC' : '');
+      const subtitle = [
+        codeTag ? `[${codeTag}]` : '',
+        b.program,
+        b.section ? `Section ${b.section}` : '',
+        `Semester ${b.semester}`,
+        `${b.student_count || 0} Students`
+      ].filter(Boolean).join(' • ');
+
+      return {
+        id: b.id,
+        title: b.name,
+        subtitle,
+        badge: b.is_irregular ? 'Irregular' : codeTag || undefined,
+        badgeColor: (codeTag === 'BAN' ? 'purple' : codeTag === 'BBA' ? 'blue' : codeTag === 'BAC' ? 'emerald' : 'amber') as any,
+        searchTerms: `${b.name} ${b.program} ${b.program_code || ''} ${b.section || ''} ${b.semester} sem-${b.semester}`,
+      };
+    });
   }, [batches]);
 
   const selectedBatch = batches.find((b) => b.id === selectedBatchId);
 
-  // Filter only PUBLISHED sessions for student batch
+  // Filter only PUBLISHED sessions for student batch (including joint merged classes)
   const batchSessions = sessions.filter((s) => {
     if (s.status !== 'published') return false;
-    if (selectedBatchId && s.batch_id !== selectedBatchId) return false;
+    
+    // Check if session directly matches batch OR matches the batch's merge group
+    const isDirectMatch = selectedBatchId ? s.batch_id === selectedBatchId : true;
+    const isJointMatch = selectedBatch?.merge_group_id && s.batch_group_id && s.batch_group_id === selectedBatch.merge_group_id;
+    
+    if (selectedBatchId && !isDirectMatch && !isJointMatch) return false;
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();

@@ -129,9 +129,14 @@ export const BatchMergeModal: React.FC<BatchMergeModalProps> = ({
               <div className="font-black text-slate-900 text-sm flex items-center gap-1.5">
                 <Users className="w-4 h-4 text-slate-600 shrink-0" />
                 <span>{existingBatch.name}</span>
+                {existingBatch.program_code && (
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-200 text-slate-800">
+                    {existingBatch.program_code}
+                  </span>
+                )}
               </div>
               <div className="text-[11px] text-slate-500 font-medium">
-                {existingBatch.program} • Sem {existingBatch.semester}
+                {existingBatch.program} {existingBatch.section ? `• Sec ${existingBatch.section}` : ''} • Sem {existingBatch.semester}
               </div>
               <div className="inline-block px-2 py-0.5 rounded-md bg-slate-200 text-slate-700 text-[10px] font-bold">
                 {existingBatch.student_count || 40} Students
@@ -146,9 +151,14 @@ export const BatchMergeModal: React.FC<BatchMergeModalProps> = ({
               <div className="font-black text-purple-950 text-sm flex items-center gap-1.5">
                 <Users className="w-4 h-4 text-purple-700 shrink-0" />
                 <span>{newBatch.name}</span>
+                {newBatch.program_code && (
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-200 text-purple-900">
+                    {newBatch.program_code}
+                  </span>
+                )}
               </div>
               <div className="text-[11px] text-purple-700 font-medium">
-                {newBatch.program} • Sem {newBatch.semester}
+                {newBatch.program} {newBatch.section ? `• Sec ${newBatch.section}` : ''} • Sem {newBatch.semester}
               </div>
               <div className="inline-block px-2 py-0.5 rounded-md bg-purple-200 text-purple-900 text-[10px] font-bold">
                 {newBatch.student_count || 40} Students

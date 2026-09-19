@@ -258,9 +258,15 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
               color: colorPalette.pillTextHex,
               borderColor: colorPalette.pillBorderHex,
             }}
-            className="font-bold px-1.5 py-0.5 rounded text-[9px] border shadow-2xs"
+            title={`${batch?.program || ''} (${batch?.student_count || 0} students)`}
+            className="font-bold px-1.5 py-0.5 rounded text-[9px] border shadow-2xs flex items-center gap-1"
           >
-            {batch?.name || 'Batch'}
+            {batch?.program_code && (
+              <span className="opacity-75 font-mono text-[8px] bg-black/10 dark:bg-white/10 px-1 rounded">
+                {batch.program_code}
+              </span>
+            )}
+            <span>{batch?.name || 'Batch'}</span>
           </span>
         </div>
       </div>

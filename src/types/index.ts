@@ -39,14 +39,19 @@ export interface BatchMergeGroup {
   name: string;
 }
 
+export type ProgramCode = 'BAN' | 'BBA' | 'BAC' | 'FIN' | 'SCM' | string;
+
 export interface Batch {
   id: string;
-  name: string;
-  program: string;
+  name: string; // e.g. "Batch-1A-BAC", "Batch-1B-BAN"
+  program: string; // Full program name e.g. "BS Business Analytics"
+  program_code?: ProgramCode; // e.g. "BAN", "BBA", "BAC", "FIN", "SCM"
+  section?: string; // e.g. "A", "B"
   semester: number;
   student_count: number;
   is_irregular?: boolean;
   merge_group_id?: string | null;
+  parent_batch_id?: string | null; // For sub-batches
 }
 
 export interface Course {
