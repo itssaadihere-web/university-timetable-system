@@ -554,8 +554,8 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
         setWarningMsg(res.warning);
       } else {
         setTimeout(() => {
-          onClose();
-        }, 1600);
+          handleClose();
+        }, 1800);
       }
     } catch (err: any) {
       setErrorMsg(err?.message || 'Failed to complete import into database.');
@@ -573,6 +573,11 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
     setWarningMsg(null);
     setSuccessCount(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleClose = () => {
+    handleResetFile();
+    onClose();
   };
 
   const currentTemplate = getTemplateDefinition(importType);
@@ -597,7 +602,7 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -608,29 +613,42 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
         <div className="overflow-y-auto flex-1 py-4 space-y-5 pr-1 text-xs">
           
           {successCount !== null ? (
-            <div className="py-8 text-center space-y-3">
+            <div className="py-8 text-center space-y-4">
               <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-sm animate-bounce">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
-              <h4 className="font-extrabold text-slate-900 text-lg">
-                Import Successfully Completed!
-              </h4>
-              <p className="text-slate-600 text-xs max-w-sm mx-auto">
-                Successfully processed and imported <span className="font-bold text-slate-900">{successCount}</span> records into <span className="font-bold text-shu-700">{importType}</span>.
-              </p>
+              <div>
+                <h4 className="font-extrabold text-slate-900 text-lg">
+                  Import Successfully Completed!
+                </h4>
+                <p className="text-slate-600 text-xs max-w-sm mx-auto mt-1">
+                  Successfully processed and imported <span className="font-bold text-slate-900">{successCount}</span> records into <span className="font-bold text-shu-700">{importType}</span>.
+                </p>
+              </div>
+
               {warningMsg && (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-left text-xs space-y-1">
                   <p>{warningMsg}</p>
                 </div>
               )}
-              {warningMsg && (
+
+              <div className="flex items-center justify-center gap-3 pt-2">
                 <button
-                  onClick={onClose}
-                  className="mt-4 px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-semibold hover:bg-slate-700"
+                  type="button"
+                  onClick={handleResetFile}
+                  className="px-4 py-2 bg-shu-700 hover:bg-shu-800 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
                 >
-                  Done
+                  <Upload className="w-3.5 h-3.5" />
+                  Import Another File
                 </button>
-              )}
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                >
+                  Done & Close
+                </button>
+              </div>
             </div>
           ) : (
             <>
@@ -830,10 +848,10 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
         <div className="flex items-center justify-between pt-4 border-t border-slate-100 shrink-0 gap-3">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
           >
-            Cancel
+            {successCount !== null ? 'Close' : 'Cancel'}
           </button>
 
           {successCount === null && (

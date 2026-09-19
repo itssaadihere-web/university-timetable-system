@@ -110,10 +110,12 @@ export default function AppMainPage() {
         onClose={() => setIsPublishModalOpen(false)}
       />
 
-      <BulkExcelImportModal
-        isOpen={isImportModalOpen}
-        onClose={() => setIsImportModalOpen(false)}
-      />
+      {isImportModalOpen && (
+        <BulkExcelImportModal
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+        />
+      )}
 
       {/* Footer */}
       <footer className="mt-auto border-t border-slate-200/80 bg-white py-5 text-center text-xs text-slate-500">
