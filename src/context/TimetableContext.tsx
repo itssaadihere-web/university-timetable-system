@@ -331,15 +331,19 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           setFaculty(cleanFaculty);
         }
 
-        const loadedStudents = (stdData as Student[]) || [];
-        if (stdData) {
-          setStudents(loadedStudents);
-        }
+        const cached = loadTimetableFromCache();
+        const loadedStudents = (stdData && stdData.length > 0)
+          ? (stdData as Student[])
+          : (cached?.students || []);
+        setStudents(loadedStudents);
 
-        if (batchData) {
+        if (batchData && batchData.length > 0) {
           const rawBatches = batchData as Batch[];
           const realCountBatches = computeRealBatchCounts(rawBatches, loadedStudents);
           setBatches(sortBatchesAlphabetically(realCountBatches));
+        } else if (cached?.batches?.length) {
+          const syncedBatches = computeRealBatchCounts(cached.batches, loadedStudents);
+          setBatches(sortBatchesAlphabetically(syncedBatches));
         }
 
         if (grpData) {

@@ -147,3 +147,20 @@ CREATE POLICY "makeup_requests_all_policy" ON public.makeup_requests
 FOR ALL TO anon, authenticated
 USING (true)
 WITH CHECK (true);
+
+-- SEMESTER CALENDAR
+ALTER TABLE IF EXISTS public.semester_calendar ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "semester_calendar_all_policy" ON public.semester_calendar;
+CREATE POLICY "semester_calendar_all_policy" ON public.semester_calendar
+FOR ALL TO anon, authenticated
+USING (true)
+WITH CHECK (true);
+
+-- AUDIT LOG
+ALTER TABLE IF EXISTS public.audit_log ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "audit_log_all_policy" ON public.audit_log;
+CREATE POLICY "audit_log_all_policy" ON public.audit_log
+FOR ALL TO anon, authenticated
+USING (true)
+WITH CHECK (true);
+
