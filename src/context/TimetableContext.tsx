@@ -100,7 +100,7 @@ interface TimetableContextType {
   approveMakeup: (requestId: string) => Promise<{ success: boolean; errors?: string[] }>;
   rejectMakeup: (requestId: string, reason?: string) => void;
   cloneSemesterRollover: (targetSemesterName: string, targetAcademicYear: string) => void;
-  bulkImportEntities: (type: 'rooms' | 'faculty' | 'batches' | 'courses' | 'sessions' | 'students', items: any[]) => Promise<{ success: boolean; count: number; error?: string }>;
+  bulkImportEntities: (type: 'rooms' | 'faculty' | 'batches' | 'courses' | 'sessions' | 'students', items: any[]) => Promise<{ success: boolean; count: number; error?: string; warning?: string }>;
   addCourse: (input: string | Partial<Course>) => Promise<Course>;
   addFaculty: (input: string | Partial<Faculty>) => Promise<Faculty>;
   addBatch: (input: string | Partial<Batch>) => Promise<Batch>;
@@ -978,6 +978,17 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
                 return { success: false, count: items.length, error: fallbackError.message };
               }
             }
+          } else if (
+            error.code === '42501' ||
+            error.message.toLowerCase().includes('row-level security') ||
+            error.message.toLowerCase().includes('policy')
+          ) {
+            console.warn(`Supabase RLS policy restricted remote cloud sync for ${type}. Stored locally in state & cache:`, error.message);
+            return {
+              success: true,
+              count: items.length,
+              warning: `Imported ${items.length} records into local system! Note: Supabase cloud sync was restricted by table Row-Level Security (RLS). Run "supabase/fix_rls_for_anon_access.sql" in Supabase SQL editor to sync with cloud.`,
+            };
           } else {
             console.warn(`Supabase upsert error for ${type}:`, error);
             return { success: false, count: items.length, error: error.message };
