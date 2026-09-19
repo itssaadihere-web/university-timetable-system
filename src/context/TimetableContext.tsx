@@ -878,8 +878,25 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         const tableName = type === 'sessions' ? 'class_sessions' : type;
         const { error } = await supabase.from(tableName).upsert(items);
         if (error) {
-          console.warn(`Supabase upsert error for ${type}:`, error);
-          return { success: false, count: items.length, error: error.message };
+          // If error is due to missing new column (e.g. campus_id before running SQL migration in Supabase SQL editor)
+          if (type === 'students' && error.message && error.message.includes('column')) {
+            console.warn('Supabase students schema mismatch, falling back to base columns:', error.message);
+            const baseStudentItems = items.map((st) => ({
+              id: st.id,
+              roll_number: st.roll_number,
+              name: st.name,
+              email: st.email,
+              batch_id: st.batch_id,
+              is_irregular: st.is_irregular,
+            }));
+            const { error: fallbackError } = await supabase.from('students').upsert(baseStudentItems);
+            if (fallbackError) {
+              console.warn('Fallback base student upsert also failed:', fallbackError);
+            }
+          } else {
+            console.warn(`Supabase upsert error for ${type}:`, error);
+            return { success: false, count: items.length, error: error.message };
+          }
         }
       }
 

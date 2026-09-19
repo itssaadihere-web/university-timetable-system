@@ -8,10 +8,19 @@ ALTER TABLE batches
   ADD COLUMN IF NOT EXISTS section TEXT,
   ADD COLUMN IF NOT EXISTS parent_batch_id UUID REFERENCES batches(id) ON DELETE SET NULL;
 
+-- Extend students table with official roster columns
+ALTER TABLE students
+  ADD COLUMN IF NOT EXISTS campus_id TEXT,
+  ADD COLUMN IF NOT EXISTS phone TEXT,
+  ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Active in Program',
+  ADD COLUMN IF NOT EXISTS program TEXT;
+
 -- Create index for faster program tag & section queries
 CREATE INDEX IF NOT EXISTS idx_batches_program_code ON batches(program_code);
 CREATE INDEX IF NOT EXISTS idx_batches_section ON batches(section);
 CREATE INDEX IF NOT EXISTS idx_batches_merge_group ON batches(merge_group_id);
+CREATE INDEX IF NOT EXISTS idx_students_campus_id ON students(campus_id);
+CREATE INDEX IF NOT EXISTS idx_students_program ON students(program);
 
 -- 2. Enhanced Conflict Check Function
 -- Enforces: If a student's sub-batch is enrolled in a joint session via merge_group_id,
