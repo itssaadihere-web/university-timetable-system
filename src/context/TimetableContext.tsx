@@ -875,7 +875,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
   const bulkImportEntities = async (
     type: 'rooms' | 'faculty' | 'batches' | 'courses' | 'sessions' | 'students',
     items: any[]
-  ): Promise<{ success: boolean; count: number; error?: string }> => {
+  ): Promise<{ success: boolean; count: number; error?: string; warning?: string }> => {
     try {
       if (!items || items.length === 0) return { success: true, count: 0 };
 

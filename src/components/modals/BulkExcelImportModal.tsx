@@ -550,9 +550,13 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
       }
 
       setSuccessCount(parsedRows.length);
-      setTimeout(() => {
-        onClose();
-      }, 1600);
+      if (res.warning) {
+        setWarningMsg(res.warning);
+      } else {
+        setTimeout(() => {
+          onClose();
+        }, 1600);
+      }
     } catch (err: any) {
       setErrorMsg(err?.message || 'Failed to complete import into database.');
     } finally {
@@ -566,6 +570,7 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
     setParsedRows([]);
     setHeaders([]);
     setErrorMsg(null);
+    setWarningMsg(null);
     setSuccessCount(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -603,7 +608,7 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
         <div className="overflow-y-auto flex-1 py-4 space-y-5 pr-1 text-xs">
           
           {successCount !== null ? (
-            <div className="py-10 text-center space-y-3">
+            <div className="py-8 text-center space-y-3">
               <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-sm animate-bounce">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
@@ -613,6 +618,19 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
               <p className="text-slate-600 text-xs max-w-sm mx-auto">
                 Successfully processed and imported <span className="font-bold text-slate-900">{successCount}</span> records into <span className="font-bold text-shu-700">{importType}</span>.
               </p>
+              {warningMsg && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-left text-xs space-y-1">
+                  <p>{warningMsg}</p>
+                </div>
+              )}
+              {warningMsg && (
+                <button
+                  onClick={onClose}
+                  className="mt-4 px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-semibold hover:bg-slate-700"
+                >
+                  Done
+                </button>
+              )}
             </div>
           ) : (
             <>
