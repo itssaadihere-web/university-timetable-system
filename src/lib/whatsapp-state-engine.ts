@@ -166,7 +166,7 @@ export function processIncomingWhatsAppMessage(ctx: ProcessMessageContext): Proc
     session.studentId = matchedStudent.id;
     session.studentName = matchedStudent.name;
     session.rollNumber = matchedStudent.roll_number;
-    session.batchId = matchedStudent.batch_id;
+    session.batchId = matchedStudent.batch_id || undefined;
     session.batchName = studentBatch ? studentBatch.name : 'Enrolled Batch';
     session.program = studentBatch ? studentBatch.program : 'Faculty of Management Sciences';
     session.isIdentified = true;

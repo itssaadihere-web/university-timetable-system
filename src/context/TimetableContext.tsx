@@ -36,6 +36,7 @@ import {
 import { validateSessionConflicts } from '@/lib/conflict-engine';
 import { saveTimetableToCache, loadTimetableFromCache, clearAllTimetableCache } from '@/lib/offline-cache';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { generateUUID, isValidUUID } from '@/lib/uuid';
 
 interface SoftLockInfo {
   userId: string;
@@ -119,42 +120,89 @@ interface TimetableContextType {
 const TimetableContext = createContext<TimetableContextType | null>(null);
 
 const computeRealBatchCounts = (batchList: Batch[], studentList: Student[]): Batch[] => {
-  if (!studentList || studentList.length === 0) return batchList;
-  
-  // Count students assigned to each batch_id directly
-  const countsByBatchId: Record<string, number> = {};
-  // Also count by program_code or program name match as fallback
-  const countsByProgramCode: Record<string, number> = {};
+  if (!batchList || batchList.length === 0) return [];
+  if (!studentList || studentList.length === 0) {
+    return batchList.map((b) => ({ ...b, student_count: 0 }));
+  }
 
-  studentList.forEach((st) => {
-    if (st.batch_id) {
-      countsByBatchId[st.batch_id] = (countsByBatchId[st.batch_id] || 0) + 1;
+  // Pre-calculate program code for each student
+  const getStudentProgramCode = (st: Student): string => {
+    const rollUpper = (st.roll_number || '').toUpperCase();
+    const progLower = (st.program || '').toLowerCase();
+    if (rollUpper.includes('BAC') || progLower.includes('account') || progLower.includes('finance')) return 'BAC';
+    if (rollUpper.includes('BAN') || progLower.includes('analytic')) return 'BAN';
+    if (rollUpper.includes('BBA') || progLower.includes('business admin')) return 'BBA';
+    if (rollUpper.includes('FIN') || progLower.includes('fintech')) return 'FIN';
+    if (rollUpper.includes('SCM') || progLower.includes('supply chain')) return 'SCM';
+    return '';
+  };
+
+  const getBatchProgramCode = (b: Batch): string => {
+    if (b.program_code) return b.program_code;
+    const nameUpper = b.name.toUpperCase();
+    if (nameUpper.includes('BAC')) return 'BAC';
+    if (nameUpper.includes('BAN')) return 'BAN';
+    if (nameUpper.includes('BBA')) return 'BBA';
+    if (nameUpper.includes('FIN')) return 'FIN';
+    if (nameUpper.includes('SCM')) return 'SCM';
+    return '';
+  };
+
+  // Step 1: calculate counts for sub-batches and leaf batches
+  const updatedBatches = batchList.map((b) => {
+    // 1. Direct match by batch_id or batch name
+    const directlyAssigned = studentList.filter(
+      (st) => st.batch_id === b.id || st.batch_id === b.name
+    ).length;
+
+    if (directlyAssigned > 0) {
+      return { ...b, student_count: directlyAssigned };
     }
-    if (st.program) {
-      const pNorm = st.program.toLowerCase();
-      let code = '';
-      if (pNorm.includes('analytic') || pNorm.includes('ban')) code = 'BAN';
-      else if (pNorm.includes('account') || pNorm.includes('bac') || pNorm.includes('af')) code = 'BAC';
-      else if (pNorm.includes('business admin') || pNorm.includes('bba')) code = 'BBA';
-      else if (pNorm.includes('fintech') || pNorm.includes('fin')) code = 'FIN';
-      else if (pNorm.includes('supply chain') || pNorm.includes('scm')) code = 'SCM';
-      if (code) {
-        countsByProgramCode[code] = (countsByProgramCode[code] || 0) + 1;
+
+    // 2. Match by program code
+    const bCode = getBatchProgramCode(b);
+    if (bCode) {
+      const siblingBatches = batchList.filter((sibling) => getBatchProgramCode(sibling) === bCode);
+      const matchingStudents = studentList.filter((st) => getStudentProgramCode(st) === bCode);
+
+      if (siblingBatches.length <= 1) {
+        if (matchingStudents.length > 0) {
+          return { ...b, student_count: matchingStudents.length };
+        }
+      } else {
+        // Multiple sections for the same program: try matching section A/B
+        const sec = b.section || (b.name.match(/\b([A-Z])\b/) ? b.name.match(/\b([A-Z])\b/)![1] : '');
+        const secStudents = matchingStudents.filter((st) => {
+          if (sec && (st.status?.toUpperCase().includes(sec) || st.program?.toUpperCase().includes(`SECTION ${sec}`))) {
+            return true;
+          }
+          return false;
+        }).length;
+
+        if (secStudents > 0) {
+          return { ...b, student_count: secStudents };
+        }
+        // Even distribution fallback among sibling batches
+        const share = Math.round(matchingStudents.length / siblingBatches.length);
+        if (share > 0) {
+          return { ...b, student_count: share };
+        }
       }
     }
+
+    return { ...b, student_count: 0 };
   });
 
-  return batchList.map((b) => {
-    // 1. Direct match by batch_id
-    if (countsByBatchId[b.id] !== undefined && countsByBatchId[b.id] > 0) {
-      return { ...b, student_count: countsByBatchId[b.id] };
+  // Step 2: For any parent batch whose sub-batches exist, sum up the children's counts
+  return updatedBatches.map((batch) => {
+    const childBatches = updatedBatches.filter((child) => child.parent_batch_id === batch.id);
+    if (childBatches.length > 0) {
+      const totalChildCount = childBatches.reduce((acc, c) => acc + c.student_count, 0);
+      if (totalChildCount > 0) {
+        return { ...batch, student_count: totalChildCount };
+      }
     }
-    // 2. Direct match by batch name
-    const matchingByName = studentList.filter((st) => st.batch_id === b.name).length;
-    if (matchingByName > 0) {
-      return { ...b, student_count: matchingByName };
-    }
-    return b;
+    return batch;
   });
 };
 
@@ -876,22 +924,59 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
       if (isSupabaseConfigured && supabase) {
         const tableName = type === 'sessions' ? 'class_sessions' : type;
-        const { error } = await supabase.from(tableName).upsert(items);
+
+        // Ensure payload respects Supabase Postgres UUID constraints
+        let payload = items;
+        if (type === 'students') {
+          payload = items.map((st) => ({
+            ...st,
+            id: isValidUUID(st.id) ? st.id : generateUUID(),
+            batch_id: isValidUUID(st.batch_id) ? st.batch_id : null,
+          }));
+        } else if (type === 'batches') {
+          payload = items.map((b) => ({
+            ...b,
+            id: isValidUUID(b.id) ? b.id : generateUUID(),
+            merge_group_id: isValidUUID(b.merge_group_id) ? b.merge_group_id : null,
+            parent_batch_id: isValidUUID(b.parent_batch_id) ? b.parent_batch_id : null,
+          }));
+        }
+
+        const { error } = await supabase.from(tableName).upsert(payload);
         if (error) {
+          // If error is foreign key violation on batch_id (code 23503 or message contains foreign key)
+          if (type === 'students' && (error.code === '23503' || error.message.toLowerCase().includes('foreign key'))) {
+            console.warn('Foreign key violation for batch_id, retrying with batch_id = null:', error.message);
+            const withoutBatchId = payload.map((st: any) => ({
+              ...st,
+              batch_id: null,
+            }));
+            const { error: retryError } = await supabase.from('students').upsert(withoutBatchId);
+            if (retryError) {
+              console.warn('Retry without batch_id failed:', retryError);
+              return { success: false, count: items.length, error: retryError.message };
+            }
+          }
           // If error is due to missing new column (e.g. campus_id before running SQL migration in Supabase SQL editor)
-          if (type === 'students' && error.message && error.message.includes('column')) {
+          else if (type === 'students' && error.message && error.message.includes('column')) {
             console.warn('Supabase students schema mismatch, falling back to base columns:', error.message);
-            const baseStudentItems = items.map((st) => ({
+            const baseStudentItems = payload.map((st: any) => ({
               id: st.id,
               roll_number: st.roll_number,
               name: st.name,
               email: st.email,
-              batch_id: st.batch_id,
-              is_irregular: st.is_irregular,
+              batch_id: isValidUUID(st.batch_id) ? st.batch_id : null,
+              is_irregular: Boolean(st.is_irregular),
             }));
             const { error: fallbackError } = await supabase.from('students').upsert(baseStudentItems);
             if (fallbackError) {
               console.warn('Fallback base student upsert also failed:', fallbackError);
+              if (fallbackError.code === '23503' || fallbackError.message.toLowerCase().includes('foreign key')) {
+                const baseWithoutBatch = baseStudentItems.map((b: any) => ({ ...b, batch_id: null }));
+                await supabase.from('students').upsert(baseWithoutBatch);
+              } else {
+                return { success: false, count: items.length, error: fallbackError.message };
+              }
             }
           } else {
             console.warn(`Supabase upsert error for ${type}:`, error);
@@ -1025,41 +1110,45 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       const section = secMatch ? secMatch[1].toUpperCase() : undefined;
 
       newBatch = {
-        id: `batch-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        id: generateUUID(),
         name: raw,
         program,
         program_code,
         section,
         semester,
-        student_count: 40,
+        student_count: 0,
         is_irregular: raw.toLowerCase().includes('irreg'),
       };
     } else {
       newBatch = {
-        id: input.id || `batch-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        id: (input.id && isValidUUID(input.id)) ? input.id : generateUUID(),
         name: input.name || 'New Batch',
         program: input.program || 'Bachelor of Business Administration',
         program_code: input.program_code || 'BBA',
         section: input.section,
         semester: input.semester || 1,
-        student_count: input.student_count || 40,
+        student_count: 0,
         is_irregular: input.is_irregular || false,
-        merge_group_id: input.merge_group_id || null,
-        parent_batch_id: input.parent_batch_id || null,
+        merge_group_id: isValidUUID(input.merge_group_id) ? input.merge_group_id : null,
+        parent_batch_id: isValidUUID(input.parent_batch_id) ? input.parent_batch_id : null,
       };
     }
-    // Compute actual assigned students count if student list is available
-    const realStudentsCount = students.filter(
-      (st) => st.batch_id === newBatch.id || st.batch_id === newBatch.name
-    ).length;
-    if (realStudentsCount > 0) {
-      newBatch.student_count = realStudentsCount;
+    // Compute actual assigned students count from student roster
+    const [computed] = computeRealBatchCounts([newBatch], students);
+    if (computed) {
+      newBatch.student_count = computed.student_count;
     }
 
     setBatches((prev) => sortBatchesAlphabetically([...prev.filter((b) => b.id !== newBatch.id), newBatch]));
     if (isSupabaseConfigured && supabase) {
       try {
-        await supabase.from('batches').upsert([newBatch]);
+        const dbBatchPayload = {
+          ...newBatch,
+          id: isValidUUID(newBatch.id) ? newBatch.id : generateUUID(),
+          merge_group_id: isValidUUID(newBatch.merge_group_id) ? newBatch.merge_group_id : null,
+          parent_batch_id: isValidUUID(newBatch.parent_batch_id) ? newBatch.parent_batch_id : null,
+        };
+        await supabase.from('batches').upsert([dbBatchPayload]);
       } catch (e) {
         console.warn('Supabase batch upsert error:', e);
       }
@@ -1136,17 +1225,37 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
       // 4. Batches
       if (batches.length > 0) {
-        const { error } = await supabase.from('batches').upsert(batches);
-        if (error) throw new Error(`Batches sync error: ${error.message}`);
+        const batchPayload = batches.map((b) => ({
+          ...b,
+          id: isValidUUID(b.id) ? b.id : generateUUID(),
+          merge_group_id: isValidUUID(b.merge_group_id) ? b.merge_group_id : null,
+          parent_batch_id: isValidUUID(b.parent_batch_id) ? b.parent_batch_id : null,
+        }));
+        const { error } = await supabase.from('batches').upsert(batchPayload);
+        if (error) console.warn(`Batches sync warning: ${error.message}`);
       }
 
-      // 5. Courses
+      // 5. Students
+      if (students.length > 0) {
+        const stdPayload = students.map((st) => ({
+          ...st,
+          id: isValidUUID(st.id) ? st.id : generateUUID(),
+          batch_id: isValidUUID(st.batch_id) ? st.batch_id : null,
+        }));
+        try {
+          await supabase.from('students').upsert(stdPayload);
+        } catch (stdErr) {
+          console.warn('Students sync warning:', stdErr);
+        }
+      }
+
+      // 6. Courses
       if (courses.length > 0) {
         const { error } = await supabase.from('courses').upsert(courses);
         if (error) throw new Error(`Courses sync error: ${error.message}`);
       }
 
-      // 6. Class Sessions
+      // 7. Class Sessions
       if (sessions.length > 0) {
         const { error } = await supabase.from('class_sessions').upsert(sessions);
         if (error) throw new Error(`Sessions sync error: ${error.message}`);

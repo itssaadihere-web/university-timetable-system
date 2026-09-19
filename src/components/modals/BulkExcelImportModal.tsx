@@ -17,6 +17,7 @@ import {
   ArrowRight,
   Info
 } from 'lucide-react';
+import { generateUUID, isValidUUID } from '@/lib/uuid';
 
 export type ImportEntityType = 'rooms' | 'faculty' | 'batches' | 'courses' | 'sessions' | 'students';
 
@@ -408,9 +409,9 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
       }
 
       if (type === 'students') {
-        const roll_number = getVal('id', 'student_id', 'roll_number', 'roll_no', 'rollno', 'campus_id') || `STD-${index + 1}`;
+        const roll_number = getVal('id', 'student_id', 'roll_number', 'roll_no', 'rollno') || getVal('campus_id') || `STD-${index + 1}`;
         const name = getVal('name', 'student_name', 'fullname') || 'Student';
-        const campus_id = getVal('campus_id', 'campusid', 'id');
+        const campus_id = getVal('campus_id', 'campusid');
         const email = getVal('email', 'email_address') || `${roll_number.toLowerCase()}@shu.edu.pk`;
         const phone = getVal('phone', 'mobile', 'contact', 'phone_number') || '';
         const status = getVal('status', 'student_status') || 'Active in Program';
@@ -418,7 +419,7 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
         const explicitBatch = getVal('batch_name', 'batch', 'section', 'batch_id');
 
         // Automatically match or resolve batch_id from explicitBatch, ID prefix, or program descr
-        let targetBatchId = '';
+        let targetBatchId: string | null = null;
         if (explicitBatch) {
           const directMatch = batches.find((b) => b.name.toLowerCase() === explicitBatch.toLowerCase() || b.id === explicitBatch);
           if (directMatch) targetBatchId = directMatch.id;
@@ -447,13 +448,13 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
           }
         }
 
-        // Fallback to first batch or placeholder
-        if (!targetBatchId) {
-          targetBatchId = batches[0]?.id || 'batch-1';
+        // Default to first batch if available, otherwise null
+        if (!targetBatchId && batches.length > 0) {
+          targetBatchId = batches[0].id;
         }
 
         return {
-          id: getVal('id') || `std-${roll_number.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
+          id: generateUUID(),
           roll_number,
           name,
           campus_id,
