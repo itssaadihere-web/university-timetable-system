@@ -1,0 +1,191 @@
+{
+  "name": "SHU WhatsApp AI Agent (Gemini + Supabase + Interactive)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-agent",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-webhook",
+      "name": "WhatsApp Inbound Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"status\": \"acknowledged\"\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "node-ack",
+      "name": "Acknowledge Meta 200 OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [440, 180]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract incoming message details from Meta WhatsApp Cloud API\nconst entry = $input.item.json.entry?.[0] || {};\nconst change = entry.changes?.[0]?.value || {};\nconst message = change.messages?.[0];\n\nif (!message) {\n  return [{ json: { shouldProcess: false } }];\n}\n\nconst fromPhone = message.from;\nlet userText = '';\nlet isInteractive = false;\nlet interactiveId = '';\n\nif (message.type === 'text') {\n  userText = message.text?.body || '';\n} else if (message.type === 'interactive') {\n  isInteractive = true;\n  interactiveId = message.interactive?.button_reply?.id || message.interactive?.list_reply?.id || '';\n  userText = message.interactive?.button_reply?.title || message.interactive?.list_reply?.title || interactiveId;\n} else if (message.type === 'button') {\n  userText = message.button?.text || message.button?.payload || '';\n}\n\nreturn [{\n  json: {\n    shouldProcess: true,\n    fromPhone,\n    userText,\n    isInteractive,\n    interactiveId,\n    timestamp: new Date().toISOString(),\n    supabaseUrl: 'https://ajnvowztvmtdkpyyklbh.supabase.co',\n    supabaseKey: 'sb_publishable_Pi9tMaGnO5269CXhnajIcA_fp3Ch-AO'\n  }\n}];"
+      },
+      "id": "node-parse",
+      "name": "Parse WhatsApp Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 420]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.shouldProcess }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "node-filter",
+      "name": "Filter Status Updates",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [660, 420]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.userText }}",
+        "systemMessage": "You are the official AI Timetable & Campus Navigation Assistant for Salim Habib University (SHU), Faculty of Management Sciences.\n\nYour capabilities:\n1. Provide personalized class schedules, room locations, timings, and instructors.\n2. Respond fluently in the user's language: English, Urdu, or Roman Urdu (e.g. \"Aapki agli class Room TF-308 mein hai\").\n3. Use the Supabase database tools to query classes, batches, rooms, and faculty dynamically.\n4. If the user does not know their roll number, ask them for their Degree Program/Semester (e.g. Section 1A, BBA-4, BAN-2, BS(FT)-2, BSAF-3A).\n5. When detailing room locations, explain the floor, building, and step-by-step walking path.\n6. Be polite, concise, professional, and friendly.",
+        "options": {}
+      },
+      "id": "node-ai-agent",
+      "name": "Gemini AI Timetable Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-1.5-pro",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "node-gemini-model",
+      "name": "Google Gemini 1.5 Pro",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [840, 620]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Parse WhatsApp Payload').item.json.fromPhone }}"
+      },
+      "id": "node-memory",
+      "name": "Chat Memory Buffer",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [980, 620]
+    },
+    {
+      "parameters": {
+        "name": "query_supabase_database",
+        "description": "Executes live queries against Supabase tables: class_sessions, batches, courses, faculty, rooms, students",
+        "jsCode": "const { createClient } = require('@supabase/supabase-js');\nconst client = createClient('https://ajnvowztvmtdkpyyklbh.supabase.co', 'sb_publishable_Pi9tMaGnO5269CXhnajIcA_fp3Ch-AO');\n\n// Load active timetable tables\nconst [sRes, bRes, cRes, fRes, rRes, stRes] = await Promise.all([\n  client.from('class_sessions').select('*'),\n  client.from('batches').select('*'),\n  client.from('courses').select('*'),\n  client.from('faculty').select('*'),\n  client.from('rooms').select('*'),\n  client.from('students').select('*')\n]);\n\nreturn JSON.stringify({\n  sessions: sRes.data || [],\n  batches: bRes.data || [],\n  courses: cRes.data || [],\n  faculty: fRes.data || [],\n  rooms: rRes.data || [],\n  students: stRes.data || []\n});"
+      },
+      "id": "node-tool-supabase",
+      "name": "Supabase Database Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1,
+      "position": [1120, 620]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v19.0/{{ $env.WHATSAPP_PHONE_NUMBER_ID || '1252632207942801' }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.WHATSAPP_ACCESS_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"recipient_type\": \"individual\",\n  \"to\": \"{{ $('Parse WhatsApp Payload').item.json.fromPhone }}\",\n  \"type\": \"interactive\",\n  \"interactive\": {\n    \"type\": \"button\",\n    \"body\": {\n      \"text\": {{ JSON.stringify($json.output) }}\n    },\n    \"action\": {\n      \"buttons\": [\n        { \"type\": \"reply\", \"reply\": { \"id\": \"btn_next_class\", \"title\": \"Next Class 🕒\" } },\n        { \"type\": \"reply\", \"reply\": { \"id\": \"btn_today\", \"title\": \"Today Schedule 📅\" } },\n        { \"type\": \"reply\", \"reply\": { \"id\": \"btn_full_week\", \"title\": \"Full Timetable 📋\" } }\n      ]\n    }\n  }\n}",
+        "options": {}
+      },
+      "id": "node-whatsapp-interactive",
+      "name": "Send Interactive WhatsApp Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1280, 400]
+    }
+  ],
+  "connections": {
+    "WhatsApp Inbound Webhook": {
+      "main": [
+        [
+          { "node": "Acknowledge Meta 200 OK", "type": "main", "index": 0 },
+          { "node": "Parse WhatsApp Payload", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Parse WhatsApp Payload": {
+      "main": [
+        [
+          { "node": "Filter Status Updates", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Filter Status Updates": {
+      "main": [
+        [
+          { "node": "Gemini AI Timetable Agent", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Google Gemini 1.5 Pro": {
+      "ai_languageModel": [
+        [
+          { "node": "Gemini AI Timetable Agent", "type": "ai_languageModel", "index": 0 }
+        ]
+      ]
+    },
+    "Chat Memory Buffer": {
+      "ai_memory": [
+        [
+          { "node": "Gemini AI Timetable Agent", "type": "ai_memory", "index": 0 }
+        ]
+      ]
+    },
+    "Supabase Database Tool": {
+      "ai_tool": [
+        [
+          { "node": "Gemini AI Timetable Agent", "type": "ai_tool", "index": 0 }
+        ]
+      ]
+    },
+    "Gemini AI Timetable Agent": {
+      "main": [
+        [
+          { "node": "Send Interactive WhatsApp Reply", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

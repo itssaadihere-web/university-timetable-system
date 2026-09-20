@@ -12,7 +12,6 @@ import { AdminDashboard } from '@/components/dashboards/AdminDashboard';
 import { SessionEditModal } from '@/components/modals/SessionEditModal';
 import { VersionDiffModal } from '@/components/modals/VersionDiffModal';
 import { BulkExcelImportModal } from '@/components/modals/BulkExcelImportModal';
-import { WhatsAppAgentSimulator } from '@/components/whatsapp-agent-simulator';
 import { ClassSession } from '@/types';
 
 export default function AppMainPage() {
@@ -131,9 +130,6 @@ export default function AppMainPage() {
           </div>
         </div>
       </footer>
-
-      {/* Live AI WhatsApp Timetable & Campus Navigation Agent Demo */}
-      <WhatsAppAgentSimulator />
     </div>
   );
 }
