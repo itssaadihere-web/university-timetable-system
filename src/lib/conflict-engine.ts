@@ -472,3 +472,233 @@ export function findBatchMergeCandidate(params: {
 
   return null;
 }
+
+export interface SessionClash {
+  sessionId: string;
+  otherSessionId: string;
+  type: 'room' | 'teacher' | 'batch';
+  severity: 'error' | 'warning';
+  title: string;
+  message: string;
+  conflictingSession: ClassSession;
+  conflictingCourseName: string;
+  conflictingBatchName: string;
+  conflictingFacultyName: string;
+  conflictingRoomName: string;
+  timeRangeFormatted: string;
+}
+
+/**
+ * Scans all sessions in the timetable to detect any existing Room, Teacher, or Batch clashes.
+ * Returns a Map from session.id to an array of SessionClash items.
+ */
+export function detectAllSessionClashes(params: {
+  sessions: ClassSession[];
+  rooms: Room[];
+  faculty: Faculty[];
+  batches: Batch[];
+  courses: Course[];
+}): Map<string, SessionClash[]> {
+  const { sessions, rooms, faculty, batches, courses } = params;
+  const clashesMap = new Map<string, SessionClash[]>();
+
+  const activeSessions = sessions.filter((s) => s.status !== 'cancelled' && s.start_time && s.end_time);
+
+  // Group by day / specific_date to avoid O(N^2) over all sessions
+  const dayGroups = new Map<string, ClassSession[]>();
+  for (const s of activeSessions) {
+    const key = s.specific_date ? `date:${s.specific_date}` : `day:${s.day_of_week}`;
+    if (!dayGroups.has(key)) {
+      dayGroups.set(key, []);
+    }
+    dayGroups.get(key)!.push(s);
+  }
+
+  dayGroups.forEach((group) => {
+    const len = group.length;
+    for (let i = 0; i < len; i++) {
+      const s1 = group[i];
+      const start1 = timeToMinutes(s1.start_time);
+      const end1 = timeToMinutes(s1.end_time);
+      if (end1 <= start1) continue;
+
+      for (let j = i + 1; j < len; j++) {
+        const s2 = group[j];
+        const start2 = timeToMinutes(s2.start_time);
+        const end2 = timeToMinutes(s2.end_time);
+        if (end2 <= start2) continue;
+
+        // Check direct time overlap
+        const isOverlap = Math.max(start1, start2) < Math.min(end1, end2);
+        if (!isOverlap) continue;
+
+        // Check if approved joint merge session
+        const isSameMergeGroup =
+          Boolean(s1.batch_group_id) &&
+          Boolean(s2.batch_group_id) &&
+          s1.batch_group_id === s2.batch_group_id;
+
+        const isApprovedMergeSession =
+          isSameMergeGroup &&
+          s1.course_id === s2.course_id &&
+          s1.faculty_id === s2.faculty_id &&
+          s1.start_time === s2.start_time &&
+          s1.end_time === s2.end_time;
+
+        if (isApprovedMergeSession) continue;
+
+        // Lookup metadata
+        const c1 = courses.find((c) => c.id === s1.course_id);
+        const c2 = courses.find((c) => c.id === s2.course_id);
+        const f1 = faculty.find((f) => f.id === s1.faculty_id);
+        const f2 = faculty.find((f) => f.id === s2.faculty_id);
+        const r1 = rooms.find((r) => r.id === s1.room_id);
+        const r2 = rooms.find((r) => r.id === s2.room_id);
+        const b1 = batches.find((b) => b.id === s1.batch_id);
+        const b2 = batches.find((b) => b.id === s2.batch_id);
+
+        const c1Name = c1 ? `${c1.code} - ${c1.name}` : 'Course';
+        const c2Name = c2 ? `${c2.code} - ${c2.name}` : 'Course';
+        const f1Name = f1 ? f1.name : 'Unassigned Instructor';
+        const f2Name = f2 ? f2.name : 'Unassigned Instructor';
+        const r1Name = r1 ? r1.name : 'Unassigned Room';
+        const r2Name = r2 ? r2.name : 'Unassigned Room';
+        const b1Name = b1 ? b1.name : 'Batch';
+        const b2Name = b2 ? b2.name : 'Batch';
+
+        const time1 = formatTimeRange(s1.start_time, s1.end_time);
+        const time2 = formatTimeRange(s2.start_time, s2.end_time);
+
+        // 1. Room Clash
+        const s1HasRoom = Boolean(
+          s1.room_id &&
+            s1.room_id.trim() !== '' &&
+            s1.room_id !== 'a0000000-0000-0000-0000-000000000000' &&
+            s1.room_id !== 'room-unassigned'
+        );
+        const s2HasRoom = Boolean(
+          s2.room_id &&
+            s2.room_id.trim() !== '' &&
+            s2.room_id !== 'a0000000-0000-0000-0000-000000000000' &&
+            s2.room_id !== 'room-unassigned'
+        );
+
+        if (s1HasRoom && s2HasRoom && s1.room_id === s2.room_id) {
+          if (!clashesMap.has(s1.id)) clashesMap.set(s1.id, []);
+          clashesMap.get(s1.id)!.push({
+            sessionId: s1.id,
+            otherSessionId: s2.id,
+            type: 'room',
+            severity: 'error',
+            title: `Room Clash: ${r1Name}`,
+            message: `Occupied by ${c2Name} (${b2Name}, ${time2})`,
+            conflictingSession: s2,
+            conflictingCourseName: c2Name,
+            conflictingBatchName: b2Name,
+            conflictingFacultyName: f2Name,
+            conflictingRoomName: r2Name,
+            timeRangeFormatted: time2,
+          });
+
+          if (!clashesMap.has(s2.id)) clashesMap.set(s2.id, []);
+          clashesMap.get(s2.id)!.push({
+            sessionId: s2.id,
+            otherSessionId: s1.id,
+            type: 'room',
+            severity: 'error',
+            title: `Room Clash: ${r2Name}`,
+            message: `Occupied by ${c1Name} (${b1Name}, ${time1})`,
+            conflictingSession: s1,
+            conflictingCourseName: c1Name,
+            conflictingBatchName: b1Name,
+            conflictingFacultyName: f1Name,
+            conflictingRoomName: r1Name,
+            timeRangeFormatted: time1,
+          });
+        }
+
+        // 2. Teacher Clash
+        const s1HasFaculty = Boolean(s1.faculty_id && s1.faculty_id.trim() !== '');
+        const s2HasFaculty = Boolean(s2.faculty_id && s2.faculty_id.trim() !== '');
+        if (s1HasFaculty && s2HasFaculty && s1.faculty_id === s2.faculty_id) {
+          if (!clashesMap.has(s1.id)) clashesMap.set(s1.id, []);
+          clashesMap.get(s1.id)!.push({
+            sessionId: s1.id,
+            otherSessionId: s2.id,
+            type: 'teacher',
+            severity: 'error',
+            title: `Teacher Clash: ${f1Name}`,
+            message: `Already teaching ${c2Name} in ${r2Name} (${time2})`,
+            conflictingSession: s2,
+            conflictingCourseName: c2Name,
+            conflictingBatchName: b2Name,
+            conflictingFacultyName: f2Name,
+            conflictingRoomName: r2Name,
+            timeRangeFormatted: time2,
+          });
+
+          if (!clashesMap.has(s2.id)) clashesMap.set(s2.id, []);
+          clashesMap.get(s2.id)!.push({
+            sessionId: s2.id,
+            otherSessionId: s1.id,
+            type: 'teacher',
+            severity: 'error',
+            title: `Teacher Clash: ${f2Name}`,
+            message: `Already teaching ${c1Name} in ${r1Name} (${time1})`,
+            conflictingSession: s1,
+            conflictingCourseName: c1Name,
+            conflictingBatchName: b1Name,
+            conflictingFacultyName: f1Name,
+            conflictingRoomName: r1Name,
+            timeRangeFormatted: time1,
+          });
+        }
+
+        // 3. Batch Clash
+        const s1HasBatch = Boolean(s1.batch_id && s1.batch_id.trim() !== '');
+        const s2HasBatch = Boolean(s2.batch_id && s2.batch_id.trim() !== '');
+        const isSameBatch = s1HasBatch && s2HasBatch && s1.batch_id === s2.batch_id;
+        const isSubBatchInJointClass =
+          (Boolean(s1.batch_group_id) && Boolean(s2.batch_group_id) && s1.batch_group_id === s2.batch_group_id) ||
+          (s2.batch_group_id && b1?.merge_group_id && s2.batch_group_id === b1.merge_group_id) ||
+          (s1.batch_group_id && b2?.merge_group_id && s1.batch_group_id === b2.merge_group_id);
+
+        if ((isSameBatch || isSubBatchInJointClass) && !isApprovedMergeSession) {
+          if (!clashesMap.has(s1.id)) clashesMap.set(s1.id, []);
+          clashesMap.get(s1.id)!.push({
+            sessionId: s1.id,
+            otherSessionId: s2.id,
+            type: 'batch',
+            severity: 'error',
+            title: `Batch Clash: ${b1Name}`,
+            message: `Scheduled for ${c2Name} in ${r2Name} (${time2})`,
+            conflictingSession: s2,
+            conflictingCourseName: c2Name,
+            conflictingBatchName: b2Name,
+            conflictingFacultyName: f2Name,
+            conflictingRoomName: r2Name,
+            timeRangeFormatted: time2,
+          });
+
+          if (!clashesMap.has(s2.id)) clashesMap.set(s2.id, []);
+          clashesMap.get(s2.id)!.push({
+            sessionId: s2.id,
+            otherSessionId: s1.id,
+            type: 'batch',
+            severity: 'error',
+            title: `Batch Clash: ${b2Name}`,
+            message: `Scheduled for ${c1Name} in ${r1Name} (${time1})`,
+            conflictingSession: s1,
+            conflictingCourseName: c1Name,
+            conflictingBatchName: b1Name,
+            conflictingFacultyName: f1Name,
+            conflictingRoomName: r1Name,
+            timeRangeFormatted: time1,
+          });
+        }
+      }
+    }
+  });
+
+  return clashesMap;
+}

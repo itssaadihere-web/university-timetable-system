@@ -18,21 +18,23 @@ import {
   Monitor,
   Tv,
   Cpu,
-  AlertTriangle
+  AlertTriangle,
 } from 'lucide-react';
-import { formatTimeRange } from '@/lib/conflict-engine';
+import { formatTimeRange, SessionClash } from '@/lib/conflict-engine';
 import { getCourseColor } from '@/lib/course-colors';
 import { getCleanBatchNumber } from '@/lib/batch-utils';
 import { getCleanCourseDisplay } from '@/lib/course-utils';
 
 interface DraggableSessionCardProps {
   session: ClassSession;
+  clashes?: SessionClash[];
   onEdit: (session: ClassSession) => void;
   onDelete: (sessionId: string) => void;
 }
 
 export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
   session,
+  clashes = [],
   onEdit,
   onDelete,
 }) => {
@@ -83,6 +85,15 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
   const isMakeup = session.session_type === 'makeup';
   const isMerged = Boolean(session.batch_group_id);
 
+  // Clash indicators
+  const hasClashes = Boolean(clashes && clashes.length > 0);
+  const roomClashes = clashes.filter((c) => c.type === 'room');
+  const teacherClashes = clashes.filter((c) => c.type === 'teacher');
+  const batchClashes = clashes.filter((c) => c.type === 'batch');
+  const hasRoomClash = roomClashes.length > 0;
+  const hasTeacherClash = teacherClashes.length > 0;
+  const hasBatchClash = batchClashes.length > 0;
+
   const startMins = session.start_time ? (parseInt(session.start_time.split(':')[0], 10) * 60 + parseInt(session.start_time.split(':')[1], 10)) : 0;
   const endMins = session.end_time ? (parseInt(session.end_time.split(':')[0], 10) * 60 + parseInt(session.end_time.split(':')[1], 10)) : 0;
   const durationMinutes = Math.max(30, endMins - startMins);
@@ -92,10 +103,10 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
 
   const cardStyle: React.CSSProperties = {
     ...(style || {}),
-    backgroundColor: isDragging ? '#f1f5f9' : colorPalette.bgHex,
-    borderColor: isUnassignedRoom ? '#f43f5e' : isDraft ? '#f59e0b' : isMakeup ? '#14b8a6' : colorPalette.borderHex,
-    borderLeftColor: isUnassignedRoom ? '#e11d48' : colorPalette.leftBarHex,
-    borderLeftWidth: '5px',
+    backgroundColor: isDragging ? '#f1f5f9' : hasClashes ? '#fff1f2' : colorPalette.bgHex,
+    borderColor: hasClashes ? '#e11d48' : isUnassignedRoom ? '#f43f5e' : isDraft ? '#f59e0b' : isMakeup ? '#14b8a6' : colorPalette.borderHex,
+    borderLeftColor: hasClashes ? '#be123c' : isUnassignedRoom ? '#e11d48' : colorPalette.leftBarHex,
+    borderLeftWidth: hasClashes ? '6px' : '5px',
   };
 
   return (
@@ -111,6 +122,8 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
       } ${
         isDragging
           ? 'opacity-20 grayscale border-2 border-dashed border-slate-400 scale-95 shadow-none pointer-events-none'
+          : hasClashes
+          ? 'border-2 ring-2 ring-rose-500/80 shadow-rose-200 shadow-sm'
           : isUnassignedRoom
           ? 'border-2 ring-1 ring-rose-300/80'
           : isDraft
@@ -124,9 +137,9 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
           <div className="flex items-center gap-1 flex-wrap">
             <span
               style={{
-                backgroundColor: isDraft ? '#fef3c7' : isMakeup ? '#ccfbf1' : colorPalette.badgeBgHex,
-                color: isDraft ? '#78350f' : isMakeup ? '#115e59' : colorPalette.badgeTextHex,
-                borderColor: isDraft ? '#fde68a' : isMakeup ? '#99f6e4' : colorPalette.badgeBorderHex,
+                backgroundColor: hasClashes ? '#ffe4e6' : isDraft ? '#fef3c7' : isMakeup ? '#ccfbf1' : colorPalette.badgeBgHex,
+                color: hasClashes ? '#9f1239' : isDraft ? '#78350f' : isMakeup ? '#115e59' : colorPalette.badgeTextHex,
+                borderColor: hasClashes ? '#f43f5e' : isDraft ? '#fde68a' : isMakeup ? '#99f6e4' : colorPalette.badgeBorderHex,
               }}
               className="font-extrabold px-2 py-0.5 rounded text-[10px] font-mono shadow-2xs border"
             >
@@ -137,7 +150,38 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
               {boxesCount * 30}m
             </span>
 
-            {isUnassignedRoom && (
+            {/* Prominent Clash Badges with Pulse Animation & Explanatory Tooltips */}
+            {hasRoomClash && (
+              <span
+                title={roomClashes.map((c) => `[Room Clash]: ${c.message}`).join('\n')}
+                className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-rose-600 text-white shadow-xs animate-pulse flex items-center gap-0.5 cursor-help"
+              >
+                <AlertTriangle className="w-2.5 h-2.5" />
+                <span>Room Clash</span>
+              </span>
+            )}
+
+            {hasTeacherClash && (
+              <span
+                title={teacherClashes.map((c) => `[Teacher Clash]: ${c.message}`).join('\n')}
+                className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-rose-600 text-white shadow-xs animate-pulse flex items-center gap-0.5 cursor-help"
+              >
+                <AlertTriangle className="w-2.5 h-2.5" />
+                <span>Teacher Clash</span>
+              </span>
+            )}
+
+            {hasBatchClash && (
+              <span
+                title={batchClashes.map((c) => `[Batch Clash]: ${c.message}`).join('\n')}
+                className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-rose-600 text-white shadow-xs animate-pulse flex items-center gap-0.5 cursor-help"
+              >
+                <AlertTriangle className="w-2.5 h-2.5" />
+                <span>Batch Clash</span>
+              </span>
+            )}
+
+            {isUnassignedRoom && !hasRoomClash && (
               <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-rose-600 text-white shadow-2xs animate-pulse">
                 Room Missing
               </span>
@@ -204,7 +248,7 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
 
       {/* Details Footer */}
       <div 
-        style={{ borderTopColor: colorPalette.borderHex }}
+        style={{ borderTopColor: hasClashes ? '#fecdd3' : colorPalette.borderHex }}
         className="pt-1 mt-1 border-t space-y-1 text-slate-800 text-[10px]"
       >
         {/* Time & Room Row */}
@@ -230,6 +274,18 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
               <AlertTriangle className="w-2.5 h-2.5 text-rose-700 shrink-0" />
               <span>Room Missing</span>
             </span>
+          ) : hasRoomClash ? (
+            <span
+              title={roomClashes.map((c) => c.message).join('\n')}
+              className={`flex items-center gap-1 font-bold text-rose-900 bg-rose-100/90 px-1.5 py-0.5 rounded border border-rose-300 shadow-2xs cursor-help ${
+                isShortDuration
+                  ? 'truncate max-w-[130px] group-hover:max-w-none group-hover:whitespace-normal'
+                  : 'break-words'
+              }`}
+            >
+              <MapPin className="w-2.5 h-2.5 text-rose-600 shrink-0" />
+              <span>{room?.name}</span>
+            </span>
           ) : (
             <span
               className={`flex items-center gap-1 font-semibold text-slate-900 ${
@@ -247,7 +303,12 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
         {/* Teacher & Batch Row */}
         <div className="flex flex-wrap items-center justify-between gap-1 text-[10px] text-slate-800">
           <span
-            className={`font-semibold text-slate-900 ${
+            title={hasTeacherClash ? teacherClashes.map((c) => c.message).join('\n') : undefined}
+            className={`font-semibold ${
+              hasTeacherClash
+                ? 'text-rose-900 bg-rose-100 px-1 rounded border border-rose-300 font-bold cursor-help'
+                : 'text-slate-900'
+            } ${
               isShortDuration
                 ? 'truncate max-w-[110px] group-hover:max-w-none group-hover:whitespace-normal'
                 : 'break-words'
@@ -257,12 +318,18 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
           </span>
           <span 
             style={{
-              backgroundColor: colorPalette.pillBgHex,
-              color: colorPalette.pillTextHex,
-              borderColor: colorPalette.pillBorderHex,
+              backgroundColor: hasBatchClash ? '#ffe4e6' : colorPalette.pillBgHex,
+              color: hasBatchClash ? '#9f1239' : colorPalette.pillTextHex,
+              borderColor: hasBatchClash ? '#fda4af' : colorPalette.pillBorderHex,
             }}
-            title={`${batch?.program || ''} (${batch?.student_count || 0} students)`}
-            className="font-bold px-1.5 py-0.5 rounded text-[9px] border shadow-2xs flex items-center gap-1"
+            title={
+              hasBatchClash
+                ? batchClashes.map((c) => c.message).join('\n')
+                : `${batch?.program || ''} (${batch?.student_count || 0} students)`
+            }
+            className={`font-bold px-1.5 py-0.5 rounded text-[9px] border shadow-2xs flex items-center gap-1 ${
+              hasBatchClash ? 'border-rose-400 cursor-help ring-1 ring-rose-300' : ''
+            }`}
           >
             {batch?.program_code && (
               <span className="opacity-75 font-mono text-[8px] bg-black/10 dark:bg-white/10 px-1 rounded">

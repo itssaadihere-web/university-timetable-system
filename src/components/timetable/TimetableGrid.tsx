@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -25,7 +25,9 @@ import {
   minutesToTime,
   TOTAL_30MIN_SLOTS,
   findBatchMergeCandidate,
-  BatchMergeCandidate
+  BatchMergeCandidate,
+  detectAllSessionClashes,
+  SessionClash
 } from '@/lib/conflict-engine';
 import { 
   AlertCircle, 
@@ -170,6 +172,59 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
 
     return true;
   });
+
+  // Automatically scan all sessions in the timetable for clashes (Room, Teacher, Batch)
+  const allClashesMap = useMemo(() => {
+    return detectAllSessionClashes({
+      sessions,
+      rooms,
+      faculty,
+      batches,
+      courses,
+    });
+  }, [sessions, rooms, faculty, batches, courses]);
+
+  // Set of session IDs that have conflicts among currently visible/filtered sessions
+  const visibleClashedSessionIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const s of filteredSessions) {
+      if (allClashesMap.has(s.id) && (allClashesMap.get(s.id)?.length || 0) > 0) {
+        ids.add(s.id);
+      }
+    }
+    return ids;
+  }, [filteredSessions, allClashesMap]);
+
+  // Distinct conflict summaries for persistent top warning banner
+  const clashSummaries = useMemo(() => {
+    const summaries: { id: string; day: string; type: string; description: string }[] = [];
+    const seenPairs = new Set<string>();
+
+    for (const s of filteredSessions) {
+      const clashes = allClashesMap.get(s.id) || [];
+      for (const clash of clashes) {
+        const pairKey = [s.id, clash.otherSessionId].sort().join('-');
+        if (seenPairs.has(pairKey)) continue;
+        seenPairs.add(pairKey);
+
+        const dayName = TIMETABLE_DAYS.find((d) => d.id === s.day_of_week)?.name || 'Day';
+        const typeLabel =
+          clash.type === 'room'
+            ? 'Room Clash'
+            : clash.type === 'teacher'
+            ? 'Teacher Clash'
+            : 'Batch Clash';
+
+        summaries.push({
+          id: pairKey,
+          day: dayName,
+          type: typeLabel,
+          description: `${dayName}: ${clash.title} – ${clash.message}`,
+        });
+      }
+    }
+    return summaries;
+  }, [filteredSessions, allClashesMap]);
 
   // Check if there are any weekend sessions scheduled
   const hasWeekendSessions = filteredSessions.some(
@@ -385,6 +440,47 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
         </div>
       )}
 
+      {/* Persistent Timetable Clashes Banner (Double-Booked Rooms / Teachers / Batches) */}
+      {visibleClashedSessionIds.size > 0 && (
+        <div className="bg-rose-50 border-2 border-rose-300 rounded-2xl p-4 shadow-sm animate-fadeIn">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3 flex-1">
+              <div className="p-2 bg-rose-100 rounded-xl text-rose-700 shrink-0 mt-0.5">
+                <AlertCircle className="w-5 h-5 text-rose-600" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h5 className="font-extrabold text-sm text-rose-950">
+                    Schedule Conflicts Detected ({visibleClashedSessionIds.size} Sessions Involved)
+                  </h5>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-rose-600 text-white font-bold animate-pulse">
+                    Action Required
+                  </span>
+                </div>
+                <p className="text-xs text-rose-800 mt-1 leading-relaxed">
+                  The timetable has conflicting sessions sharing the same room, faculty, or student batch at overlapping times. Conflicting sessions are highlighted in red below with warning tags.
+                </p>
+                {clashSummaries.length > 0 && (
+                  <div className="mt-2.5 flex flex-wrap gap-2">
+                    {clashSummaries.map((c) => (
+                      <div
+                        key={c.id}
+                        className="bg-white/95 border border-rose-200 text-rose-950 px-2.5 py-1 rounded-xl text-xs shadow-2xs flex items-center gap-1.5 font-medium"
+                      >
+                        <span className="font-bold text-rose-600 font-mono text-[10px] uppercase tracking-wider">
+                          [{c.type}]
+                        </span>
+                        <span className="text-[11px]">{c.description}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Grid Sub-Header & Controls */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 sm:p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 flex-wrap">
@@ -439,20 +535,30 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
         </button>
 
         <div className="flex items-center gap-1 overflow-x-auto py-1">
-          {displayDays.map((d) => (
-            <button
-              key={d.id}
-              onClick={() => setMobileActiveDay(d.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                mobileActiveDay === d.id
-                  ? 'bg-shu-700 text-white shadow-2xs'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <span>{d.short}</span>
-              {d.isWeekend && <span className="text-[9px] opacity-80">(Exc)</span>}
-            </button>
-          ))}
+          {displayDays.map((d) => {
+            const hasClash = filteredSessions.some(
+              (s) => s.day_of_week === d.id && visibleClashedSessionIds.has(s.id)
+            );
+            return (
+              <button
+                key={d.id}
+                onClick={() => setMobileActiveDay(d.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                  mobileActiveDay === d.id
+                    ? hasClash
+                      ? 'bg-rose-600 text-white shadow-2xs'
+                      : 'bg-shu-700 text-white shadow-2xs'
+                    : hasClash
+                    ? 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <span>{d.short}</span>
+                {hasClash && <span className="text-[10px]">⚠️</span>}
+                {d.isWeekend && <span className="text-[9px] opacity-80">(Exc)</span>}
+              </button>
+            );
+          })}
         </div>
 
         <button
@@ -488,15 +594,25 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
 
                 {/* Day Columns */}
                 {displayDays.map((day) => {
-                  const count = filteredSessions.filter((s) => s.day_of_week === day.id).length;
+                  const daySessions = filteredSessions.filter((s) => s.day_of_week === day.id);
+                  const count = daySessions.length;
+                  const dayClashesCount = daySessions.filter((s) => visibleClashedSessionIds.has(s.id)).length;
                   return (
                     <div
                       key={day.id}
                       className="py-1 px-2 border-r border-slate-200/70 last:border-r-0 flex items-center justify-center gap-2"
                     >
-                      <span className="font-bold text-slate-900 text-xs">
+                      <span className={`text-xs ${dayClashesCount > 0 ? 'font-extrabold text-rose-700' : 'font-bold text-slate-900'}`}>
                         {day.name}
                       </span>
+                      {dayClashesCount > 0 && (
+                        <span
+                          title={`${dayClashesCount} conflicting session(s) detected on ${day.name}`}
+                          className="px-1.5 py-0.2 rounded-full text-[9px] font-extrabold bg-rose-600 text-white shadow-2xs animate-pulse cursor-help flex items-center gap-0.5"
+                        >
+                          ⚠️ {dayClashesCount}
+                        </span>
+                      )}
                       {day.isWeekend && (
                         <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
                           Exc
@@ -611,6 +727,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                               >
                                 <DraggableSessionCard
                                   session={session}
+                                  clashes={allClashesMap.get(session.id) || []}
                                   onEdit={onOpenEditSessionModal}
                                   onDelete={handleDeleteSession}
                                 />
