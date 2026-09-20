@@ -52,6 +52,7 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
     updateSession,
     mergeSessionBatches,
     addCourse,
+    updateCourse,
     addFaculty,
     addBatch,
     addRoom,
@@ -106,7 +107,7 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
   // Real-time Conflict Engine Evaluation
   const proposedPayload: Partial<ClassSession> = {
     id: sessionToEdit?.id,
-    semester_id: activeSemester?.id || 'sem-fall-2026',
+    semester_id: activeSemester?.id || '11111111-1111-1111-1111-111111111111',
     course_id: courseId,
     faculty_id: facultyId,
     room_id: roomId || null,
@@ -152,7 +153,7 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
     } else {
       // For a new session, update existing session to have the group ID, and create the new session
       const res = await addSession({
-        semester_id: activeSemester?.id || 'sem-fall-2026',
+        semester_id: activeSemester?.id || '11111111-1111-1111-1111-111111111111',
         course_id: courseId,
         faculty_id: facultyId,
         room_id: roomId || null,
@@ -218,7 +219,7 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
         }
       } else {
         const res = await addSession({
-          semester_id: activeSemester?.id || 'sem-fall-2026',
+          semester_id: activeSemester?.id || '11111111-1111-1111-1111-111111111111',
           course_id: courseId,
           faculty_id: facultyId,
           room_id: roomId || null,
@@ -351,6 +352,42 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
                   return newCourse.id;
                 }}
               />
+              {selectedCourse && (
+                <div className="mt-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-semibold text-slate-700">Course Code & Name</span>
+                    <span className="text-[10px] text-indigo-700 font-medium bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">Customizable</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div className="col-span-1">
+                      <label className="text-[10px] font-bold text-slate-500 block mb-0.5">Course Code</label>
+                      <input
+                        type="text"
+                        value={selectedCourse.code}
+                        onChange={(e) => {
+                          const newCode = e.target.value.toUpperCase();
+                          updateCourse({ ...selectedCourse, code: newCode });
+                        }}
+                        placeholder="e.g. ACC-101"
+                        className="w-full px-2 py-1 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg focus:ring-1 focus:ring-indigo-500 outline-none"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="text-[10px] font-bold text-slate-500 block mb-0.5">Course Name</label>
+                      <input
+                        type="text"
+                        value={selectedCourse.name}
+                        onChange={(e) => {
+                          const newName = e.target.value;
+                          updateCourse({ ...selectedCourse, name: newName });
+                        }}
+                        placeholder="e.g. Introduction to Accounting"
+                        className="w-full px-2 py-1 text-xs bg-white border border-slate-300 rounded-lg focus:ring-1 focus:ring-indigo-500 outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
               {selectedCourse?.required_room_types?.length ? (
                 <span className="block mt-1 text-[11px] text-amber-700 font-medium">
                   Requires: {selectedCourse.required_room_types.join(', ')}

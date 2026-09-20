@@ -320,7 +320,8 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
         return '';
       };
 
-      const id = `${type}-${Date.now()}-${index + 1}`;
+      const rawId = getVal('id');
+      const id = isValidUUID(rawId) ? rawId : generateUUID();
 
       if (type === 'rooms') {
         const rawTypes = getVal('room_types', 'roomtypes', 'types', 'capabilities', 'tags');
@@ -329,7 +330,7 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
           : ['standard'];
 
         return {
-          id: getVal('id') || id,
+          id,
           name: getVal('name', 'roomname', 'room') || `Room ${index + 1}`,
           building: getVal('building', 'block', 'wing') || 'Main Campus',
           floor: parseInt(getVal('floor'), 10) || 1,
@@ -341,7 +342,7 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
 
       if (type === 'faculty') {
         return {
-          id: getVal('id') || id,
+          id,
           name: getVal('name', 'facultyname', 'instructor', 'teacher') || `Faculty ${index + 1}`,
           email: getVal('email', 'facultyemail') || `faculty.${index + 1}@univ.edu`,
           department: getVal('department', 'dept') || 'Faculty of Management Sciences',
@@ -382,7 +383,7 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
         const section = getVal('section') || (secMatch ? secMatch[1].toUpperCase() : undefined);
 
         return {
-          id: getVal('id') || id,
+          id,
           name: batchName,
           program,
           program_code,
@@ -400,7 +401,7 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
           : ['standard'];
 
         return {
-          id: getVal('id') || id,
+          id,
           code: getVal('code', 'coursecode', 'course_id') || `CRS-${index + 101}`,
           name: getVal('name', 'coursename', 'title') || `Course ${index + 1}`,
           department: getVal('department', 'dept') || 'Management Sciences',
@@ -460,17 +461,17 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
 
         // Match Batch
         const matchedBatch = batches.find((b) => b.name.toLowerCase() === batchName.toLowerCase() || b.id === batchName);
-        const batch_id = matchedBatch ? matchedBatch.id : `batch-${batchName.toLowerCase().replace(/\s+/g, '-')}`;
+        const batch_id = matchedBatch ? matchedBatch.id : generateUUID();
 
         // Match Course
         const matchedCourse = courses.find((c) => c.code.toLowerCase() === courseCode.toLowerCase() || c.id === courseCode);
-        const course_id = matchedCourse ? matchedCourse.id : `crs-${courseCode.toLowerCase().replace(/\s+/g, '-')}`;
+        const course_id = matchedCourse ? matchedCourse.id : generateUUID();
 
         // Match Faculty
         const matchedFaculty = faculty.find(
           (f) => f.email.toLowerCase() === facultyVal.toLowerCase() || f.name.toLowerCase() === facultyVal.toLowerCase() || f.id === facultyVal
         );
-        const faculty_id = matchedFaculty ? matchedFaculty.id : `fac-${facultyVal.toLowerCase().replace(/\s+/g, '-')}`;
+        const faculty_id = matchedFaculty ? matchedFaculty.id : generateUUID();
 
         // Match Room
         const matchedRoom = rooms.find((r) => r.name.toLowerCase() === roomName.toLowerCase() || r.id === roomName);
@@ -492,7 +493,7 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
         }
 
         return {
-          id: getVal('id') || `sess-import-${Date.now()}-${index + 1}`,
+          id,
           semester_id: activeSemester?.id || '11111111-1111-1111-1111-111111111111',
           batch_id,
           course_id,

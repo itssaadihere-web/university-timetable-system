@@ -23,6 +23,7 @@ import {
 import { formatTimeRange } from '@/lib/conflict-engine';
 import { getCourseColor } from '@/lib/course-colors';
 import { getCleanBatchNumber } from '@/lib/batch-utils';
+import { getCleanCourseDisplay } from '@/lib/course-utils';
 
 interface DraggableSessionCardProps {
   session: ClassSession;
@@ -60,7 +61,8 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
   const room = rooms.find((r) => r.id === session.room_id);
   const batch = batches.find((b) => b.id === session.batch_id);
 
-  const colorPalette = getCourseColor(course?.code, session.course_id || session.id);
+  const cleanCourse = getCleanCourseDisplay(course);
+  const colorPalette = getCourseColor(cleanCourse.code, session.course_id || session.id);
   const isUnassignedRoom =
     !session.room_id ||
     !room ||
@@ -128,7 +130,7 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
               }}
               className="font-extrabold px-2 py-0.5 rounded text-[10px] font-mono shadow-2xs border"
             >
-              {course?.code || 'CRS-000'}
+              {cleanCourse.code}
             </span>
 
             <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-white/95 text-slate-800 font-mono border border-slate-300 shadow-2xs">
@@ -196,7 +198,7 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
               : 'break-words leading-snug'
           }`}
         >
-          {course?.name || 'Class Session'}
+          {cleanCourse.name || 'Class Session'}
         </h4>
       </div>
 

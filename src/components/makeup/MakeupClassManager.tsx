@@ -126,7 +126,7 @@ export const MakeupClassManager: React.FC = () => {
     const targetDay = new Date(targetDate).getDay() === 0 ? 7 : new Date(targetDate).getDay();
 
     const res = await addSession({
-      semester_id: activeSemester?.id || 'sem-fall-2026',
+      semester_id: activeSemester?.id || '11111111-1111-1111-1111-111111111111',
       course_id: selectedCourseId,
       faculty_id: selectedFacultyId,
       room_id: selectedRoomId,
