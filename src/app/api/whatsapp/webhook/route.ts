@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { 
-  processIncomingWhatsAppMessage, 
+  generateConversationalResponse 
+} from '@/lib/ai-agent-engine';
+import { 
+  downloadMetaWhatsAppAudio, 
+  transcribeWhatsAppAudio 
+} from '@/lib/whatsapp-voice-engine';
+import { 
   sendRealWhatsAppMessage 
 } from '@/lib/whatsapp-state-engine';
 import { 
@@ -43,14 +49,14 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     status: 'online',
-    agent: 'Salim Habib University WhatsApp Timetable & Navigation Agent',
-    designatedNumber: process.env.WHATSAPP_BUSINESS_PHONE_NUMBER || '+92 300 1234567',
+    agent: 'Salim Habib University AI Conversational Timetable & Navigation Agent',
+    designatedNumber: process.env.WHATSAPP_BUSINESS_PHONE_NUMBER || '+1 555 179-3865',
     webhookConfigured: true,
   });
 }
 
 /**
- * Helper to get active datasets from Supabase or fallback mock data
+ * Helper to get active datasets directly from live Supabase tables (with safe fallback)
  */
 async function getActiveDatasets() {
   let students: Student[] = INITIAL_STUDENTS;
@@ -96,6 +102,7 @@ export async function POST(req: NextRequest) {
   try {
     let fromPhone = '';
     let messageText = '';
+    let isVoiceNote = false;
     let body: any = {};
 
     const contentType = req.headers.get('content-type') || '';
@@ -122,8 +129,20 @@ export async function POST(req: NextRequest) {
         }
 
         fromPhone = message.from;
+
         if (message.type === 'text') {
           messageText = message.text?.body || '';
+        } else if (message.type === 'audio' || message.type === 'voice') {
+          isVoiceNote = true;
+          const mediaId = message.audio?.id || message.voice?.id;
+          const accessToken = process.env.WHATSAPP_ACCESS_TOKEN || '';
+          if (mediaId && accessToken) {
+            const audioBuffer = await downloadMetaWhatsAppAudio(mediaId, accessToken);
+            if (audioBuffer) {
+              const transcribed = await transcribeWhatsAppAudio(audioBuffer);
+              messageText = transcribed.transcription || 'voice message received';
+            }
+          }
         } else if (message.type === 'button') {
           messageText = message.button?.text || message.button?.payload || '';
         } else if (message.type === 'interactive') {
@@ -163,35 +182,47 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing phoneNumber or message body' }, { status: 400 });
     }
 
-    // Load active timetable and campus metadata
+    // Load active timetable and campus metadata from live Supabase tables
     const datasets = await getActiveDatasets();
 
-    // Process message through Multi-Turn State & Reconfirmation Engine
-    const result = processIncomingWhatsAppMessage({
+    // Process message through Conversational AI Reasoning Engine (English, Roman Urdu, Urdu Script)
+    const result = await generateConversationalResponse({
       phoneNumber: fromPhone,
-      incomingText: messageText,
-      students: datasets.students,
-      batches: datasets.batches,
-      courses: datasets.courses,
-      faculty: datasets.faculty,
-      rooms: datasets.rooms,
-      sessions: datasets.sessions,
-      customTimeStr: body.customTimeStr,
-      customDayOfWeek: body.customDayOfWeek,
+      userMessage: messageText,
+      datasets: {
+        students: datasets.students,
+        batches: datasets.batches,
+        courses: datasets.courses,
+        faculty: datasets.faculty,
+        rooms: datasets.rooms,
+        sessions: datasets.sessions,
+        currentTimeStr: body.customTimeStr,
+        currentDayOfWeek: body.customDayOfWeek,
+      },
     });
 
-    // Send the real WhatsApp message back to the student's phone
-    const dispatchRes = await sendRealWhatsAppMessage(fromPhone, result.replyText);
+    let finalReply = result.replyText;
+    if (isVoiceNote) {
+      const voicePrefix = result.detectedLang === 'roman_urdu' 
+        ? `🎙️ *(Aapke voice note ka jawab)*:\n\n`
+        : `🎙️ *(Voice Note Response)*:\n\n`;
+      finalReply = voicePrefix + finalReply;
+    }
+
+    // Dispatch real WhatsApp message back to the student's phone
+    const dispatchRes = await sendRealWhatsAppMessage(fromPhone, finalReply);
 
     return NextResponse.json({
       success: true,
       senderPhone: fromPhone,
       studentInput: messageText,
-      agentReply: result.replyText,
-      isIdentified: result.sessionState.isIdentified,
-      studentName: result.sessionState.studentName,
-      batchName: result.sessionState.batchName,
-      rollNumber: result.sessionState.rollNumber,
+      agentReply: finalReply,
+      detectedLanguage: result.detectedLang,
+      isVoiceNote,
+      isIdentified: result.profile.isIdentified,
+      studentName: result.profile.studentName,
+      batchName: result.profile.batchName,
+      rollNumber: result.profile.rollNumber,
       metaDispatchStatus: dispatchRes,
       timestamp: new Date().toISOString(),
     });
