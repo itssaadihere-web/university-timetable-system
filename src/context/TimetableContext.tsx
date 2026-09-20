@@ -1105,10 +1105,17 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       let updatedAllBatches: Batch[] = batches;
 
       if (type === 'rooms') {
-        const sanitizedRooms = items.map((r: any) => ({
-          ...r,
-          id: isValidUUID(r.id) ? r.id : generateUUID(),
-        }));
+        const sanitizedRooms = items.map((r: any, idx: number) => {
+          const rawName = (r.name || '').trim();
+          const existing = rooms.find(
+            (ex) => ex.name.trim().toLowerCase() === rawName.toLowerCase() || (isValidUUID(r.id) && ex.id === r.id)
+          );
+          return {
+            ...r,
+            id: existing ? existing.id : (isValidUUID(r.id) ? r.id : generateUUID()),
+            name: rawName || `Room ${idx + 1}`,
+          };
+        });
         processedItems = sanitizedRooms;
         setRooms((prev) => {
           const incomingIds = new Set(sanitizedRooms.map((i: any) => i.id));
@@ -1116,20 +1123,32 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           return sanitizeRooms(merged).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
         });
       } else if (type === 'faculty') {
-        const sanitizedFaculty = items.map((f: any) => ({
-          ...f,
-          id: isValidUUID(f.id) ? f.id : generateUUID(),
-        }));
+        const sanitizedFaculty = items.map((f: any) => {
+          const rawEmail = (f.email || '').trim().toLowerCase();
+          const existing = faculty.find(
+            (ex) => ex.email.trim().toLowerCase() === rawEmail || (isValidUUID(f.id) && ex.id === f.id)
+          );
+          return {
+            ...f,
+            id: existing ? existing.id : (isValidUUID(f.id) ? f.id : generateUUID()),
+          };
+        });
         processedItems = sanitizedFaculty;
         setFaculty((prev) => {
           const incomingIds = new Set(sanitizedFaculty.map((i: any) => i.id));
           return [...prev.filter((f) => !incomingIds.has(f.id)), ...sanitizedFaculty];
         });
       } else if (type === 'batches') {
-        const sanitizedBatches = items.map((b: any) => ({
-          ...b,
-          id: isValidUUID(b.id) ? b.id : generateUUID(),
-        }));
+        const sanitizedBatches = items.map((b: any) => {
+          const rawName = (b.name || '').trim().toLowerCase();
+          const existing = batches.find(
+            (ex) => ex.name.trim().toLowerCase() === rawName || (isValidUUID(b.id) && ex.id === b.id)
+          );
+          return {
+            ...b,
+            id: existing ? existing.id : (isValidUUID(b.id) ? b.id : generateUUID()),
+          };
+        });
         processedItems = sanitizedBatches;
         setBatches((prev) => {
           const incomingIds = new Set(sanitizedBatches.map((i: any) => i.id));
@@ -1232,29 +1251,45 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           return mergedStudents;
         });
       } else if (type === 'courses') {
-        const sanitizedCourses = items.map((c: any) => ({
-          ...c,
-          id: isValidUUID(c.id) ? c.id : generateUUID(),
-        }));
+        const sanitizedCourses = items.map((c: any) => {
+          const rawCode = (c.code || '').trim().toLowerCase();
+          const existing = courses.find(
+            (ex) => ex.code.trim().toLowerCase() === rawCode || (isValidUUID(c.id) && ex.id === c.id)
+          );
+          return {
+            ...c,
+            id: existing ? existing.id : (isValidUUID(c.id) ? c.id : generateUUID()),
+          };
+        });
         processedItems = sanitizedCourses;
         setCourses((prev) => {
           const incomingIds = new Set(sanitizedCourses.map((i) => i.id));
           return [...prev.filter((c) => !incomingIds.has(c.id)), ...sanitizedCourses];
         });
       } else if (type === 'sessions') {
+        const defaultSemId = (activeSemester && isValidUUID(activeSemester.id))
+          ? activeSemester.id
+          : (semesters.find((s) => isValidUUID(s.id))?.id || '11111111-1111-1111-1111-111111111111');
+
         const sanitizedSessions = items.map((s: any) => ({
           ...s,
           id: isValidUUID(s.id) ? s.id : generateUUID(),
-          semester_id: isValidUUID(s.semester_id) ? s.semester_id : '11111111-1111-1111-1111-111111111111',
-          course_id: isValidUUID(s.course_id) ? s.course_id : null,
-          faculty_id: isValidUUID(s.faculty_id) ? s.faculty_id : null,
+          semester_id: isValidUUID(s.semester_id) ? s.semester_id : defaultSemId,
+          course_id: isValidUUID(s.course_id) ? s.course_id : generateUUID(),
+          faculty_id: isValidUUID(s.faculty_id) ? s.faculty_id : generateUUID(),
           room_id: isValidUUID(s.room_id) ? s.room_id : null,
-          batch_id: isValidUUID(s.batch_id) ? s.batch_id : null,
+          batch_id: isValidUUID(s.batch_id) ? s.batch_id : generateUUID(),
           batch_group_id: isValidUUID(s.batch_group_id) ? s.batch_group_id : null,
+          day_of_week: Number(s.day_of_week) >= 1 && Number(s.day_of_week) <= 7 ? Number(s.day_of_week) : 1,
+          start_time: s.start_time || '08:30',
+          end_time: s.end_time || '11:30',
+          session_type: s.session_type === 'makeup' ? ('makeup' as const) : ('regular' as const),
+          status: s.status === 'draft' ? ('draft' as const) : ('published' as const),
+          specific_date: s.specific_date || null,
         }));
         processedItems = sanitizedSessions;
         setSessions((prev) => {
-          const incomingIds = new Set(sanitizedSessions.map((i) => i.id));
+          const incomingIds = new Set(sanitizedSessions.map((i: any) => i.id));
           const merged = [...prev.filter((s) => !incomingIds.has(s.id)), ...sanitizedSessions];
           return sanitizeSessions(merged);
         });
@@ -1280,6 +1315,152 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
             }
           } catch (bErr) {
             console.warn('Exception upserting auto-created batches to Supabase:', bErr);
+          }
+        }
+
+        // If importing sessions, ensure referenced parent entities (batches, courses, faculty, rooms, semester) exist in Supabase
+        if (type === 'sessions') {
+          const defaultSemId = (activeSemester && isValidUUID(activeSemester.id))
+            ? activeSemester.id
+            : (semesters.find((s) => isValidUUID(s.id))?.id || '11111111-1111-1111-1111-111111111111');
+
+          // 1. Ensure active semester exists in DB
+          try {
+            const { data: semInDb } = await supabase.from('semesters').select('id').eq('id', defaultSemId);
+            if (!semInDb || semInDb.length === 0) {
+              await supabase.from('semesters').upsert([{
+                id: defaultSemId,
+                name: activeSemester?.name || 'Fall 2026',
+                start_date: '2026-09-01',
+                end_date: '2027-01-31',
+                is_active: true,
+              }]);
+            }
+          } catch (semErr) {
+            console.warn('Semester verification notice:', semErr);
+          }
+
+          // 2. Check and auto-provision missing Batches in Supabase
+          const referencedBatchIds = Array.from(new Set(processedItems.map((s: any) => s.batch_id).filter(isValidUUID)));
+          if (referencedBatchIds.length > 0) {
+            try {
+              const { data: dbBatches } = await supabase.from('batches').select('id').in('id', referencedBatchIds);
+              const dbBatchIdSet = new Set((dbBatches || []).map((b: any) => b.id));
+              const missingBatchIds = referencedBatchIds.filter((id) => !dbBatchIdSet.has(id));
+
+              if (missingBatchIds.length > 0) {
+                const batchesToCreate: Batch[] = missingBatchIds.map((bId) => {
+                  const ref = processedItems.find((s: any) => s.batch_id === bId);
+                  return {
+                    id: bId,
+                    name: ref?.batch_name || `Batch-${bId.slice(0, 8)}`,
+                    program: 'Undergraduate Program',
+                    program_code: '',
+                    semester: 1,
+                    student_count: 0,
+                    is_irregular: false,
+                  };
+                });
+                const { error: bErr } = await supabase.from('batches').upsert(batchesToCreate);
+                if (!bErr) {
+                  setBatches((prev) => [...prev, ...batchesToCreate]);
+                }
+              }
+            } catch (bErr) {
+              console.warn('Auto-provisioning batches notice:', bErr);
+            }
+          }
+
+          // 3. Check and auto-provision missing Courses in Supabase
+          const referencedCourseIds = Array.from(new Set(processedItems.map((s: any) => s.course_id).filter(isValidUUID)));
+          if (referencedCourseIds.length > 0) {
+            try {
+              const { data: dbCourses } = await supabase.from('courses').select('id').in('id', referencedCourseIds);
+              const dbCourseIdSet = new Set((dbCourses || []).map((c: any) => c.id));
+              const missingCourseIds = referencedCourseIds.filter((id) => !dbCourseIdSet.has(id));
+
+              if (missingCourseIds.length > 0) {
+                const coursesToCreate: Course[] = missingCourseIds.map((cId) => {
+                  const ref = processedItems.find((s: any) => s.course_id === cId);
+                  const code = ref?.course_code || `CRS-${cId.slice(0, 6).toUpperCase()}`;
+                  return {
+                    id: cId,
+                    code,
+                    name: ref?.course_name || ref?.course_code || `Course ${code}`,
+                    department: 'Faculty of Management Sciences',
+                    credit_hours: 3,
+                    required_room_types: ['standard'],
+                  };
+                });
+                const { error: cErr } = await supabase.from('courses').upsert(coursesToCreate);
+                if (!cErr) {
+                  setCourses((prev) => [...prev, ...coursesToCreate]);
+                }
+              }
+            } catch (cErr) {
+              console.warn('Auto-provisioning courses notice:', cErr);
+            }
+          }
+
+          // 4. Check and auto-provision missing Faculty in Supabase
+          const referencedFacultyIds = Array.from(new Set(processedItems.map((s: any) => s.faculty_id).filter(isValidUUID)));
+          if (referencedFacultyIds.length > 0) {
+            try {
+              const { data: dbFaculty } = await supabase.from('faculty').select('id').in('id', referencedFacultyIds);
+              const dbFacultyIdSet = new Set((dbFaculty || []).map((f: any) => f.id));
+              const missingFacultyIds = referencedFacultyIds.filter((id) => !dbFacultyIdSet.has(id));
+
+              if (missingFacultyIds.length > 0) {
+                const facultyToCreate: Faculty[] = missingFacultyIds.map((fId) => {
+                  const ref = processedItems.find((s: any) => s.faculty_id === fId);
+                  return {
+                    id: fId,
+                    name: ref?.faculty_name || `Faculty Member (${fId.slice(0, 6)})`,
+                    email: ref?.faculty_email || `faculty.${fId.slice(0, 8)}@shu.edu.pk`,
+                    department: 'Faculty of Management Sciences',
+                    max_load_per_day: 4,
+                    is_active: true,
+                  };
+                });
+                const { error: fErr } = await supabase.from('faculty').upsert(facultyToCreate);
+                if (!fErr) {
+                  setFaculty((prev) => [...prev, ...facultyToCreate]);
+                }
+              }
+            } catch (fErr) {
+              console.warn('Auto-provisioning faculty notice:', fErr);
+            }
+          }
+
+          // 5. Check and auto-provision missing Rooms in Supabase
+          const referencedRoomIds = Array.from(new Set(processedItems.map((s: any) => s.room_id).filter(isValidUUID)));
+          if (referencedRoomIds.length > 0) {
+            try {
+              const { data: dbRooms } = await supabase.from('rooms').select('id').in('id', referencedRoomIds);
+              const dbRoomIdSet = new Set((dbRooms || []).map((r: any) => r.id));
+              const missingRoomIds = referencedRoomIds.filter((id) => !dbRoomIdSet.has(id));
+
+              if (missingRoomIds.length > 0) {
+                const roomsToCreate: Room[] = missingRoomIds.map((rId) => {
+                  const ref = processedItems.find((s: any) => s.room_id === rId);
+                  return {
+                    id: rId,
+                    name: ref?.room_name || `Room ${rId.slice(0, 6)}`,
+                    building: 'Main Campus',
+                    floor: 1,
+                    capacity: 40,
+                    room_types: ['standard'],
+                    is_active: true,
+                  };
+                });
+                const { error: rErr } = await supabase.from('rooms').upsert(roomsToCreate);
+                if (!rErr) {
+                  setRooms((prev) => sanitizeRooms([...prev, ...roomsToCreate]));
+                }
+              }
+            } catch (rErr) {
+              console.warn('Auto-provisioning rooms notice:', rErr);
+            }
           }
         }
 
@@ -1336,15 +1517,19 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
             required_room_types: c.required_room_types || ['standard'],
           }));
         } else if (type === 'sessions') {
+          const defaultSemId = (activeSemester && isValidUUID(activeSemester.id))
+            ? activeSemester.id
+            : (semesters.find((s) => isValidUUID(s.id))?.id || '11111111-1111-1111-1111-111111111111');
+
           payload = processedItems.map((s: any) => ({
             id: isValidUUID(s.id) ? s.id : generateUUID(),
-            semester_id: isValidUUID(s.semester_id) ? s.semester_id : '11111111-1111-1111-1111-111111111111',
+            semester_id: isValidUUID(s.semester_id) ? s.semester_id : defaultSemId,
             course_id: isValidUUID(s.course_id) ? s.course_id : null,
             faculty_id: isValidUUID(s.faculty_id) ? s.faculty_id : null,
             room_id: isValidUUID(s.room_id) ? s.room_id : null,
             batch_id: isValidUUID(s.batch_id) ? s.batch_id : null,
             batch_group_id: isValidUUID(s.batch_group_id) ? s.batch_group_id : null,
-            day_of_week: s.day_of_week,
+            day_of_week: Number(s.day_of_week) >= 1 && Number(s.day_of_week) <= 7 ? Number(s.day_of_week) : 1,
             start_time: s.start_time,
             end_time: s.end_time,
             session_type: s.session_type || 'regular',
@@ -1355,6 +1540,19 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
         const { error } = await supabase.from(tableName).upsert(payload);
         if (error) {
+          // If error is foreign key violation on semester_id, retry with default semester
+          if (type === 'sessions' && (error.code === '23503' || error.message.toLowerCase().includes('foreign key'))) {
+            console.warn('Foreign key violation for sessions import, attempting retry with default semester:', error.message);
+            const defaultSemId = (activeSemester && isValidUUID(activeSemester.id))
+              ? activeSemester.id
+              : (semesters.find((s) => isValidUUID(s.id))?.id || '11111111-1111-1111-1111-111111111111');
+            const withFixedSem = payload.map((s: any) => ({ ...s, semester_id: defaultSemId }));
+            const { error: retrySemErr } = await supabase.from('class_sessions').upsert(withFixedSem);
+            if (!retrySemErr) {
+              return { success: true, count: items.length };
+            }
+          }
+
           // If error is foreign key violation on batch_id (code 23503 or message contains foreign key)
           if (type === 'students' && (error.code === '23503' || error.message.toLowerCase().includes('foreign key'))) {
             console.warn('Foreign key violation for batch_id, retrying with batch_id = null:', error.message);
@@ -1406,6 +1604,16 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           }
         }
       }
+
+      // Update local storage offline cache immediately
+      saveTimetableToCache({
+        sessions: type === 'sessions' ? processedItems : sessions,
+        rooms: type === 'rooms' ? processedItems : rooms,
+        faculty: type === 'faculty' ? processedItems : faculty,
+        batches: type === 'batches' ? processedItems : (type === 'students' ? updatedAllBatches : batches),
+        courses: type === 'courses' ? processedItems : courses,
+        students: type === 'students' ? processedItems : students,
+      });
 
       const newLog: AuditLogEntry = {
         id: `log-${Date.now()}`,

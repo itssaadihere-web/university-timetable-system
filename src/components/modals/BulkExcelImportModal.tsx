@@ -328,10 +328,15 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
         const room_types = rawTypes
           ? rawTypes.split(/[,;]+/).map((t) => t.trim().toLowerCase().replace(/\s+/g, '_')).filter(Boolean)
           : ['standard'];
+        const roomName = getVal('name', 'roomname', 'room', 'room_name') || `Room ${index + 1}`;
+        const existingRoom = rooms.find(
+          (r) => r.name.trim().toLowerCase() === roomName.trim().toLowerCase() || (isValidUUID(rawId) && r.id === rawId)
+        );
+        const resolvedId = existingRoom ? existingRoom.id : id;
 
         return {
-          id,
-          name: getVal('name', 'roomname', 'room') || `Room ${index + 1}`,
+          id: resolvedId,
+          name: roomName,
           building: getVal('building', 'block', 'wing') || 'Main Campus',
           floor: parseInt(getVal('floor'), 10) || 1,
           capacity: parseInt(getVal('capacity', 'seats'), 10) || 40,
@@ -341,11 +346,18 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
       }
 
       if (type === 'faculty') {
+        const facName = getVal('name', 'facultyname', 'faculty_name', 'instructor', 'teacher') || `Faculty ${index + 1}`;
+        const facEmail = getVal('email', 'facultyemail', 'faculty_email') || `faculty.${index + 1}@univ.edu`;
+        const existingFac = faculty.find(
+          (f) => f.email.trim().toLowerCase() === facEmail.trim().toLowerCase() || (isValidUUID(rawId) && f.id === rawId)
+        );
+        const resolvedId = existingFac ? existingFac.id : id;
+
         return {
-          id,
-          name: getVal('name', 'facultyname', 'instructor', 'teacher') || `Faculty ${index + 1}`,
-          email: getVal('email', 'facultyemail') || `faculty.${index + 1}@univ.edu`,
-          department: getVal('department', 'dept') || 'Faculty of Management Sciences',
+          id: resolvedId,
+          name: facName,
+          email: facEmail,
+          department: getVal('department', 'dept', 'faculty_department') || 'Faculty of Management Sciences',
           max_load_per_day: parseInt(getVal('max_load_per_day', 'maxload', 'dailyhours'), 10) || 4,
           is_active: true,
         };
@@ -354,7 +366,7 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
       if (type === 'batches') {
         const rawIrreg = getVal('is_irregular', 'irregular', 'is_irreg').toLowerCase();
         const is_irregular = rawIrreg === 'true' || rawIrreg === 'yes' || rawIrreg === '1';
-        const batchName = getVal('name', 'batchname', 'batch', 'section') || `Batch-${index + 1}`;
+        const batchName = getVal('name', 'batchname', 'batch_name', 'batch', 'section') || `Batch-${index + 1}`;
         const rawProg = getVal('program', 'degree', 'department') || '';
         let program_code = getVal('program_code', 'code', 'tag').toUpperCase();
         let program = rawProg || 'Bachelor of Business Administration';
@@ -381,9 +393,13 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
 
         const secMatch = batchName.match(/\b(?:sec|section|-)?\s*([A-Za-z])\b/i);
         const section = getVal('section') || (secMatch ? secMatch[1].toUpperCase() : undefined);
+        const existingBatch = batches.find(
+          (b) => b.name.trim().toLowerCase() === batchName.trim().toLowerCase() || (isValidUUID(rawId) && b.id === rawId)
+        );
+        const resolvedId = existingBatch ? existingBatch.id : id;
 
         return {
-          id,
+          id: resolvedId,
           name: batchName,
           program,
           program_code,
@@ -399,11 +415,17 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
         const required_room_types = rawReqTypes
           ? rawReqTypes.split(/[,;]+/).map((t) => t.trim().toLowerCase().replace(/\s+/g, '_')).filter(Boolean)
           : ['standard'];
+        const courseCode = getVal('code', 'coursecode', 'course_code', 'course_id') || `CRS-${index + 101}`;
+        const courseName = getVal('name', 'coursename', 'course_name', 'title') || `Course ${index + 1}`;
+        const existingCourse = courses.find(
+          (c) => c.code.trim().toLowerCase() === courseCode.trim().toLowerCase() || (isValidUUID(rawId) && c.id === rawId)
+        );
+        const resolvedId = existingCourse ? existingCourse.id : id;
 
         return {
-          id,
-          code: getVal('code', 'coursecode', 'course_id') || `CRS-${index + 101}`,
-          name: getVal('name', 'coursename', 'title') || `Course ${index + 1}`,
+          id: resolvedId,
+          code: courseCode,
+          name: courseName,
           department: getVal('department', 'dept') || 'Management Sciences',
           credit_hours: parseInt(getVal('credit_hours', 'credithours', 'credits', 'cr_hr'), 10) || 3,
           required_room_types: required_room_types.length > 0 ? required_room_types : ['standard'],
@@ -449,35 +471,180 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
       }
 
       if (type === 'sessions') {
-        // Resolve foreign keys by matching names/emails
-        const batchName = getVal('batch_name', 'batch', 'batchname', 'section');
-        const courseCode = getVal('course_code', 'course', 'coursecode');
-        const facultyVal = getVal('faculty_name_or_email', 'faculty', 'teacher', 'instructor', 'faculty_email');
-        const roomName = getVal('room_name', 'room', 'roomname', 'venue');
-        const dayVal = getVal('day_of_week', 'day', 'dayofweek');
-        const startTime = getVal('start_time', 'starttime', 'start') || '08:30';
-        const endTime = getVal('end_time', 'endtime', 'end') || '11:30';
-        const statusVal = getVal('status', 'state').toLowerCase() || 'published';
+        // Support all column naming conventions (IDs, Names, Codes, Emails, and with/without underscores or spaces)
+        const rawBatchId = getVal('batch_id', 'batchid');
+        const rawBatchName = getVal('batch_name', 'batch', 'batchname', 'section');
 
-        // Match Batch
-        const matchedBatch = batches.find((b) => b.name.toLowerCase() === batchName.toLowerCase() || b.id === batchName);
-        const batch_id = matchedBatch ? matchedBatch.id : generateUUID();
+        const rawCourseId = getVal('course_id', 'courseid');
+        const rawCourseCode = getVal('course_code', 'course', 'coursecode', 'code');
+        const rawCourseName = getVal('course_name', 'coursename', 'course_title', 'title', 'name');
 
-        // Match Course
-        const matchedCourse = courses.find((c) => c.code.toLowerCase() === courseCode.toLowerCase() || c.id === courseCode);
-        const course_id = matchedCourse ? matchedCourse.id : generateUUID();
+        const rawFacultyId = getVal('faculty_id', 'facultyid');
+        const rawFacultyEmail = getVal('faculty_email', 'email');
+        const rawFacultyName = getVal('faculty_name', 'faculty_name_or_email', 'faculty', 'teacher', 'instructor');
 
-        // Match Faculty
-        const matchedFaculty = faculty.find(
-          (f) => f.email.toLowerCase() === facultyVal.toLowerCase() || f.name.toLowerCase() === facultyVal.toLowerCase() || f.id === facultyVal
-        );
-        const faculty_id = matchedFaculty ? matchedFaculty.id : generateUUID();
+        const rawRoomId = getVal('room_id', 'roomid');
+        const rawRoomName = getVal('room_name', 'room', 'roomname', 'venue');
 
-        // Match Room
-        const matchedRoom = rooms.find((r) => r.name.toLowerCase() === roomName.toLowerCase() || r.id === roomName);
-        const room_id = matchedRoom ? matchedRoom.id : null;
+        const dayVal = getVal('day_of_week', 'day', 'dayofweek', 'day_name');
+        const rawStart = getVal('start_time', 'starttime', 'start') || '08:30';
+        const rawEnd = getVal('end_time', 'endtime', 'end') || '11:30';
+        const rawType = getVal('session_type', 'sessiontype', 'type');
+        const rawStatus = getVal('status', 'state').toLowerCase() || 'published';
 
-        // Convert Day name or number to 1..7 (1=Monday)
+        // 1. Resolve Batch
+        let resolvedBatchId = '';
+        let resolvedBatchName = rawBatchName;
+        if (rawBatchId && isValidUUID(rawBatchId)) {
+          const directMatch = batches.find((b) => b.id.toLowerCase() === rawBatchId.toLowerCase());
+          if (directMatch) {
+            resolvedBatchId = directMatch.id;
+            resolvedBatchName = directMatch.name;
+          } else if (rawBatchName) {
+            const nameMatch = batches.find((b) => b.name.trim().toLowerCase() === rawBatchName.trim().toLowerCase());
+            if (nameMatch) {
+              resolvedBatchId = nameMatch.id;
+              resolvedBatchName = nameMatch.name;
+            } else {
+              resolvedBatchId = rawBatchId;
+            }
+          } else {
+            resolvedBatchId = rawBatchId;
+          }
+        } else if (rawBatchName) {
+          const nameMatch = batches.find(
+            (b) => b.name.trim().toLowerCase() === rawBatchName.trim().toLowerCase() || b.id.toLowerCase() === rawBatchName.toLowerCase()
+          );
+          if (nameMatch) {
+            resolvedBatchId = nameMatch.id;
+            resolvedBatchName = nameMatch.name;
+          } else {
+            resolvedBatchId = generateUUID();
+          }
+        } else if (batches.length > 0) {
+          resolvedBatchId = batches[0].id;
+          resolvedBatchName = batches[0].name;
+        } else {
+          resolvedBatchId = generateUUID();
+        }
+
+        // 2. Resolve Course
+        let resolvedCourseId = '';
+        let resolvedCourseCode = rawCourseCode;
+        let resolvedCourseName = rawCourseName;
+        if (rawCourseId && isValidUUID(rawCourseId)) {
+          const directMatch = courses.find((c) => c.id.toLowerCase() === rawCourseId.toLowerCase());
+          if (directMatch) {
+            resolvedCourseId = directMatch.id;
+            resolvedCourseCode = directMatch.code;
+            resolvedCourseName = directMatch.name;
+          } else if (rawCourseCode) {
+            const codeMatch = courses.find((c) => c.code.trim().toLowerCase() === rawCourseCode.trim().toLowerCase());
+            if (codeMatch) {
+              resolvedCourseId = codeMatch.id;
+              resolvedCourseCode = codeMatch.code;
+              resolvedCourseName = codeMatch.name;
+            } else {
+              resolvedCourseId = rawCourseId;
+            }
+          } else {
+            resolvedCourseId = rawCourseId;
+          }
+        } else if (rawCourseCode || rawCourseName) {
+          const target = (rawCourseCode || rawCourseName).trim().toLowerCase();
+          const match = courses.find(
+            (c) => c.code.trim().toLowerCase() === target || c.name.trim().toLowerCase() === target || c.id.toLowerCase() === target
+          );
+          if (match) {
+            resolvedCourseId = match.id;
+            resolvedCourseCode = match.code;
+            resolvedCourseName = match.name;
+          } else {
+            resolvedCourseId = generateUUID();
+          }
+        } else if (courses.length > 0) {
+          resolvedCourseId = courses[0].id;
+          resolvedCourseCode = courses[0].code;
+          resolvedCourseName = courses[0].name;
+        } else {
+          resolvedCourseId = generateUUID();
+        }
+
+        // 3. Resolve Faculty
+        let resolvedFacultyId = '';
+        let resolvedFacultyName = rawFacultyName;
+        let resolvedFacultyEmail = rawFacultyEmail;
+        if (rawFacultyId && isValidUUID(rawFacultyId)) {
+          const directMatch = faculty.find((f) => f.id.toLowerCase() === rawFacultyId.toLowerCase());
+          if (directMatch) {
+            resolvedFacultyId = directMatch.id;
+            resolvedFacultyName = directMatch.name;
+            resolvedFacultyEmail = directMatch.email;
+          } else if (rawFacultyEmail || rawFacultyName) {
+            const target = (rawFacultyEmail || rawFacultyName).trim().toLowerCase();
+            const match = faculty.find((f) => f.email.trim().toLowerCase() === target || f.name.trim().toLowerCase() === target);
+            if (match) {
+              resolvedFacultyId = match.id;
+              resolvedFacultyName = match.name;
+              resolvedFacultyEmail = match.email;
+            } else {
+              resolvedFacultyId = rawFacultyId;
+            }
+          } else {
+            resolvedFacultyId = rawFacultyId;
+          }
+        } else if (rawFacultyEmail || rawFacultyName) {
+          const target = (rawFacultyEmail || rawFacultyName).trim().toLowerCase();
+          const match = faculty.find(
+            (f) => f.email.trim().toLowerCase() === target || f.name.trim().toLowerCase() === target || f.id.toLowerCase() === target
+          );
+          if (match) {
+            resolvedFacultyId = match.id;
+            resolvedFacultyName = match.name;
+            resolvedFacultyEmail = match.email;
+          } else {
+            resolvedFacultyId = generateUUID();
+          }
+        } else if (faculty.length > 0) {
+          resolvedFacultyId = faculty[0].id;
+          resolvedFacultyName = faculty[0].name;
+          resolvedFacultyEmail = faculty[0].email;
+        } else {
+          resolvedFacultyId = generateUUID();
+        }
+
+        // 4. Resolve Room
+        let resolvedRoomId: string | null = null;
+        let resolvedRoomName = rawRoomName;
+        if (rawRoomId && isValidUUID(rawRoomId)) {
+          const directMatch = rooms.find((r) => r.id.toLowerCase() === rawRoomId.toLowerCase());
+          if (directMatch) {
+            resolvedRoomId = directMatch.id;
+            resolvedRoomName = directMatch.name;
+          } else if (rawRoomName) {
+            const match = rooms.find((r) => r.name.trim().toLowerCase() === rawRoomName.trim().toLowerCase());
+            if (match) {
+              resolvedRoomId = match.id;
+              resolvedRoomName = match.name;
+            } else {
+              resolvedRoomId = rawRoomId;
+            }
+          } else {
+            resolvedRoomId = rawRoomId;
+          }
+        } else if (rawRoomName) {
+          const match = rooms.find(
+            (r) => r.name.trim().toLowerCase() === rawRoomName.trim().toLowerCase() || r.id.toLowerCase() === rawRoomName.toLowerCase()
+          );
+          if (match) {
+            resolvedRoomId = match.id;
+            resolvedRoomName = match.name;
+          } else {
+            resolvedRoomId = generateUUID();
+          }
+        }
+
+        // 5. Convert Day name or number to 1..7 (1=Monday)
         let day_of_week = 1;
         if (/^\d+$/.test(dayVal)) {
           day_of_week = Math.min(Math.max(parseInt(dayVal, 10), 1), 7);
@@ -492,18 +659,36 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
           else if (dayLower.startsWith('sun')) day_of_week = 7;
         }
 
+        const cleanTime = (t: string, def: string) => {
+          if (!t) return def;
+          const parts = t.split(':');
+          if (parts.length >= 2) {
+            return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
+          }
+          return def;
+        };
+
+        const start_time = cleanTime(rawStart, '08:30');
+        const end_time = cleanTime(rawEnd, '11:30');
+
         return {
           id,
           semester_id: activeSemester?.id || '11111111-1111-1111-1111-111111111111',
-          batch_id,
-          course_id,
-          faculty_id,
-          room_id,
+          batch_id: resolvedBatchId,
+          course_id: resolvedCourseId,
+          faculty_id: resolvedFacultyId,
+          room_id: resolvedRoomId,
           day_of_week,
-          start_time: startTime.length === 5 ? startTime : startTime.padStart(5, '0'),
-          end_time: endTime.length === 5 ? endTime : endTime.padStart(5, '0'),
-          session_type: 'regular' as const,
-          status: statusVal === 'draft' ? 'draft' as const : 'published' as const,
+          start_time,
+          end_time,
+          session_type: rawType.toLowerCase().includes('makeup') ? ('makeup' as const) : ('regular' as const),
+          status: rawStatus === 'draft' ? ('draft' as const) : ('published' as const),
+          batch_name: resolvedBatchName || undefined,
+          course_code: resolvedCourseCode || undefined,
+          course_name: resolvedCourseName || undefined,
+          faculty_name: resolvedFacultyName || undefined,
+          faculty_email: resolvedFacultyEmail || undefined,
+          room_name: resolvedRoomName || undefined,
         };
       }
 
@@ -785,32 +970,61 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
                   </div>
 
                   <div className="border border-slate-200 rounded-xl overflow-x-auto max-h-48 bg-white shadow-2xs">
-                    <table className="w-full text-left text-[11px] border-collapse">
-                      <thead className="bg-slate-100 text-slate-700 font-bold sticky top-0 border-b border-slate-200">
-                        <tr>
-                          {Object.keys(parsedRows[0] || {})
-                            .filter((k) => k !== 'id' && k !== 'semester_id')
-                            .map((colKey) => (
-                              <th key={colKey} className="py-2 px-3 whitespace-nowrap capitalize">
-                                {colKey.replace(/_/g, ' ')}
-                              </th>
-                            ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {parsedRows.slice(0, 8).map((row, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50">
-                            {Object.entries(row)
-                              .filter(([k]) => k !== 'id' && k !== 'semester_id')
-                              .map(([k, val], colIdx) => (
-                                <td key={colIdx} className="py-1.5 px-3 whitespace-nowrap text-slate-800">
-                                  {Array.isArray(val) ? val.join(', ') : String(val)}
-                                </td>
+                    {(() => {
+                      const getDisplayRow = (r: any): Record<string, any> => {
+                        if (importType === 'sessions') {
+                          const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                          return {
+                            Batch: r.batch_name || batches.find((b) => b.id === r.batch_id)?.name || r.batch_id,
+                            Course: r.course_code || courses.find((c) => c.id === r.course_id)?.code || r.course_name || r.course_id,
+                            Faculty: r.faculty_name || faculty.find((f) => f.id === r.faculty_id)?.name || r.faculty_email || r.faculty_id,
+                            Room: r.room_name || rooms.find((rm) => rm.id === r.room_id)?.name || (r.room_id ? 'Assigned' : 'Pending Room'),
+                            Day: dayNames[(r.day_of_week || 1) - 1] || String(r.day_of_week),
+                            'Start Time': r.start_time,
+                            'End Time': r.end_time,
+                            Type: r.session_type,
+                            Status: r.status,
+                          };
+                        }
+                        return Object.fromEntries(
+                          Object.entries(r).filter(([k]) => k !== 'id' && k !== 'semester_id' && k !== 'batch_id')
+                        );
+                      };
+
+                      const sampleDisplay = getDisplayRow(parsedRows[0] || {});
+                      const colHeaders = Object.keys(sampleDisplay);
+
+                      return (
+                        <table className="w-full text-left text-[11px] border-collapse">
+                          <thead className="bg-slate-100 text-slate-700 font-bold sticky top-0 border-b border-slate-200">
+                            <tr>
+                              {colHeaders.map((colKey) => (
+                                <th key={colKey} className="py-2 px-3 whitespace-nowrap capitalize">
+                                  {colKey.replace(/_/g, ' ')}
+                                </th>
                               ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {parsedRows.slice(0, 8).map((row, idx) => {
+                              const displayItem = getDisplayRow(row);
+                              return (
+                                <tr key={idx} className="hover:bg-slate-50">
+                                  {colHeaders.map((colKey, colIdx) => {
+                                    const val = (displayItem as Record<string, any>)[colKey];
+                                    return (
+                                      <td key={colIdx} className="py-1.5 px-3 whitespace-nowrap text-slate-800">
+                                        {Array.isArray(val) ? val.join(', ') : String(val ?? '')}
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      );
+                    })()}
                   </div>
                   {parsedRows.length > 8 && (
                     <p className="text-[10px] text-slate-400 text-center">
