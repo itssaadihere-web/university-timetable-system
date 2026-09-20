@@ -5,6 +5,7 @@ import { useTimetable } from '@/context/TimetableContext';
 import { RoomType, ClassSession } from '@/types';
 import { timeToMinutes, formatTo12Hour, formatTimeRange } from '@/lib/conflict-engine';
 import { SearchableSelect } from '@/components/timetable/SearchableSelect';
+import { createBatchSearchableOption } from '@/lib/batch-utils';
 import { 
   Calendar as CalendarIcon, 
   Clock, 
@@ -301,14 +302,7 @@ export const MakeupClassManager: React.FC = () => {
                   <span>Batch</span>
                 </label>
                 <SearchableSelect
-                  options={batches.map((b) => ({
-                    id: b.id,
-                    title: b.name,
-                    subtitle: `${b.program} • Sem ${b.semester}`,
-                    badge: b.is_irregular ? 'Irregular' : undefined,
-                    badgeColor: 'amber',
-                    searchTerms: `${b.name} ${b.program} ${b.semester}`,
-                  }))}
+                  options={batches.map((b) => createBatchSearchableOption(b))}
                   value={selectedBatchId}
                   onChange={(val) => setSelectedBatchId(val)}
                   placeholder="Search batch..."

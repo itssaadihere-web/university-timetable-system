@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { formatTimeRange } from '@/lib/conflict-engine';
 import { getCourseColor } from '@/lib/course-colors';
+import { getCleanBatchNumber } from '@/lib/batch-utils';
 
 interface DraggableSessionCardProps {
   session: ClassSession;
@@ -266,7 +267,7 @@ export const DraggableSessionCard: React.FC<DraggableSessionCardProps> = ({
                 {batch.program_code}
               </span>
             )}
-            <span>{batch?.name || 'Batch'}</span>
+            <span>{batch ? getCleanBatchNumber(batch.name, batch.section) : 'Batch'}</span>
           </span>
         </div>
       </div>

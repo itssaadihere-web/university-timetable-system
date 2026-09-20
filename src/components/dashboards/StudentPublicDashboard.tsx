@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { useTimetable } from '@/context/TimetableContext';
 import { exportTimetableToExcel, exportTimetableToPDF } from '@/lib/export-utils';
 import { SearchableSelect } from '@/components/timetable/SearchableSelect';
+import { createBatchSearchableOption, formatCleanBatch } from '@/lib/batch-utils';
 import { 
   GraduationCap, 
   Calendar, 
@@ -34,33 +35,15 @@ import {
 import { getCourseColor } from '@/lib/course-colors';
 
 export const StudentPublicDashboard: React.FC = () => {
-  const { batches, sessions, courses, faculty, rooms, activeSemester } = useTimetable();
+  const { batches, sessions, courses, faculty, rooms, activeSemester, currentUserName } = useTimetable();
 
   const [selectedBatchId, setSelectedBatchId] = useState<string>(batches[0]?.id || '');
   const [selectedDay, setSelectedDay] = useState<number>(1);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [viewLayout, setViewLayout] = useState<'weekly_grid' | 'day_list'>('weekly_grid');
-  // Batch Options for student dashboard (Alphabetically sorted)
+  // Batch Options for student dashboard (Clean Semester / Batch Number & Program display)
   const batchOptions = useMemo(() => {
-    return batches.map((b) => {
-      const codeTag = b.program_code || (b.name.includes('BAN') ? 'BAN' : b.name.includes('BBA') ? 'BBA' : b.name.includes('BAC') ? 'BAC' : '');
-      const subtitle = [
-        codeTag ? `[${codeTag}]` : '',
-        b.program,
-        b.section ? `Section ${b.section}` : '',
-        `Semester ${b.semester}`,
-        `${b.student_count || 0} Students`
-      ].filter(Boolean).join(' • ');
-
-      return {
-        id: b.id,
-        title: b.name,
-        subtitle,
-        badge: b.is_irregular ? 'Irregular' : codeTag || undefined,
-        badgeColor: (codeTag === 'BAN' ? 'purple' : codeTag === 'BBA' ? 'blue' : codeTag === 'BAC' ? 'emerald' : 'amber') as any,
-        searchTerms: `${b.name} ${b.program} ${b.program_code || ''} ${b.section || ''} ${b.semester} sem-${b.semester}`,
-      };
-    });
+    return batches.map((b) => createBatchSearchableOption(b));
   }, [batches]);
 
   const selectedBatch = batches.find((b) => b.id === selectedBatchId);

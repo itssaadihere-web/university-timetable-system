@@ -4,6 +4,7 @@ import React, { useMemo } from 'react';
 import { useTimetable } from '@/context/TimetableContext';
 import { RoomType, TimetableViewMode } from '@/types';
 import { exportTimetableToExcel, exportTimetableToPDF } from '@/lib/export-utils';
+import { createBatchSearchableOption } from '@/lib/batch-utils';
 import { SearchableSelect } from './SearchableSelect';
 import { 
   Users, 
@@ -35,27 +36,9 @@ export const TimetableFilterBar: React.FC = () => {
     addRoom,
   } = useTimetable();
 
-  // Batch Options (Alphabetically sorted + search keywords)
+  // Batch Options (Alphabetically sorted, clean Semester / Batch Number & Program display)
   const batchOptions = useMemo(() => {
-    return batches.map((b) => {
-      const codeTag = b.program_code || (b.name.includes('BAN') ? 'BAN' : b.name.includes('BBA') ? 'BBA' : b.name.includes('BAC') ? 'BAC' : '');
-      const subtitle = [
-        codeTag ? `[${codeTag}]` : '',
-        b.program,
-        b.section ? `Sec ${b.section}` : '',
-        `Sem ${b.semester}`,
-        `${b.student_count || 0} students`
-      ].filter(Boolean).join(' • ');
-
-      return {
-        id: b.id,
-        title: b.name,
-        subtitle,
-        badge: b.is_irregular ? 'Irregular' : codeTag || undefined,
-        badgeColor: (codeTag === 'BAN' ? 'purple' : codeTag === 'BBA' ? 'blue' : codeTag === 'BAC' ? 'emerald' : 'amber') as any,
-        searchTerms: `${b.name} ${b.program} ${b.program_code || ''} ${b.section || ''} ${b.semester} sem-${b.semester}`,
-      };
-    });
+    return batches.map((b) => createBatchSearchableOption(b));
   }, [batches]);
 
   // Faculty Options (Alphabetically sorted + search keywords)
@@ -220,7 +203,7 @@ export const TimetableFilterBar: React.FC = () => {
         </div>
 
         {/* Primary Entity Selector Dropdown (Searchable, Alphabetically Sorted, Live Shrink List) */}
-        <div className="flex-1 max-w-md min-w-[240px]">
+        <div className="flex-1 max-w-lg min-w-[240px] sm:min-w-[280px]">
           {filterState.viewMode === 'batch' && (
             <SearchableSelect
               options={batchOptions}

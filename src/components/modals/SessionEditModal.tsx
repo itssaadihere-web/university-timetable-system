@@ -19,6 +19,7 @@ import {
 import { TIMETABLE_DAYS, formatTo12Hour, findBatchMergeCandidate, BatchMergeCandidate } from '@/lib/conflict-engine';
 import { BatchMergeModal } from '@/components/modals/BatchMergeModal';
 import { SearchableSelect } from '@/components/timetable/SearchableSelect';
+import { createBatchSearchableOption } from '@/lib/batch-utils';
 
 interface SessionEditModalProps {
   isOpen: boolean;
@@ -421,14 +422,7 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
                 <span>Student Batch</span>
               </label>
               <SearchableSelect
-                options={batches.map((b) => ({
-                  id: b.id,
-                  title: b.name,
-                  subtitle: `${b.program} • Sem ${b.semester}`,
-                  badge: b.is_irregular ? 'Irregular' : undefined,
-                  badgeColor: 'amber',
-                  searchTerms: `${b.name} ${b.program} ${b.semester} sem-${b.semester}`,
-                }))}
+                options={batches.map((b) => createBatchSearchableOption(b))}
                 value={batchId}
                 onChange={(val) => setBatchId(val)}
                 placeholder="Search or select batch..."

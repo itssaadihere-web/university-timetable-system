@@ -6,8 +6,11 @@ export interface SearchableOption {
   title: string;
   subtitle?: string;
   badge?: string;
-  badgeColor?: 'primary' | 'amber' | 'emerald' | 'slate' | 'rose' | 'indigo';
+  badgeColor?: 'primary' | 'amber' | 'emerald' | 'slate' | 'rose' | 'indigo' | 'purple' | 'blue';
   searchTerms?: string;
+  selectedTitle?: string;
+  selectedSubtitle?: string;
+  hideSubtitleInTrigger?: boolean;
 }
 
 export interface SearchableSelectProps {
@@ -195,6 +198,10 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
         return 'bg-rose-100 text-rose-800 border-rose-200';
       case 'indigo':
         return 'bg-indigo-100 text-indigo-800 border-indigo-200';
+      case 'purple':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'blue':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'primary':
       default:
         return 'bg-shu-100 text-shu-800 border-shu-200';
@@ -219,11 +226,13 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
         <div className="flex items-center gap-2 truncate min-w-0 flex-1">
           {icon && <span className="shrink-0 text-slate-500">{icon}</span>}
           {selectedOption ? (
-            <div className="flex items-center gap-2 truncate">
-              <span className="font-bold text-slate-900 truncate">{selectedOption.title}</span>
-              {selectedOption.subtitle && (
-                <span className="text-[11px] font-normal text-slate-500 truncate hidden sm:inline">
-                  • {selectedOption.subtitle}
+            <div className="flex items-center gap-1.5 sm:gap-2 truncate min-w-0 flex-1">
+              <span className="font-bold text-slate-900 truncate">
+                {selectedOption.selectedTitle || selectedOption.title}
+              </span>
+              {!selectedOption.hideSubtitleInTrigger && (selectedOption.selectedSubtitle || selectedOption.subtitle) && (
+                <span className="text-[11px] font-normal text-slate-500 truncate hidden md:inline">
+                  • {selectedOption.selectedSubtitle || selectedOption.subtitle}
                 </span>
               )}
               {selectedOption.badge && (
