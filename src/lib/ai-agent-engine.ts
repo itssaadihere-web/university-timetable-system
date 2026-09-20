@@ -96,6 +96,79 @@ export interface AIContextData {
   currentDayOfWeek?: number;
 }
 
+export interface WhatsAppInteractiveButton {
+  id: string;
+  title: string;
+}
+
+export interface WhatsAppInteractiveSection {
+  title: string;
+  rows: Array<{ id: string; title: string; description?: string }>;
+}
+
+export type WhatsAppInteractivePayload =
+  | {
+      type: 'button';
+      body: string;
+      header?: string;
+      footer?: string;
+      buttons: WhatsAppInteractiveButton[];
+    }
+  | {
+      type: 'list';
+      body: string;
+      buttonLabel: string;
+      header?: string;
+      footer?: string;
+      sections: WhatsAppInteractiveSection[];
+    };
+
+function buildBatchPickerPayload(
+  batches: Batch[],
+  bodyText: string,
+  lang: 'en' | 'roman_urdu' | 'urdu'
+): WhatsAppInteractivePayload {
+  const rows = batches.slice(0, 10).map((b) => ({
+    id: `batch_${b.id}`,
+    title: b.name.slice(0, 24),
+    description: (b.program || 'Undergraduate Program').slice(0, 72),
+  }));
+
+  const buttonLabel = lang === 'roman_urdu' ? 'Batch Chunein 📚' : 'Select Batch 📚';
+
+  return {
+    type: 'list',
+    body: bodyText,
+    buttonLabel: buttonLabel.slice(0, 20),
+    header: 'Salim Habib University',
+    footer: 'Tap to pick your timetable',
+    sections: [
+      {
+        title: 'Active Batches / Sections',
+        rows,
+      },
+    ],
+  };
+}
+
+function buildTimetableQuickButtons(
+  bodyText: string,
+  customButtons?: WhatsAppInteractiveButton[]
+): WhatsAppInteractivePayload {
+  const buttons: WhatsAppInteractiveButton[] = customButtons || [
+    { id: 'btn_next_class', title: '🕒 Next Class' },
+    { id: 'btn_today', title: "📅 Today's Classes" },
+    { id: 'btn_full_timetable', title: '📋 Full Timetable' },
+  ];
+
+  return {
+    type: 'button',
+    body: bodyText,
+    buttons: buttons.slice(0, 3),
+    footer: 'Salim Habib University',
+  };
+}
+
 /**
  * Core Conversational AI Response Generator
  * Evaluates live database data and responds in the student's exact language and dialect
@@ -104,7 +177,12 @@ export async function generateConversationalResponse(params: {
   phoneNumber: string;
   userMessage: string;
   datasets: AIContextData;
-}): Promise<{ replyText: string; detectedLang: 'en' | 'roman_urdu' | 'urdu'; profile: UserConversationProfile }> {
+}): Promise<{ 
+  replyText: string; 
+  detectedLang: 'en' | 'roman_urdu' | 'urdu'; 
+  profile: UserConversationProfile;
+  interactive?: WhatsAppInteractivePayload;
+}> {
   const { phoneNumber, userMessage, datasets } = params;
   const profile = getUserProfile(phoneNumber);
   const lang = detectLanguage(userMessage);
@@ -130,14 +208,16 @@ export async function generateConversationalResponse(params: {
 
     let reply = '';
     if (lang === 'roman_urdu') {
-      reply = 'Aapka profile reset kardiya gaya hai. Apna Roll Number ya Batch Name (jaise BBA-4, Section 1A, BAN-2) batayein taake main aapka schedule dikha sakoon.';
+      reply = 'Aapka profile reset kardiya gaya hai. Apna Roll Number batayein ya neeche di gayi list se apna Batch / Section chunein:';
     } else if (lang === 'urdu') {
-      reply = 'آپ کا پروفائل ری سیٹ کر دیا گیا ہے۔ براہ کرم اپنا رول نمبر یا بیچ کا نام بتائیں۔';
+      reply = 'آپ کا پروفائل ری سیٹ کر دیا گیا ہے۔ براہ کرم اپنا رول نمبر بتائیں یا فہرست سے بیچ منتخب کریں۔';
     } else {
-      reply = 'Your profile has been reset. Please provide your Student Roll Number or Batch/Section name (e.g. BBA-4, Section 1A, BAN-2) to access your timetable.';
+      reply = 'Your profile has been reset. Please provide your Student Roll Number or pick your Batch/Section from the list below:';
     }
     profile.conversationHistory.push({ role: 'assistant', text: reply, timestamp: Date.now() });
-    return { replyText: reply, detectedLang: lang, profile };
+    
+    const interactive = buildBatchPickerPayload(datasets.batches, reply, lang);
+    return { replyText: reply, detectedLang: lang, profile, interactive };
   }
 
   // Check for Roll Number match in message
@@ -157,11 +237,12 @@ export async function generateConversationalResponse(params: {
     profile.batchName = matchedBatch ? matchedBatch.name : 'Unknown Batch';
     profile.program = matchedBatch ? matchedBatch.program : 'Undergraduate';
   } else {
-    // Check for direct Batch / Section name (e.g. "Section 1A", "BBA-4", "BAN-2", "BS(AF)-3A")
+    // Check for direct Batch ID (e.g. from interactive list click `batch_bba_4`) or direct Batch / Section name
     const matchedBatch = datasets.batches.find(b => {
       const cleanBName = b.name.toLowerCase().replace(/[^a-z0-9]/g, '');
       const cleanInput = normalized.replace(/[^a-z0-9]/g, '');
-      return cleanInput.includes(cleanBName);
+      const isDirectId = normalized === `batch_${b.id}` || normalized === b.id;
+      return isDirectId || cleanInput.includes(cleanBName);
     });
 
     if (matchedBatch) {
@@ -169,6 +250,9 @@ export async function generateConversationalResponse(params: {
       profile.batchId = matchedBatch.id;
       profile.batchName = matchedBatch.name;
       profile.program = matchedBatch.program;
+      if (!profile.studentName) {
+        profile.studentName = `Student (${matchedBatch.name})`;
+      }
     }
   }
 
@@ -184,14 +268,16 @@ export async function generateConversationalResponse(params: {
   if (doesNotKnowRoll && !profile.isIdentified) {
     let reply = '';
     if (lang === 'roman_urdu') {
-      reply = `Koi masla nahi! Agar aapko roll number yaad nahi hai, toh bas mujhe apna **Degree Program aur Semester** bata dein (jaise **BBA Semester 4**, **BS Fintech 2nd Semester**, **Section 1A**, ya **Accounting & Finance**).\n\nMain live database se aapka poora timetable nikaal kar bata doonga! 😊`;
+      reply = `Koi masla nahi! Agar aapko roll number yaad nahi hai, toh bas neeche diye gaye button se apna **Batch / Section** select kar lein ya apna Program batayein. Main live database se aapka schedule nikaal loonga! 😊`;
     } else if (lang === 'urdu') {
-      reply = `کوئی مسئلہ نہیں! اگر آپ کو رول نمبر یاد نہیں، تو بس اپنا **ڈگری پروگرام اور سمسٹر** بتا دیں (مثلاً **بی بی اے سمسٹر 4** یا **سیکشن 1A**)۔ میں آپ کا پورا شیڈول نکال دوں گا۔`;
+      reply = `کوئی مسئلہ نہیں! اگر آپ کو رول نمبر یاد نہیں، تو نیچے بٹن سے اپنا **بیچ یا سیکشن** منتخب کریں۔ میں فوری شیڈول فراہم کر دوں گا۔`;
     } else {
-      reply = `No problem at all! If you don't know your roll number, simply tell me your **Degree Program and Semester** (for example: **BBA 4th Semester**, **Fintech Semester 2**, or **Section 1A**), and I'll find your classes right away! 😊`;
+      reply = `No problem at all! If you don't know your roll number, simply choose your **Batch / Section** from the list below:`;
     }
     profile.conversationHistory.push({ role: 'assistant', text: reply, timestamp: Date.now() });
-    return { replyText: reply, detectedLang: lang, profile };
+    
+    const interactive = buildBatchPickerPayload(datasets.batches, reply, lang);
+    return { replyText: reply, detectedLang: lang, profile, interactive };
   }
 
   // 3. Check for Room Location / Campus Navigation queries (e.g., "Where is room TF-301?", "TF-308 kahan hai")
@@ -213,7 +299,14 @@ export async function generateConversationalResponse(params: {
       reply = formatWhatsAppRoomNavigation(nav);
     }
     profile.conversationHistory.push({ role: 'assistant', text: reply, timestamp: Date.now() });
-    return { replyText: reply, detectedLang: lang, profile };
+    
+    const interactive = buildTimetableQuickButtons(reply, [
+      { id: 'btn_next_class', title: '🕒 Next Class' },
+      { id: 'btn_today', title: "📅 Today's Schedule" },
+      { id: 'btn_full_timetable', title: '📋 Full Timetable' }
+    ]);
+
+    return { replyText: reply, detectedLang: lang, profile, interactive };
   }
 
   // 4. Check for Faculty Specific Schedule (e.g. "Sir Misbah ki class kab hai", "Sir Ghulam Mustafa schedule")
@@ -249,7 +342,9 @@ export async function generateConversationalResponse(params: {
       reply = `👨‍🏫 **Teaching Schedule for ${facultyMatch.name} (${facultyMatch.department}):**\n\n${scheduleText}`;
     }
     profile.conversationHistory.push({ role: 'assistant', text: reply, timestamp: Date.now() });
-    return { replyText: reply, detectedLang: lang, profile };
+    
+    const interactive = buildTimetableQuickButtons(reply);
+    return { replyText: reply, detectedLang: lang, profile, interactive };
   }
 
   // 5. If User is Identified, resolve their Timetable queries
@@ -265,7 +360,7 @@ export async function generateConversationalResponse(params: {
     const pkMinutes = params.datasets.currentTimeStr ? timeToMinutes(params.datasets.currentTimeStr) : (now.getUTCHours() + 5) * 60 + now.getUTCMinutes();
 
     // Query Type: Next Class
-    if (normalized.includes('next') || normalized.includes('agli') || normalized.includes('pehli')) {
+    if (normalized.includes('next') || normalized.includes('agli') || normalized.includes('pehli') || normalized === 'btn_next_class') {
       const todaySessions = batchSessions
         .filter(s => s.day_of_week === pkDay)
         .sort((a,b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time));
@@ -278,30 +373,34 @@ export async function generateConversationalResponse(params: {
         const rm = datasets.rooms.find(r => r.id === nextSession.room_id);
         const nav = rm ? getRoomNavigationDetails(rm.id, rm.name, rm.building) : null;
 
+        let reply = '';
         if (lang === 'roman_urdu') {
-          return {
-            replyText: `⏰ **Aapki Agli Class:**\n\n📚 **Subject:** ${crs?.code} - ${crs?.name}\n👨‍🏫 **Teacher:** ${fac?.name}\n🕒 **Waqt:** ${formatTimeRange(nextSession.start_time, nextSession.end_time)}\n📍 **Room:** ${rm?.name || 'Room allocate hona baaqi hai'}${nav ? `\n🚶‍♂️ **Directions:** ${nav.buildingName}, ${nav.floorLabel} (${nav.directions[0] || ''})` : ''}`,
-            detectedLang: lang,
-            profile,
-          };
+          reply = `⏰ **Aapki Agli Class:**\n\n📚 **Subject:** ${crs?.code} - ${crs?.name}\n👨‍🏫 **Teacher:** ${fac?.name}\n🕒 **Waqt:** ${formatTimeRange(nextSession.start_time, nextSession.end_time)}\n📍 **Room:** ${rm?.name || 'Room allocate hona baaqi hai'}${nav ? `\n🚶‍♂️ **Directions:** ${nav.buildingName}, ${nav.floorLabel} (${nav.directions[0] || ''})` : ''}`;
         } else if (lang === 'urdu') {
-          return {
-            replyText: `⏰ **آپ کی اگلی کلاس:**\n\n📚 **مضمون:** ${crs?.code} - ${crs?.name}\n👨‍🏫 **استاد:** ${fac?.name}\n🕒 **وقت:** ${formatTimeRange(nextSession.start_time, nextSession.end_time)}\n📍 **کمرہ:** ${rm?.name || 'کمرہ کا تعین جاری ہے'}`,
-            detectedLang: lang,
-            profile,
-          };
+          reply = `⏰ **آپ کی اگلی کلاس:**\n\n📚 **مضمون:** ${crs?.code} - ${crs?.name}\n👨‍🏫 **استاد:** ${fac?.name}\n🕒 **وقت:** ${formatTimeRange(nextSession.start_time, nextSession.end_time)}\n📍 **کمرہ:** ${rm?.name || 'کمرہ کا تعین جاری ہے'}`;
         } else {
-          return {
-            replyText: `⏰ **Your Next Upcoming Class:**\n\n📚 **Course:** ${crs?.code} - ${crs?.name}\n👨‍🏫 **Instructor:** ${fac?.name}\n🕒 **Time:** ${formatTimeRange(nextSession.start_time, nextSession.end_time)}\n📍 **Room:** ${rm?.name || 'Unassigned'}${nav ? `\n🚶‍♂️ **Directions:** ${nav.buildingName}, ${nav.floorLabel} (${nav.directions[0] || ''})` : ''}`,
-            detectedLang: lang,
-            profile,
-          };
+          reply = `⏰ **Your Next Upcoming Class:**\n\n📚 **Course:** ${crs?.code} - ${crs?.name}\n👨‍🏫 **Instructor:** ${fac?.name}\n🕒 **Time:** ${formatTimeRange(nextSession.start_time, nextSession.end_time)}\n📍 **Room:** ${rm?.name || 'Unassigned'}${nav ? `\n🚶‍♂️ **Directions:** ${nav.buildingName}, ${nav.floorLabel} (${nav.directions[0] || ''})` : ''}`;
         }
+
+        const interactive = buildTimetableQuickButtons(reply, [
+          { id: 'btn_today', title: "📅 Today's Schedule" },
+          { id: 'btn_full_timetable', title: '📋 Full Timetable' },
+          { id: 'btn_reset', title: '🔄 Switch Batch' }
+        ]);
+
+        return { replyText: reply, detectedLang: lang, profile, interactive };
       } else {
         const reply = lang === 'roman_urdu'
-          ? `Aaj aapki baaqi koi classes nahi hain! Aapka din mukammal hogaya hai. Agar kal ka timetable dekhna hai toh *"kal ka schedule"* likhein.`
-          : `You have no more classes scheduled for today! Send *"Tomorrow schedule"* or *"Full timetable"* to see upcoming lectures.`;
-        return { replyText: reply, detectedLang: lang, profile };
+          ? `Aaj aapki baaqi koi classes nahi hain! Aapka din mukammal hogaya hai. Agar kal ka timetable dekhna hai toh neeche diye gaye button par click karein.`
+          : `You have no more classes scheduled for today! Use the buttons below to check your schedule:`;
+
+        const interactive = buildTimetableQuickButtons(reply, [
+          { id: 'btn_today', title: "📅 Today's Schedule" },
+          { id: 'btn_full_timetable', title: '📋 Full Timetable' },
+          { id: 'btn_reset', title: '🔄 Switch Batch' }
+        ]);
+
+        return { replyText: reply, detectedLang: lang, profile, interactive };
       }
     }
 
@@ -312,7 +411,7 @@ export async function generateConversationalResponse(params: {
     else if (normalized.includes('wednesday') || normalized.includes('budh')) targetDay = 3;
     else if (normalized.includes('thursday') || normalized.includes('jumeraat')) targetDay = 4;
     else if (normalized.includes('friday') || normalized.includes('juma')) targetDay = 5;
-    else if (normalized.includes('today') || normalized.includes('aaj')) targetDay = pkDay;
+    else if (normalized.includes('today') || normalized.includes('aaj') || normalized === 'btn_today') targetDay = pkDay;
     else if (normalized.includes('tomorrow') || normalized.includes('kal')) targetDay = pkDay === 7 ? 1 : pkDay + 1;
 
     if (targetDay !== null) {
@@ -325,7 +424,14 @@ export async function generateConversationalResponse(params: {
         const reply = lang === 'roman_urdu'
           ? `🎉 **${batchName}** ki **${dayName}** ko koi class scheduled nahi hai (Off day)!`
           : `🎉 No classes are scheduled for **${batchName}** on **${dayName}**!`;
-        return { replyText: reply, detectedLang: lang, profile };
+        
+        const interactive = buildTimetableQuickButtons(reply, [
+          { id: 'btn_next_class', title: '🕒 Next Class' },
+          { id: 'btn_full_timetable', title: '📋 Full Timetable' },
+          { id: 'btn_reset', title: '🔄 Switch Batch' }
+        ]);
+
+        return { replyText: reply, detectedLang: lang, profile, interactive };
       }
 
       let list = '';
@@ -339,7 +445,14 @@ export async function generateConversationalResponse(params: {
       const reply = lang === 'roman_urdu'
         ? `📅 **${batchName} — ${dayName} Timetable:**\n\n${list.trim()}`
         : `📅 **${batchName} — ${dayName} Class Schedule:**\n\n${list.trim()}`;
-      return { replyText: reply, detectedLang: lang, profile };
+
+      const interactive = buildTimetableQuickButtons(reply, [
+        { id: 'btn_next_class', title: '🕒 Next Class' },
+        { id: 'btn_full_timetable', title: '📋 Full Timetable' },
+        { id: 'btn_reset', title: '🔄 Switch Batch' }
+      ]);
+
+      return { replyText: reply, detectedLang: lang, profile, interactive };
     }
 
     // Default Full Weekly Timetable
@@ -361,19 +474,27 @@ export async function generateConversationalResponse(params: {
       ? `📋 **${batchName} (${profile.program || ''}) ka Poora Weekly Timetable:**\n\n${weeklySummary.trim()}\n\n💡 Kisi specific class ki room directions chahiye toh pucho: *"Where is room TF-301?"*`
       : `📋 **Full Weekly Timetable for ${batchName}:**\n\n${weeklySummary.trim()}\n\n💡 Need directions to any room? Ask: *"Where is room TF-301?"*`;
 
-    return { replyText: reply, detectedLang: lang, profile };
+    const interactive = buildTimetableQuickButtons(reply, [
+      { id: 'btn_next_class', title: '🕒 Next Class' },
+      { id: 'btn_today', title: "📅 Today's Schedule" },
+      { id: 'btn_reset', title: '🔄 Switch Batch' }
+    ]);
+
+    return { replyText: reply, detectedLang: lang, profile, interactive };
   }
 
   // 6. Generic Greeting / Identification Request
   let reply = '';
   if (lang === 'roman_urdu') {
-    reply = `👋 **Assalam-o-Alaikum! Main Salim Habib University ka AI Timetable Assistant hoon.**\n\nMain aapko aapki classes, room locations, aur schedule batane ke liye hazir hoon.\n\n🎓 **Shuru karne ke liye apna Batch ya Roll Number batayein:**\n• Jaise: **\`BBA-4\`**, **\`Section 1A\`**, **\`BAN-2\`**, **\`BSAF-3A\`**, ya **\`AF-2026-001\`**\n\nAap Roman Urdu, Urdu, ya English mein kuch bhi pooch saktay hain! 😊`;
+    reply = `👋 **Assalam-o-Alaikum! Main Salim Habib University ka AI Timetable Assistant hoon.**\n\nMain aapko aapki classes, room locations, aur schedule batane ke liye hazir hoon.\n\n🎓 **Shuru karne ke liye apna Batch ya Roll Number batayein ya neeche di gayi list se select karein:**`;
   } else if (lang === 'urdu') {
-    reply = `👋 **اسلام علیکم! میں سلیم حبیب یونیورسٹی کا ٹائم ٹیبل اسسٹنٹ ہوں۔**\n\nاپنا شیڈول جاننے کے لیے براہ کرم اپنا **رول نمبر یا بیچ کا نام** (مثلاً **Section 1A** یا **BBA-4**) بتائیں۔`;
+    reply = `👋 **اسلام علیکم! میں سلیم حبیب یونیورسٹی کا ٹائم ٹیبل اسسٹنٹ ہوں۔**\n\nاپنا شیڈول جاننے کے لیے براہ کرم فہرست سے اپنا **بیچ** منتخب کریں یا رول نمبر بتائیں۔`;
   } else {
-    reply = `👋 **Hello! Welcome to the Salim Habib University AI Timetable Assistant.**\n\nI am here to give you real-time schedule information, next class alerts, and campus room walking directions.\n\n🎓 **To get started, please tell me your Batch or Roll Number:**\n• Examples: **\`Section 1A\`**, **\`BBA-4\`**, **\`BAN-2\`**, **\`BSAF-3A\`**, or **\`AF-2026-001\`**\n\nFeel free to ask in English, Urdu, or Roman Urdu! 😊`;
+    reply = `👋 **Hello! Welcome to the Salim Habib University AI Timetable Assistant.**\n\nI am here to give you real-time schedule information, next class alerts, and campus room walking directions.\n\n🎓 **To get started, please choose your Batch / Section from the list below or send your Roll Number:**`;
   }
 
   profile.conversationHistory.push({ role: 'assistant', text: reply, timestamp: Date.now() });
-  return { replyText: reply, detectedLang: lang, profile };
+  
+  const interactive = buildBatchPickerPayload(datasets.batches, reply, lang);
+  return { replyText: reply, detectedLang: lang, profile, interactive };
 }

@@ -7,7 +7,8 @@ import {
   transcribeWhatsAppAudio 
 } from '@/lib/whatsapp-voice-engine';
 import { 
-  sendRealWhatsAppMessage 
+  sendRealWhatsAppMessage,
+  sendRealWhatsAppInteractiveMessage
 } from '@/lib/whatsapp-state-engine';
 import { 
   INITIAL_STUDENTS, 
@@ -146,7 +147,13 @@ export async function POST(req: NextRequest) {
         } else if (message.type === 'button') {
           messageText = message.button?.text || message.button?.payload || '';
         } else if (message.type === 'interactive') {
-          messageText = message.interactive?.button_reply?.title || message.interactive?.list_reply?.title || '';
+          const btnId = message.interactive?.button_reply?.id;
+          const btnTitle = message.interactive?.button_reply?.title;
+          const listId = message.interactive?.list_reply?.id;
+          const listTitle = message.interactive?.list_reply?.title;
+
+          // Prefer specific identifier ID (e.g. batch_xxx, btn_next_class) if present
+          messageText = btnId || listId || btnTitle || listTitle || '';
         }
       } 
       // Case 2: Twilio JSON Payload
@@ -202,21 +209,27 @@ export async function POST(req: NextRequest) {
     });
 
     let finalReply = result.replyText;
+    let dispatchRes: { success: boolean; id?: string; error?: string };
+
     if (isVoiceNote) {
       const voicePrefix = result.detectedLang === 'roman_urdu' 
         ? `🎙️ *(Aapke voice note ka jawab)*:\n\n`
         : `🎙️ *(Voice Note Response)*:\n\n`;
       finalReply = voicePrefix + finalReply;
+      dispatchRes = await sendRealWhatsAppMessage(fromPhone, finalReply);
+    } else if (result.interactive) {
+      dispatchRes = await sendRealWhatsAppInteractiveMessage(fromPhone, result.interactive);
+    } else {
+      dispatchRes = await sendRealWhatsAppMessage(fromPhone, finalReply);
     }
-
-    // Dispatch real WhatsApp message back to the student's phone
-    const dispatchRes = await sendRealWhatsAppMessage(fromPhone, finalReply);
 
     return NextResponse.json({
       success: true,
       senderPhone: fromPhone,
       studentInput: messageText,
       agentReply: finalReply,
+      hasInteractive: Boolean(result.interactive),
+      interactiveType: result.interactive?.type || null,
       detectedLanguage: result.detectedLang,
       isVoiceNote,
       isIdentified: result.profile.isIdentified,

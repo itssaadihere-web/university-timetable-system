@@ -791,6 +791,151 @@ function getFacultyScheduleText(
 }
 
 /**
+ * Dispatches an interactive message (Buttons or List) to Meta WhatsApp Cloud API.
+ * Automatically falls back to standard text dispatch if Meta is unavailable or if another provider is configured.
+ */
+export async function sendRealWhatsAppInteractiveMessage(
+  toPhone: string,
+  interactive: {
+    type: 'button' | 'list';
+    body: string;
+    header?: string;
+    footer?: string;
+    buttons?: Array<{ id: string; title: string }>;
+    buttonLabel?: string;
+    sections?: Array<{
+      title: string;
+      rows: Array<{ id: string; title: string; description?: string }>;
+    }>;
+  }
+): Promise<{ success: boolean; id?: string; error?: string }> {
+  const formattedPhone = toPhone.replace(/[^0-9]/g, '');
+  const metaToken = process.env.WHATSAPP_ACCESS_TOKEN;
+  const metaPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+
+  if (metaToken && metaPhoneId) {
+    try {
+      const url = `https://graph.facebook.com/v19.0/${metaPhoneId}/messages`;
+      let interactivePayload: any = null;
+
+      if (interactive.type === 'button' && interactive.buttons && interactive.buttons.length > 0) {
+        // Meta requires at most 3 buttons with titles up to 20 chars
+        const safeButtons = interactive.buttons.slice(0, 3).map((btn) => ({
+          type: 'reply',
+          reply: {
+            id: btn.id.slice(0, 256),
+            title: btn.title.slice(0, 20),
+          },
+        }));
+
+        interactivePayload = {
+          type: 'button',
+          body: {
+            text: interactive.body.slice(0, 1024),
+          },
+          action: {
+            buttons: safeButtons,
+          },
+        };
+
+        if (interactive.header) {
+          interactivePayload.header = {
+            type: 'text',
+            text: interactive.header.slice(0, 60),
+          };
+        }
+        if (interactive.footer) {
+          interactivePayload.footer = {
+            text: interactive.footer.slice(0, 60),
+          };
+        }
+      } else if (interactive.type === 'list' && interactive.sections && interactive.sections.length > 0) {
+        // Meta requires max 10 rows across all sections, titles up to 24 chars, descriptions up to 72 chars
+        let totalRows = 0;
+        const safeSections = [];
+
+        for (const section of interactive.sections) {
+          if (totalRows >= 10) break;
+          const remaining = 10 - totalRows;
+          const safeRows = section.rows.slice(0, remaining).map((row) => ({
+            id: row.id.slice(0, 200),
+            title: row.title.slice(0, 24),
+            description: row.description ? row.description.slice(0, 72) : undefined,
+          }));
+
+          totalRows += safeRows.length;
+          safeSections.push({
+            title: section.title.slice(0, 24),
+            rows: safeRows,
+          });
+        }
+
+        interactivePayload = {
+          type: 'list',
+          body: {
+            text: interactive.body.slice(0, 1024),
+          },
+          action: {
+            button: (interactive.buttonLabel || 'View Options').slice(0, 20),
+            sections: safeSections,
+          },
+        };
+
+        if (interactive.header) {
+          interactivePayload.header = {
+            type: 'text',
+            text: interactive.header.slice(0, 60),
+          };
+        }
+        if (interactive.footer) {
+          interactivePayload.footer = {
+            text: interactive.footer.slice(0, 60),
+          };
+        }
+      }
+
+      if (interactivePayload) {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${metaToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            recipient_type: 'individual',
+            to: formattedPhone,
+            type: 'interactive',
+            interactive: interactivePayload,
+          }),
+        });
+
+        const data = await res.json();
+        if (res.ok && data.messages?.[0]?.id) {
+          return { success: true, id: data.messages[0].id };
+        } else {
+          console.warn('Interactive WhatsApp message failed on Meta API, falling back to text:', data);
+        }
+      }
+    } catch (err: any) {
+      console.warn('Interactive dispatch encountered error, falling back to plain text:', err?.message);
+    }
+  }
+
+  // Fallback: format buttons/lists as plain text and dispatch standard text message
+  let fallbackText = interactive.body;
+  if (interactive.type === 'button' && interactive.buttons) {
+    fallbackText += '\n\n' + interactive.buttons.map((b, i) => `👉 Reply *${b.title}*`).join('\n');
+  } else if (interactive.type === 'list' && interactive.sections) {
+    fallbackText += '\n\n' + interactive.sections.map((sec) => 
+      `*${sec.title}:*\n` + sec.rows.map((r) => `• *${r.title}*${r.description ? ` (${r.description})` : ''}`).join('\n')
+    ).join('\n\n');
+  }
+
+  return sendRealWhatsAppMessage(formattedPhone, fallbackText);
+}
+
+/**
  * Dispatches an outgoing message to the real WhatsApp provider:
  * 1. Twilio WhatsApp API (No Facebook Dev account needed!)
  * 2. UltraMsg / Green API (Instant QR code scan!)
