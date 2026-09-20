@@ -78,6 +78,7 @@ export interface Student {
   phone?: string;
   status?: string;
   program?: string;
+  batch_name?: string;
   batch_id: string | null;
   is_irregular: boolean;
 }

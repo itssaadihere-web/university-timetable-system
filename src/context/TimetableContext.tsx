@@ -150,20 +150,24 @@ const computeRealBatchCounts = (batchList: Batch[], studentList: Student[]): Bat
 
   // Step 1: calculate counts for sub-batches and leaf batches
   const updatedBatches = batchList.map((b) => {
-    // 1. Direct match by batch_id or batch name
+    // 1. Direct match by batch_id, batch ID string, or explicit batch_name
     const directlyAssigned = studentList.filter(
-      (st) => st.batch_id === b.id || st.batch_id === b.name
+      (st) =>
+        st.batch_id === b.id ||
+        st.batch_id === b.name ||
+        (st.batch_name && st.batch_name.trim().toLowerCase() === b.name.trim().toLowerCase())
     ).length;
 
     if (directlyAssigned > 0) {
       return { ...b, student_count: directlyAssigned };
     }
 
-    // 2. Match by program code
+    // 2. Match by program code for students who do not have an explicit batch
     const bCode = getBatchProgramCode(b);
     if (bCode) {
+      const unassignedStudents = studentList.filter((st) => !st.batch_id && !st.batch_name);
       const siblingBatches = batchList.filter((sibling) => getBatchProgramCode(sibling) === bCode);
-      const matchingStudents = studentList.filter((st) => getStudentProgramCode(st) === bCode);
+      const matchingStudents = unassignedStudents.filter((st) => getStudentProgramCode(st) === bCode);
 
       if (siblingBatches.length <= 1) {
         if (matchingStudents.length > 0) {
@@ -879,6 +883,10 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     try {
       if (!items || items.length === 0) return { success: true, count: 0 };
 
+      let processedItems = items;
+      const newBatchesCreatedForStudents: Batch[] = [];
+      let updatedAllBatches: Batch[] = batches;
+
       if (type === 'rooms') {
         setRooms((prev) => {
           const incomingIds = new Set(items.map((i) => i.id));
@@ -899,16 +907,94 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           return sortBatchesAlphabetically(withRealCounts);
         });
       } else if (type === 'students') {
+        // Auto-detect & auto-create unique batches from incoming student rows
+        const currentBatches = [...batches];
+        const batchNameToIdMap = new Map<string, string>();
+
+        for (const b of currentBatches) {
+          batchNameToIdMap.set(b.name.trim().toLowerCase(), b.id);
+          batchNameToIdMap.set(b.id.toLowerCase(), b.id);
+        }
+
+        for (const student of items) {
+          const rawBatchName = (student.batch_name || student.batch_id || '').trim();
+          if (!rawBatchName) continue;
+
+          const lowerName = rawBatchName.toLowerCase();
+          if (!batchNameToIdMap.has(lowerName)) {
+            const newBatchId = generateUUID();
+            const progLower = (student.program || '').toLowerCase();
+            const batchUpper = rawBatchName.toUpperCase();
+
+            let program_code = '';
+            let program = student.program || 'Undergraduate Program';
+
+            if (batchUpper.includes('BAN') || progLower.includes('analytic')) {
+              program_code = 'BAN';
+              if (!student.program) program = 'BS Business Analytics';
+            } else if (batchUpper.includes('BAC') || progLower.includes('account') || progLower.includes('finance')) {
+              program_code = 'BAC';
+              if (!student.program) program = 'Bachelor of Science in Accounting & Finance';
+            } else if (batchUpper.includes('FIN') || progLower.includes('fintech')) {
+              program_code = 'FIN';
+              if (!student.program) program = 'BS Fintech';
+            } else if (batchUpper.includes('SCM') || progLower.includes('supply chain')) {
+              program_code = 'SCM';
+              if (!student.program) program = 'BS Supply Chain Management';
+            } else if (batchUpper.includes('BBA') || progLower.includes('business admin')) {
+              program_code = 'BBA';
+              if (!student.program) program = 'Bachelor of Business Administration';
+            }
+
+            const secMatch = rawBatchName.match(/\b(?:sec|section|-)?\s*([A-Za-z])(?:-|\b)/i) || rawBatchName.match(/[0-9]+([A-Za-z])/);
+            const section = secMatch ? secMatch[1].toUpperCase() : undefined;
+
+            const semMatch = rawBatchName.match(/(\d+)/);
+            const semester = semMatch ? parseInt(semMatch[1], 10) : 1;
+
+            const newBatch: Batch = {
+              id: newBatchId,
+              name: rawBatchName,
+              program,
+              program_code,
+              section,
+              semester,
+              student_count: 0,
+              is_irregular: Boolean(student.is_irregular),
+            };
+
+            newBatchesCreatedForStudents.push(newBatch);
+            batchNameToIdMap.set(lowerName, newBatchId);
+          }
+        }
+
+        // Map students with the batch ID
+        const processedStudents: Student[] = items.map((st) => {
+          const rawBatchName = (st.batch_name || st.batch_id || '').trim();
+          const mappedId = rawBatchName ? batchNameToIdMap.get(rawBatchName.toLowerCase()) : null;
+          const finalBatchId = mappedId || (isValidUUID(st.batch_id) ? st.batch_id : null);
+          return {
+            ...st,
+            id: isValidUUID(st.id) ? st.id : generateUUID(),
+            batch_id: finalBatchId,
+            batch_name: rawBatchName || undefined,
+          };
+        });
+
+        processedItems = processedStudents;
+        const allBatches = [...currentBatches, ...newBatchesCreatedForStudents];
+
         setStudents((prev) => {
-          const incomingIds = new Set(items.map((i) => i.id));
-          const incomingRolls = new Set(items.map((i) => i.roll_number));
+          const incomingIds = new Set(processedStudents.map((i) => i.id));
+          const incomingRolls = new Set(processedStudents.map((i) => i.roll_number));
           const filteredPrev = prev.filter((s) => !incomingIds.has(s.id) && !incomingRolls.has(s.roll_number));
-          const mergedStudents = [...filteredPrev, ...items];
-          
+          const mergedStudents = [...filteredPrev, ...processedStudents];
+
           // Re-calculate all batch counts from updated student list
-          setBatches((prevBatches) => {
-            const updated = computeRealBatchCounts(prevBatches, mergedStudents);
-            return sortBatchesAlphabetically(updated);
+          setBatches(() => {
+            const updated = computeRealBatchCounts(allBatches, mergedStudents);
+            updatedAllBatches = sortBatchesAlphabetically(updated);
+            return updatedAllBatches;
           });
 
           return mergedStudents;
@@ -927,15 +1013,44 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (isSupabaseConfigured && supabase) {
+        // If importing students and new batches were created, upsert batches first
+        if (type === 'students' && newBatchesCreatedForStudents.length > 0) {
+          try {
+            const batchesToUpsert = newBatchesCreatedForStudents.map((b) => {
+              const matchedWithCount = updatedAllBatches.find((ab) => ab.id === b.id);
+              return {
+                ...b,
+                id: isValidUUID(b.id) ? b.id : generateUUID(),
+                student_count: matchedWithCount ? matchedWithCount.student_count : 0,
+                merge_group_id: isValidUUID(b.merge_group_id) ? b.merge_group_id : null,
+                parent_batch_id: isValidUUID(b.parent_batch_id) ? b.parent_batch_id : null,
+              };
+            });
+            const { error: batchUpsertErr } = await supabase.from('batches').upsert(batchesToUpsert);
+            if (batchUpsertErr) {
+              console.warn('Upserting auto-created batches to Supabase had error:', batchUpsertErr.message);
+            }
+          } catch (bErr) {
+            console.warn('Exception upserting auto-created batches to Supabase:', bErr);
+          }
+        }
+
         const tableName = type === 'sessions' ? 'class_sessions' : type;
 
         // Ensure payload respects Supabase Postgres UUID constraints
-        let payload = items;
+        let payload = processedItems;
         if (type === 'students') {
-          payload = items.map((st) => ({
-            ...st,
+          payload = processedItems.map((st: any) => ({
             id: isValidUUID(st.id) ? st.id : generateUUID(),
+            roll_number: st.roll_number,
+            name: st.name,
+            campus_id: st.campus_id || null,
+            email: st.email,
+            phone: st.phone || null,
+            status: st.status || null,
+            program: st.program || null,
             batch_id: isValidUUID(st.batch_id) ? st.batch_id : null,
+            is_irregular: Boolean(st.is_irregular),
           }));
         } else if (type === 'batches') {
           payload = items.map((b) => ({

@@ -32,7 +32,7 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
 }) => {
   const { bulkImportEntities, activeSemester, batches, courses, faculty, rooms } = useTimetable();
 
-  const [importType, setImportType] = useState<ImportEntityType>('rooms');
+  const [importType, setImportType] = useState<ImportEntityType>('students');
   const [file, setFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState<string>('');
   const [parsedRows, setParsedRows] = useState<any[]>([]);
@@ -292,7 +292,7 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
       setHeaders(sheetHeaders);
 
       // Normalize row values based on entity type
-      const normalized = normalizeDataRows(importType, rawJson);
+      const normalized = normalizeDataRows(importType, rawJson, sheetHeaders);
       setParsedRows(normalized);
     } catch (err: any) {
       setErrorMsg(err?.message || 'Failed to read Excel file. Please ensure it is a valid .xlsx or .xls file.');
@@ -306,7 +306,7 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
   // --------------------------------------------------------------------------
   // DATA NORMALIZER
   // --------------------------------------------------------------------------
-  const normalizeDataRows = (type: ImportEntityType, rawData: any[]): any[] => {
+  const normalizeDataRows = (type: ImportEntityType, rawData: any[], fileHeaders: string[] = []): any[] => {
     return rawData.map((row, index) => {
       // Create clean lowercased lookup
       const keys = Object.keys(row);
@@ -417,41 +417,19 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
         const phone = getVal('phone', 'mobile', 'contact', 'phone_number') || '';
         const status = getVal('status', 'student_status') || 'Active in Program';
         const descr = getVal('descr', 'program', 'degree', 'department') || '';
-        const explicitBatch = getVal('batch_name', 'batch', 'section', 'batch_id');
+        
+        // Batch value is found strictly in the last column of the Excel sheet (or fallback to batch headers)
+        const lastColKey = fileHeaders && fileHeaders.length > 0 ? fileHeaders[fileHeaders.length - 1] : undefined;
+        const batchFromLastCol = lastColKey && row[lastColKey] !== undefined ? String(row[lastColKey]).trim() : '';
+        const explicitBatch = batchFromLastCol || getVal('batch_name', 'batch', 'section', 'batch_id');
 
-        // Automatically match or resolve batch_id from explicitBatch, ID prefix, or program descr
+        // Check if explicitBatch already matches an existing batch
         let targetBatchId: string | null = null;
         if (explicitBatch) {
-          const directMatch = batches.find((b) => b.name.toLowerCase() === explicitBatch.toLowerCase() || b.id === explicitBatch);
+          const directMatch = batches.find(
+            (b) => b.name.trim().toLowerCase() === explicitBatch.toLowerCase() || b.id === explicitBatch
+          );
           if (directMatch) targetBatchId = directMatch.id;
-        }
-
-        if (!targetBatchId) {
-          const rollUpper = roll_number.toUpperCase();
-          const descrLower = descr.toLowerCase();
-
-          // Try to match based on roll number code or description
-          if (rollUpper.includes('BAC') || descrLower.includes('accounting') || descrLower.includes('finance')) {
-            const b = batches.find((b) => b.name.includes('BAC') || b.program_code === 'BAC');
-            if (b) targetBatchId = b.id;
-          } else if (rollUpper.includes('BAN') || descrLower.includes('analytics')) {
-            const b = batches.find((b) => b.name.includes('BAN') || b.program_code === 'BAN');
-            if (b) targetBatchId = b.id;
-          } else if (rollUpper.includes('BBA') || descrLower.includes('business administration')) {
-            const b = batches.find((b) => b.name.includes('BBA') || b.program_code === 'BBA');
-            if (b) targetBatchId = b.id;
-          } else if (rollUpper.includes('FIN') || descrLower.includes('fintech')) {
-            const b = batches.find((b) => b.name.includes('FIN') || b.program_code === 'FIN');
-            if (b) targetBatchId = b.id;
-          } else if (rollUpper.includes('SCM') || descrLower.includes('supply chain')) {
-            const b = batches.find((b) => b.name.includes('SCM') || b.program_code === 'SCM');
-            if (b) targetBatchId = b.id;
-          }
-        }
-
-        // Default to first batch if available, otherwise null
-        if (!targetBatchId && batches.length > 0) {
-          targetBatchId = batches[0].id;
         }
 
         return {
@@ -463,6 +441,7 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
           phone,
           status,
           program: descr,
+          batch_name: explicitBatch || undefined,
           batch_id: targetBatchId,
           is_irregular: status.toLowerCase().includes('irreg'),
         };
@@ -660,7 +639,6 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {[
                     { type: 'students', label: 'Student Lists / Roster', icon: '👥' },
-                    { type: 'batches', label: 'Student Batches', icon: '🎓' },
                     { type: 'rooms', label: 'Rooms & Venues', icon: '🏢' },
                     { type: 'faculty', label: 'Faculty Members', icon: '👨‍🏫' },
                     { type: 'courses', label: 'Courses Catalog', icon: '📚' },
