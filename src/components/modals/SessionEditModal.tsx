@@ -58,6 +58,18 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
     addRoom,
   } = useTimetable();
 
+  // Helper to add hours to 24h time string (defaults to 3 hours)
+  const addHoursToTime = (timeStr: string, hours: number = 3): string => {
+    if (!timeStr || !timeStr.includes(':')) return '11:30';
+    const [hStr, mStr] = timeStr.split(':');
+    const h = parseInt(hStr, 10);
+    const m = parseInt(mStr, 10) || 0;
+    let newH = h + hours;
+    if (newH >= 24) newH = newH % 24;
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${pad(newH)}:${pad(m)}`;
+  };
+
   // Form State
   const [courseId, setCourseId] = useState<string>('');
   const [facultyId, setFacultyId] = useState<string>('');
@@ -66,13 +78,24 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
   const [batchGroupId, setBatchGroupId] = useState<string>('');
   const [dayOfWeek, setDayOfWeek] = useState<number>(1);
   const [startTime, setStartTime] = useState<string>('08:30');
-  const [endTime, setEndTime] = useState<string>('10:00');
+  const [endTime, setEndTime] = useState<string>('11:30');
   const [sessionType, setSessionType] = useState<SessionType>('regular');
   const [status, setStatus] = useState<SessionStatus>('draft');
   const [specificDate, setSpecificDate] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isMergeModalOpen, setIsMergeModalOpen] = useState<boolean>(false);
+
+  const handleStartTimeChange = (newStart: string) => {
+    setStartTime(newStart);
+    if (newStart) {
+      setEndTime(addHoursToTime(newStart, 3));
+    }
+  };
+
+  const handleEndTimeChange = (newEnd: string) => {
+    setEndTime(newEnd);
+  };
 
   // Initialize or reset form values
   useEffect(() => {
@@ -95,8 +118,12 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
       setBatchId(batches[0]?.id || '');
       setBatchGroupId('');
       setDayOfWeek(presetData?.dayOfWeek || 1);
-      setStartTime(presetData?.startTime || '08:30');
-      setEndTime(presetData?.endTime || '10:00');
+      const initStart = presetData?.startTime || '08:30';
+      const initEnd = presetData?.endTime && presetData.endTime !== '10:00'
+        ? presetData.endTime
+        : addHoursToTime(initStart, 3);
+      setStartTime(initStart);
+      setEndTime(initEnd);
       setSessionType('regular');
       setStatus('draft');
       setSpecificDate('');
@@ -332,6 +359,7 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
                 <span>Course</span>
               </label>
               <SearchableSelect
+                tabIndex={1}
                 options={courses.map((c) => ({
                   id: c.id,
                   title: `${c.code} - ${c.name}`,
@@ -362,6 +390,7 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
                     <div className="col-span-1">
                       <label className="text-[10px] font-bold text-slate-500 block mb-0.5">Course Code</label>
                       <input
+                        tabIndex={13}
                         type="text"
                         value={selectedCourse.code}
                         onChange={(e) => {
@@ -375,6 +404,7 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
                     <div className="col-span-2">
                       <label className="text-[10px] font-bold text-slate-500 block mb-0.5">Course Name</label>
                       <input
+                        tabIndex={14}
                         type="text"
                         value={selectedCourse.name}
                         onChange={(e) => {
@@ -401,6 +431,7 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
                 <span>Faculty / Instructor</span>
               </label>
               <SearchableSelect
+                tabIndex={2}
                 options={faculty.map((f) => ({
                   id: f.id,
                   title: f.name,
@@ -430,6 +461,7 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
                 <span>Room / Venue</span>
               </label>
               <SearchableSelect
+                tabIndex={3}
                 options={rooms.map((r) => ({
                   id: r.id,
                   title: r.name,
@@ -459,6 +491,7 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
                 <span>Student Batch</span>
               </label>
               <SearchableSelect
+                tabIndex={4}
                 options={batches.map((b) => createBatchSearchableOption(b))}
                 value={batchId}
                 onChange={(val) => setBatchId(val)}
@@ -485,6 +518,7 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
               <span className="text-[11px] text-slate-500">Share class with another batch</span>
             </div>
             <SearchableSelect
+              tabIndex={5}
               options={mergeGroups.map((mg) => ({
                 id: mg.id,
                 title: mg.name,
@@ -504,6 +538,7 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Day of Week</label>
               <select
+                tabIndex={6}
                 value={dayOfWeek}
                 onChange={(e) => setDayOfWeek(parseInt(e.target.value, 10))}
                 className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none"
@@ -522,9 +557,10 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
                 <span className="text-[11px] font-mono font-bold text-shu-700 bg-red-50 px-1.5 py-0.2 rounded border border-red-200">{formatTo12Hour(startTime)}</span>
               </label>
               <input
+                tabIndex={7}
                 type="time"
                 value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
+                onChange={(e) => handleStartTimeChange(e.target.value)}
                 required
                 className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               />
@@ -536,9 +572,10 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
                 <span className="text-[11px] font-mono font-bold text-shu-700 bg-red-50 px-1.5 py-0.2 rounded border border-red-200">{formatTo12Hour(endTime)}</span>
               </label>
               <input
+                tabIndex={8}
                 type="time"
                 value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
+                onChange={(e) => handleEndTimeChange(e.target.value)}
                 required
                 className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               />
@@ -552,6 +589,7 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
               <div className="flex items-center gap-3 mt-1">
                 <label className="inline-flex items-center gap-1.5 cursor-pointer">
                   <input
+                    tabIndex={9}
                     type="radio"
                     name="session_type"
                     value="regular"
@@ -563,6 +601,7 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
                 </label>
                 <label className="inline-flex items-center gap-1.5 cursor-pointer">
                   <input
+                    tabIndex={9}
                     type="radio"
                     name="session_type"
                     value="makeup"
@@ -580,6 +619,7 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
               <div className="flex items-center gap-3 mt-1">
                 <label className="inline-flex items-center gap-1.5 cursor-pointer">
                   <input
+                    tabIndex={10}
                     type="radio"
                     name="status"
                     value="draft"
@@ -591,6 +631,7 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
                 </label>
                 <label className="inline-flex items-center gap-1.5 cursor-pointer">
                   <input
+                    tabIndex={10}
                     type="radio"
                     name="status"
                     value="published"
@@ -611,6 +652,7 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
                 Specific Makeup Date
               </label>
               <input
+                tabIndex={10}
                 type="date"
                 value={specificDate}
                 onChange={(e) => setSpecificDate(e.target.value)}
@@ -627,6 +669,7 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
           {/* Modal Footer */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
             <button
+              tabIndex={11}
               type="button"
               onClick={onClose}
               className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-all"
@@ -634,6 +677,7 @@ export const SessionEditModal: React.FC<SessionEditModalProps> = ({
               Cancel
             </button>
             <button
+              tabIndex={12}
               type="submit"
               disabled={isSubmitting || !validationResult.valid}
               className={`px-5 py-2 text-xs font-bold text-white rounded-lg shadow-sm transition-all ${

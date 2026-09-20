@@ -28,6 +28,7 @@ export interface SearchableSelectProps {
   allowCreate?: boolean;
   createLabel?: string; // e.g., "Course", "Faculty", "Batch", "Room"
   onCreateOption?: (query: string) => Promise<string | void> | string | void;
+  tabIndex?: number;
 }
 
 export const SearchableSelect: React.FC<SearchableSelectProps> = ({
@@ -45,6 +46,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   allowCreate = false,
   createLabel,
   onCreateOption,
+  tabIndex,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -160,9 +162,9 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
       (allOptionLabel ? 1 : 0) + filteredOptions.length + (canCreate && filteredOptions.length > 0 ? 1 : 0);
     const createItemIndex = (allOptionLabel ? 1 : 0) + filteredOptions.length;
 
-    if (e.key === 'Escape') {
-      e.preventDefault();
+    if (e.key === 'Escape' || e.key === 'Tab') {
       setIsOpen(false);
+      if (e.key === 'Escape') e.preventDefault();
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
       setHighlightedIndex((prev) => (prev < totalItems - 1 ? prev + 1 : 0));
@@ -213,6 +215,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
       {/* Trigger Button */}
       <button
         type="button"
+        tabIndex={tabIndex}
         disabled={disabled}
         onClick={() => !disabled && setIsOpen((prev) => !prev)}
         className={`w-full flex items-center justify-between gap-2 px-3.5 py-2 sm:py-2.5 text-xs sm:text-sm bg-slate-50 hover:bg-slate-100/80 border rounded-xl font-semibold text-left transition-all cursor-pointer shadow-2xs ${
@@ -256,7 +259,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
           {value && allOptionLabel && (
             <span
               role="button"
-              tabIndex={0}
+              tabIndex={-1}
               onClick={(e) => {
                 e.stopPropagation();
                 onChange('');

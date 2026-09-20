@@ -245,18 +245,54 @@ const sanitizeSessions = (sessionList: ClassSession[]): ClassSession[] => {
 };
 
 export function TimetableProvider({ children }: { children: React.ReactNode }) {
-  // State
+  // State with safe lazy initializers to guarantee instant persistence on browser refresh
   const [semesters, setSemesters] = useState<Semester[]>([]);
   const [activeSemester, setActiveSemester] = useState<Semester | null>(null);
   const [calendarEvents, setCalendarEvents] = useState<SemesterCalendarEvent[]>([]);
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [faculty, setFaculty] = useState<Faculty[]>([]);
-  const [batches, setBatches] = useState<Batch[]>([]);
+  const [rooms, setRooms] = useState<Room[]>(() => {
+    if (typeof window !== 'undefined') {
+      const cached = loadTimetableFromCache();
+      if (cached?.rooms?.length) return sanitizeRooms(cached.rooms);
+    }
+    return [];
+  });
+  const [faculty, setFaculty] = useState<Faculty[]>(() => {
+    if (typeof window !== 'undefined') {
+      const cached = loadTimetableFromCache();
+      if (cached?.faculty?.length) return cached.faculty;
+    }
+    return [];
+  });
+  const [batches, setBatches] = useState<Batch[]>(() => {
+    if (typeof window !== 'undefined') {
+      const cached = loadTimetableFromCache();
+      if (cached?.batches?.length) return sortBatchesAlphabetically(cached.batches);
+    }
+    return [];
+  });
   const [mergeGroups, setMergeGroups] = useState<BatchMergeGroup[]>([]);
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
+  const [courses, setCourses] = useState<Course[]>(() => {
+    if (typeof window !== 'undefined') {
+      const cached = loadTimetableFromCache();
+      if (cached?.courses?.length) return cached.courses;
+    }
+    return [];
+  });
+  const [students, setStudents] = useState<Student[]>(() => {
+    if (typeof window !== 'undefined') {
+      const cached = loadTimetableFromCache();
+      if (cached?.students?.length) return cached.students;
+    }
+    return [];
+  });
   const [completedCourses, setCompletedCourses] = useState<StudentCourseCompleted[]>([]);
-  const [sessions, setSessions] = useState<ClassSession[]>([]);
+  const [sessions, setSessions] = useState<ClassSession[]>(() => {
+    if (typeof window !== 'undefined') {
+      const cached = loadTimetableFromCache();
+      if (cached?.sessions?.length) return sanitizeSessions(cached.sessions);
+    }
+    return [];
+  });
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [versions, setVersions] = useState<TimetableVersion[]>([]);
   const [makeupRequests, setMakeupRequests] = useState<MakeupRequest[]>([]);
@@ -400,15 +436,37 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           }
         } else if (cachedSessions.length > 0) {
           loadedSessions = cachedSessions;
+          // When Supabase is empty, sync local cached sessions to Supabase
+          if (isSupabaseConfigured && supabase) {
+            const syncPayload = cachedSessions.map((s: ClassSession) => ({
+              id: isValidUUID(s.id) ? s.id : generateUUID(),
+              semester_id: isValidUUID(s.semester_id) ? s.semester_id : '11111111-1111-1111-1111-111111111111',
+              course_id: isValidUUID(s.course_id) ? s.course_id : null,
+              faculty_id: isValidUUID(s.faculty_id) ? s.faculty_id : null,
+              room_id: isValidUUID(s.room_id) ? s.room_id : null,
+              batch_id: isValidUUID(s.batch_id) ? s.batch_id : null,
+              batch_group_id: isValidUUID(s.batch_group_id) ? s.batch_group_id : null,
+              day_of_week: s.day_of_week,
+              start_time: s.start_time,
+              end_time: s.end_time,
+              session_type: s.session_type || 'regular',
+              status: s.status || 'published',
+              specific_date: s.specific_date || null,
+            })).filter((s) => s.course_id && s.faculty_id && s.batch_id);
+
+            if (syncPayload.length > 0) {
+              const { error: syncErr } = await supabase.from('class_sessions').upsert(syncPayload);
+              if (syncErr && syncErr.code === '23503') {
+                // If foreign key constraint on semester_id, retry with null semester_id
+                const nullSemPayload = syncPayload.map((p) => ({ ...p, semester_id: null }));
+                await supabase.from('class_sessions').upsert(nullSemPayload);
+              }
+            }
+          }
         }
         setSessions(sanitizeSessions(loadedSessions));
 
         if (mupData) setMakeupRequests(mupData as MakeupRequest[]);
-
-        // If the database has 0 sessions and 0 rooms (i.e. DB explicitly cleared), clear local cache
-        if (sessData && sessData.length === 0 && roomData && roomData.length === 0 && cachedSessions.length === 0) {
-          clearAllTimetableCache();
-        }
       } catch (err) {
         console.warn('Supabase fetch notice (using cached/fallback state):', err);
       }
@@ -417,12 +475,10 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     loadLiveSupabaseData();
   }, []);
 
-  // Save to cache whenever published sessions change
+  // Save to cache whenever published sessions change - NEVER auto-wipe cache on render
   useEffect(() => {
-    if (sessions.length > 0 || rooms.length > 0 || students.length > 0) {
+    if (sessions.length > 0 || rooms.length > 0 || students.length > 0 || courses.length > 0) {
       saveTimetableToCache({ sessions, rooms, faculty, batches, courses, students });
-    } else {
-      clearAllTimetableCache();
     }
     setLastSyncTime(new Date().toLocaleTimeString());
   }, [sessions, rooms, faculty, batches, courses, students]);
@@ -514,6 +570,15 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    // Ensure faculty_id is a valid UUID
+    let validFacultyId = sessionData.faculty_id;
+    if (!isValidUUID(validFacultyId)) {
+      const matched = faculty.find((f) => f.id === validFacultyId || f.name === validFacultyId || f.email === validFacultyId);
+      if (matched && isValidUUID(matched.id)) {
+        validFacultyId = matched.id;
+      }
+    }
+
     // Ensure batch_id is a valid UUID
     let validBatchId = sessionData.batch_id;
     if (!isValidUUID(validBatchId)) {
@@ -534,6 +599,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
       id: newId,
       semester_id: validSemesterId,
       course_id: validCourseId,
+      faculty_id: validFacultyId,
       batch_id: validBatchId,
       room_id: validRoomId,
       batch_group_id: validBatchGroupId,
@@ -575,6 +641,12 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         const { error } = await supabase.from('class_sessions').upsert([payload]);
         if (error) {
           console.warn('Supabase DB Insert notice:', error.message);
+          if (error.code === '23503' && error.message.includes('semester_id')) {
+            const { error: retryErr } = await supabase.from('class_sessions').upsert([{ ...payload, semester_id: null }]);
+            if (retryErr) {
+              console.warn('Supabase DB Insert retry notice:', retryErr.message);
+            }
+          }
         }
       } catch (err) {
         console.warn('Supabase DB Insert exception:', err);
@@ -650,6 +722,12 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         const { error } = await supabase.from('class_sessions').upsert([payload]);
         if (error) {
           console.warn('Supabase DB Update notice:', error.message);
+          if (error.code === '23503' && error.message.includes('semester_id')) {
+            const { error: retryErr } = await supabase.from('class_sessions').upsert([{ ...payload, semester_id: null }]);
+            if (retryErr) {
+              console.warn('Supabase DB Update retry notice:', retryErr.message);
+            }
+          }
         }
       } catch (err) {
         console.warn('Supabase DB Update exception:', err);
