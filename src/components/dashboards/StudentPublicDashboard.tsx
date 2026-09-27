@@ -41,6 +41,15 @@ export const StudentPublicDashboard: React.FC = () => {
   const [selectedDay, setSelectedDay] = useState<number>(1);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [viewLayout, setViewLayout] = useState<'weekly_grid' | 'day_list'>('weekly_grid');
+
+  React.useEffect(() => {
+    if (batches.length > 0 && (!selectedBatchId || !batches.some((b) => b.id === selectedBatchId))) {
+      setSelectedBatchId(batches[0].id);
+    } else if (batches.length === 0 && selectedBatchId) {
+      setSelectedBatchId('');
+    }
+  }, [batches, selectedBatchId]);
+
   // Batch Options for student dashboard (Clean Semester / Batch Number & Program display)
   const batchOptions = useMemo(() => {
     return batches.map((b) => createBatchSearchableOption(b));
@@ -166,8 +175,21 @@ export const StudentPublicDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Selector & View Toggle Card */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-4 sm:p-5 space-y-4">
+      {/* Empty State Banner if no batches exist */}
+      {batches.length === 0 ? (
+        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-2xs p-12 text-center max-w-lg mx-auto my-8">
+          <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-400">
+            <GraduationCap className="w-7 h-7" />
+          </div>
+          <h3 className="text-base font-bold text-slate-800">No Batches or Timetable Schedules Found</h3>
+          <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+            All database tables have been cleared. Once you create or import batches and schedule classes, they will appear here automatically.
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* Selector & View Toggle Card */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-4 sm:p-5 space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           {/* Batch Selector (Searchable, Alphabetically Sorted, Live Shrink Filter) */}
           <div className="flex-1 max-w-md min-w-[260px]">
@@ -629,6 +651,8 @@ export const StudentPublicDashboard: React.FC = () => {
             </div>
           )}
         </div>
+      )}
+        </>
       )}
     </div>
   );

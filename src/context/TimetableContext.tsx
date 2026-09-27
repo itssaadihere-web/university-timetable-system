@@ -629,6 +629,26 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           activeSem = activeSemester;
         }
 
+        const isDbCompletelyEmpty =
+          (!batchData || batchData.length === 0) &&
+          (!sessData || sessData.length === 0) &&
+          (!crsData || crsData.length === 0);
+
+        if (isDbCompletelyEmpty) {
+          // The database was deliberately cleared / has 0 rows. Respect live Supabase state!
+          setSemesters(semData && semData.length > 0 ? (semData as Semester[]) : []);
+          setActiveSemester(null);
+          setRooms(roomData && roomData.length > 0 ? sanitizeRooms(roomData as Room[]) : []);
+          setFaculty(facData && facData.length > 0 ? (facData as Faculty[]) : []);
+          setStudents(stdData && stdData.length > 0 ? (stdData as Student[]) : []);
+          setBatches([]);
+          setCourses([]);
+          setSessions([]);
+          setMakeupRequests([]);
+          clearAllTimetableCache();
+          return;
+        }
+
         const cached = loadTimetableFromCache();
 
         const loadedRooms = (roomData && roomData.length > 0)
