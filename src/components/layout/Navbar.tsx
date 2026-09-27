@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { useTimetable } from '@/context/TimetableContext';
 import { 
   Lock, 
   LogOut, 
@@ -10,7 +11,11 @@ import {
   Sparkles, 
   UserCheck, 
   GraduationCap, 
-  UserPlus
+  UserPlus,
+  CloudUpload,
+  RefreshCw,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -23,6 +28,28 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenUserManagement,
 }) => {
   const { currentUser, currentRole, isAuthenticated, logout } = useAuth();
+  const { syncAllToSupabase, sessions } = useTimetable();
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<{ message: string; isError?: boolean } | null>(null);
+
+  const handleSyncCloud = async () => {
+    setIsSyncing(true);
+    setSyncStatus(null);
+    try {
+      const res = await syncAllToSupabase();
+      if (res.success) {
+        setSyncStatus({ message: res.message || 'Synced successfully!' });
+      } else {
+        setSyncStatus({ message: res.message || 'Sync failed', isError: true });
+      }
+      setTimeout(() => setSyncStatus(null), 4500);
+    } catch (err: any) {
+      setSyncStatus({ message: err?.message || 'Sync error', isError: true });
+      setTimeout(() => setSyncStatus(null), 4500);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const getRoleBadge = () => {
     switch (currentRole) {
@@ -98,6 +125,50 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right: Auth Profile & Login Action */}
           <div className="flex items-center gap-2.5 sm:gap-3">
+            {/* Sync to Cloud Button */}
+            <div className="relative flex items-center">
+              <button
+                onClick={handleSyncCloud}
+                disabled={isSyncing}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all shadow-2xs ${
+                  isSyncing
+                    ? 'bg-amber-50 text-amber-700 border-amber-200 cursor-wait'
+                    : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200/80 active:scale-95'
+                }`}
+                title="Sync all timetable sessions, rooms, faculty and batches to Supabase database"
+              >
+                <CloudUpload className={`w-3.5 h-3.5 ${isSyncing ? 'animate-bounce text-amber-600' : 'text-emerald-600'}`} />
+                <span className="hidden sm:inline font-bold">
+                  {isSyncing ? 'Syncing...' : 'Sync to Cloud'}
+                </span>
+                {sessions.length > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-extrabold bg-emerald-200/80 text-emerald-900">
+                    {sessions.length}
+                  </span>
+                )}
+              </button>
+
+              {/* Status Toast */}
+              {syncStatus && (
+                <div
+                  className={`absolute right-0 top-full mt-2 w-72 p-2.5 rounded-xl border shadow-xl text-xs z-50 animate-fadeIn ${
+                    syncStatus.isError
+                      ? 'bg-rose-50 border-rose-200 text-rose-800'
+                      : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                  }`}
+                >
+                  <div className="flex items-start gap-2">
+                    {syncStatus.isError ? (
+                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                    ) : (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    )}
+                    <span className="font-medium leading-relaxed">{syncStatus.message}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {isAuthenticated && currentUser ? (
               <div className="flex items-center gap-2 sm:gap-3">
                 {/* User Role Tag */}

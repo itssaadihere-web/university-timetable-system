@@ -37,7 +37,14 @@ import { validateSessionConflicts } from '@/lib/conflict-engine';
 import { saveTimetableToCache, loadTimetableFromCache, clearAllTimetableCache } from '@/lib/offline-cache';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { generateUUID, isValidUUID } from '@/lib/uuid';
-import { parseCourseString } from '@/lib/course-utils';
+import { 
+  parseCourseString, 
+  normalizeCode, 
+  normalizeName, 
+  normalizeEmail, 
+  normalizeBatch, 
+  normalizeRoom 
+} from '@/lib/course-utils';
 
 interface SoftLockInfo {
   userId: string;
@@ -414,52 +421,79 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
           // Auto-sync any unsynced local sessions to Supabase in background with valid UUIDs
           if (unsyncedSessions.length > 0 && isSupabaseConfigured && supabase) {
-            const syncPayload = unsyncedSessions.map((s: ClassSession) => ({
-              id: isValidUUID(s.id) ? s.id : generateUUID(),
-              semester_id: isValidUUID(s.semester_id) ? s.semester_id : '11111111-1111-1111-1111-111111111111',
-              course_id: isValidUUID(s.course_id) ? s.course_id : null,
-              faculty_id: isValidUUID(s.faculty_id) ? s.faculty_id : null,
-              room_id: isValidUUID(s.room_id) ? s.room_id : null,
-              batch_id: isValidUUID(s.batch_id) ? s.batch_id : null,
-              batch_group_id: isValidUUID(s.batch_group_id) ? s.batch_group_id : null,
-              day_of_week: s.day_of_week,
-              start_time: s.start_time,
-              end_time: s.end_time,
-              session_type: s.session_type || 'regular',
-              status: s.status || 'published',
-              specific_date: s.specific_date || null,
-            })).filter((s) => s.course_id && s.faculty_id && s.batch_id);
+            const syncPayload = unsyncedSessions.map((s: ClassSession) => {
+              let startTime = s.start_time || '08:30';
+              let endTime = s.end_time || '11:30';
+              if (startTime.length === 5) startTime += ':00';
+              if (endTime.length === 5) endTime += ':00';
+              if (endTime <= startTime) {
+                const [sh, sm] = startTime.split(':').map((x: string) => parseInt(x, 10) || 0);
+                const eh = Math.min(sh + 3, 22);
+                endTime = `${String(eh).padStart(2, '0')}:${String(sm).padStart(2, '0')}:00`;
+              }
+              return {
+                id: isValidUUID(s.id) ? s.id : generateUUID(),
+                semester_id: isValidUUID(s.semester_id) ? s.semester_id : '11111111-1111-1111-1111-111111111111',
+                course_id: isValidUUID(s.course_id) ? s.course_id : null,
+                faculty_id: isValidUUID(s.faculty_id) ? s.faculty_id : null,
+                room_id: isValidUUID(s.room_id) ? s.room_id : null,
+                batch_id: isValidUUID(s.batch_id) ? s.batch_id : null,
+                batch_group_id: isValidUUID(s.batch_group_id) ? s.batch_group_id : null,
+                day_of_week: Number(s.day_of_week) >= 1 && Number(s.day_of_week) <= 7 ? Number(s.day_of_week) : 1,
+                start_time: startTime,
+                end_time: endTime,
+                session_type: s.session_type || 'regular',
+                status: s.status || 'published',
+                specific_date: s.specific_date || null,
+              };
+            }).filter((s) => s.course_id && s.faculty_id && s.batch_id);
 
             if (syncPayload.length > 0) {
-              await supabase.from('class_sessions').upsert(syncPayload);
+              const { error: syncErr } = await supabase.from('class_sessions').upsert(syncPayload);
+              if (syncErr) {
+                for (const row of syncPayload) {
+                  await supabase.from('class_sessions').upsert([row]);
+                }
+              }
             }
           }
         } else if (cachedSessions.length > 0) {
           loadedSessions = cachedSessions;
           // When Supabase is empty, sync local cached sessions to Supabase
           if (isSupabaseConfigured && supabase) {
-            const syncPayload = cachedSessions.map((s: ClassSession) => ({
-              id: isValidUUID(s.id) ? s.id : generateUUID(),
-              semester_id: isValidUUID(s.semester_id) ? s.semester_id : '11111111-1111-1111-1111-111111111111',
-              course_id: isValidUUID(s.course_id) ? s.course_id : null,
-              faculty_id: isValidUUID(s.faculty_id) ? s.faculty_id : null,
-              room_id: isValidUUID(s.room_id) ? s.room_id : null,
-              batch_id: isValidUUID(s.batch_id) ? s.batch_id : null,
-              batch_group_id: isValidUUID(s.batch_group_id) ? s.batch_group_id : null,
-              day_of_week: s.day_of_week,
-              start_time: s.start_time,
-              end_time: s.end_time,
-              session_type: s.session_type || 'regular',
-              status: s.status || 'published',
-              specific_date: s.specific_date || null,
-            })).filter((s) => s.course_id && s.faculty_id && s.batch_id);
+            const syncPayload = cachedSessions.map((s: ClassSession) => {
+              let startTime = s.start_time || '08:30';
+              let endTime = s.end_time || '11:30';
+              if (startTime.length === 5) startTime += ':00';
+              if (endTime.length === 5) endTime += ':00';
+              if (endTime <= startTime) {
+                const [sh, sm] = startTime.split(':').map((x: string) => parseInt(x, 10) || 0);
+                const eh = Math.min(sh + 3, 22);
+                endTime = `${String(eh).padStart(2, '0')}:${String(sm).padStart(2, '0')}:00`;
+              }
+              return {
+                id: isValidUUID(s.id) ? s.id : generateUUID(),
+                semester_id: isValidUUID(s.semester_id) ? s.semester_id : '11111111-1111-1111-1111-111111111111',
+                course_id: isValidUUID(s.course_id) ? s.course_id : null,
+                faculty_id: isValidUUID(s.faculty_id) ? s.faculty_id : null,
+                room_id: isValidUUID(s.room_id) ? s.room_id : null,
+                batch_id: isValidUUID(s.batch_id) ? s.batch_id : null,
+                batch_group_id: isValidUUID(s.batch_group_id) ? s.batch_group_id : null,
+                day_of_week: Number(s.day_of_week) >= 1 && Number(s.day_of_week) <= 7 ? Number(s.day_of_week) : 1,
+                start_time: startTime,
+                end_time: endTime,
+                session_type: s.session_type || 'regular',
+                status: s.status || 'published',
+                specific_date: s.specific_date || null,
+              };
+            }).filter((s) => s.course_id && s.faculty_id && s.batch_id);
 
             if (syncPayload.length > 0) {
               const { error: syncErr } = await supabase.from('class_sessions').upsert(syncPayload);
-              if (syncErr && syncErr.code === '23503') {
-                // If foreign key constraint on semester_id, retry with null semester_id
-                const nullSemPayload = syncPayload.map((p) => ({ ...p, semester_id: null }));
-                await supabase.from('class_sessions').upsert(nullSemPayload);
+              if (syncErr) {
+                for (const row of syncPayload) {
+                  await supabase.from('class_sessions').upsert([row]);
+                }
               }
             }
           }
@@ -1271,22 +1305,104 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           ? activeSemester.id
           : (semesters.find((s) => isValidUUID(s.id))?.id || '11111111-1111-1111-1111-111111111111');
 
-        const sanitizedSessions = items.map((s: any) => ({
-          ...s,
-          id: isValidUUID(s.id) ? s.id : generateUUID(),
-          semester_id: isValidUUID(s.semester_id) ? s.semester_id : defaultSemId,
-          course_id: isValidUUID(s.course_id) ? s.course_id : generateUUID(),
-          faculty_id: isValidUUID(s.faculty_id) ? s.faculty_id : generateUUID(),
-          room_id: isValidUUID(s.room_id) ? s.room_id : null,
-          batch_id: isValidUUID(s.batch_id) ? s.batch_id : generateUUID(),
-          batch_group_id: isValidUUID(s.batch_group_id) ? s.batch_group_id : null,
-          day_of_week: Number(s.day_of_week) >= 1 && Number(s.day_of_week) <= 7 ? Number(s.day_of_week) : 1,
-          start_time: s.start_time || '08:30',
-          end_time: s.end_time || '11:30',
-          session_type: s.session_type === 'makeup' ? ('makeup' as const) : ('regular' as const),
-          status: s.status === 'draft' ? ('draft' as const) : ('published' as const),
-          specific_date: s.specific_date || null,
-        }));
+        const sanitizedSessions = items.map((s: any) => {
+          // Normalize and resolve course_id against courses state
+          let courseId = s.course_id;
+          if (!isValidUUID(courseId) || !courses.some((c) => c.id === courseId)) {
+            const rawCode = s.course_code || s.course || s.code || '';
+            const rawName = s.course_name || s.name || '';
+            const cMatch = courses.find((c) => {
+              const normCode = normalizeCode(rawCode);
+              const normName = normalizeCode(rawName);
+              const cNormCode = normalizeCode(c.code);
+              const cNormName = normalizeCode(c.name);
+              return (
+                (normCode && cNormCode === normCode) ||
+                (normName && cNormName === normName) ||
+                (normCode && cNormName.includes(normCode)) ||
+                (normName && cNormCode.includes(normName))
+              );
+            });
+            courseId = cMatch ? cMatch.id : (courses[0]?.id || generateUUID());
+          }
+
+          // Normalize and resolve faculty_id against faculty state
+          let facultyId = s.faculty_id;
+          if (!isValidUUID(facultyId) || !faculty.some((f) => f.id === facultyId)) {
+            const rawEmail = s.faculty_email || s.email || '';
+            const rawName = s.faculty_name || s.faculty || s.instructor || s.faculty_name_or_email || '';
+            const fMatch = faculty.find((f) => {
+              const normEmail = normalizeEmail(rawEmail);
+              const normName = normalizeName(rawName);
+              const fNormEmail = normalizeEmail(f.email);
+              const fNormName = normalizeName(f.name);
+              return (
+                (normEmail && fNormEmail === normEmail) ||
+                (normName && fNormName === normName) ||
+                (normName && fNormName.includes(normName)) ||
+                (normName && normName.includes(fNormName))
+              );
+            });
+            facultyId = fMatch ? fMatch.id : (faculty[0]?.id || generateUUID());
+          }
+
+          // Normalize and resolve batch_id against batches state
+          let batchId = s.batch_id;
+          if (!isValidUUID(batchId) || !batches.some((b) => b.id === batchId)) {
+            const rawBatch = s.batch_name || s.batch || s.section || '';
+            const bMatch = batches.find((b) => {
+              const normRaw = normalizeBatch(rawBatch);
+              const normB = normalizeBatch(b.name);
+              return (
+                normB === normRaw ||
+                (normRaw && normB.includes(normRaw)) ||
+                (normRaw && normRaw.includes(normB))
+              );
+            });
+            batchId = bMatch ? bMatch.id : (batches[0]?.id || generateUUID());
+          }
+
+          // Normalize and resolve room_id against rooms state
+          let roomId = (s.room_id && isValidUUID(s.room_id) && rooms.some((r) => r.id === s.room_id)) ? s.room_id : null;
+          if (!roomId && (s.room_name || s.room || s.venue)) {
+            const rawRoom = s.room_name || s.room || s.venue;
+            const rMatch = rooms.find((r) => {
+              const normRaw = normalizeRoom(rawRoom);
+              const normR = normalizeRoom(r.name);
+              return normR === normRaw || (normRaw && normR.includes(normRaw));
+            });
+            if (rMatch) roomId = rMatch.id;
+          }
+
+          // Time formatting & validation for CHECK (end_time > start_time)
+          let startTime = s.start_time || '08:30';
+          let endTime = s.end_time || '11:30';
+          if (startTime.length === 5) startTime += ':00';
+          if (endTime.length === 5) endTime += ':00';
+          if (endTime <= startTime) {
+            const [sh, sm] = startTime.split(':').map((x: string) => parseInt(x, 10) || 0);
+            const eh = Math.min(sh + 3, 22);
+            endTime = `${String(eh).padStart(2, '0')}:${String(sm).padStart(2, '0')}:00`;
+          }
+
+          return {
+            ...s,
+            id: isValidUUID(s.id) ? s.id : generateUUID(),
+            semester_id: isValidUUID(s.semester_id) ? s.semester_id : defaultSemId,
+            course_id: courseId,
+            faculty_id: facultyId,
+            room_id: roomId,
+            batch_id: batchId,
+            batch_group_id: isValidUUID(s.batch_group_id) ? s.batch_group_id : null,
+            day_of_week: Number(s.day_of_week) >= 1 && Number(s.day_of_week) <= 7 ? Number(s.day_of_week) : 1,
+            start_time: startTime,
+            end_time: endTime,
+            session_type: s.session_type === 'makeup' ? ('makeup' as const) : ('regular' as const),
+            status: s.status === 'draft' ? ('draft' as const) : ('published' as const),
+            specific_date: s.specific_date || null,
+          };
+        });
+
         processedItems = sanitizedSessions;
         setSessions((prev) => {
           const incomingIds = new Set(sanitizedSessions.map((i: any) => i.id));
@@ -1402,21 +1518,22 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
             }
           }
 
-          // 4. Check and auto-provision missing Faculty in Supabase
+          // 4. Check and auto-provision missing Faculty in Supabase with collision avoidance
           const referencedFacultyIds = Array.from(new Set(processedItems.map((s: any) => s.faculty_id).filter(isValidUUID)));
           if (referencedFacultyIds.length > 0) {
             try {
-              const { data: dbFaculty } = await supabase.from('faculty').select('id').in('id', referencedFacultyIds);
+              const { data: dbFaculty } = await supabase.from('faculty').select('id, email').in('id', referencedFacultyIds);
               const dbFacultyIdSet = new Set((dbFaculty || []).map((f: any) => f.id));
               const missingFacultyIds = referencedFacultyIds.filter((id) => !dbFacultyIdSet.has(id));
 
               if (missingFacultyIds.length > 0) {
                 const facultyToCreate: Faculty[] = missingFacultyIds.map((fId) => {
                   const ref = processedItems.find((s: any) => s.faculty_id === fId);
+                  const safeEmail = `faculty.${fId.slice(0, 8)}@shu.edu.pk`;
                   return {
                     id: fId,
                     name: ref?.faculty_name || `Faculty Member (${fId.slice(0, 6)})`,
-                    email: ref?.faculty_email || `faculty.${fId.slice(0, 8)}@shu.edu.pk`,
+                    email: safeEmail,
                     department: 'Faculty of Management Sciences',
                     max_load_per_day: 4,
                     is_active: true,
@@ -1436,7 +1553,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           const referencedRoomIds = Array.from(new Set(processedItems.map((s: any) => s.room_id).filter(isValidUUID)));
           if (referencedRoomIds.length > 0) {
             try {
-              const { data: dbRooms } = await supabase.from('rooms').select('id').in('id', referencedRoomIds);
+              const { data: dbRooms } = await supabase.from('rooms').select('id, name').in('id', referencedRoomIds);
               const dbRoomIdSet = new Set((dbRooms || []).map((r: any) => r.id));
               const missingRoomIds = referencedRoomIds.filter((id) => !dbRoomIdSet.has(id));
 
@@ -1521,35 +1638,50 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
             ? activeSemester.id
             : (semesters.find((s) => isValidUUID(s.id))?.id || '11111111-1111-1111-1111-111111111111');
 
-          payload = processedItems.map((s: any) => ({
-            id: isValidUUID(s.id) ? s.id : generateUUID(),
-            semester_id: isValidUUID(s.semester_id) ? s.semester_id : defaultSemId,
-            course_id: isValidUUID(s.course_id) ? s.course_id : null,
-            faculty_id: isValidUUID(s.faculty_id) ? s.faculty_id : null,
-            room_id: isValidUUID(s.room_id) ? s.room_id : null,
-            batch_id: isValidUUID(s.batch_id) ? s.batch_id : null,
-            batch_group_id: isValidUUID(s.batch_group_id) ? s.batch_group_id : null,
-            day_of_week: Number(s.day_of_week) >= 1 && Number(s.day_of_week) <= 7 ? Number(s.day_of_week) : 1,
-            start_time: s.start_time,
-            end_time: s.end_time,
-            session_type: s.session_type || 'regular',
-            status: s.status || 'published',
-            specific_date: s.specific_date || null,
-          }));
+          payload = processedItems.map((s: any) => {
+            let startTime = s.start_time || '08:30';
+            let endTime = s.end_time || '11:30';
+            if (startTime.length === 5) startTime += ':00';
+            if (endTime.length === 5) endTime += ':00';
+            if (endTime <= startTime) {
+              const [sh, sm] = startTime.split(':').map((x: string) => parseInt(x, 10) || 0);
+              const eh = Math.min(sh + 3, 22);
+              endTime = `${String(eh).padStart(2, '0')}:${String(sm).padStart(2, '0')}:00`;
+            }
+
+            return {
+              id: isValidUUID(s.id) ? s.id : generateUUID(),
+              semester_id: isValidUUID(s.semester_id) ? s.semester_id : defaultSemId,
+              course_id: isValidUUID(s.course_id) ? s.course_id : (courses[0]?.id || null),
+              faculty_id: isValidUUID(s.faculty_id) ? s.faculty_id : (faculty[0]?.id || null),
+              room_id: isValidUUID(s.room_id) ? s.room_id : null,
+              batch_id: isValidUUID(s.batch_id) ? s.batch_id : (batches[0]?.id || null),
+              batch_group_id: isValidUUID(s.batch_group_id) ? s.batch_group_id : null,
+              day_of_week: Number(s.day_of_week) >= 1 && Number(s.day_of_week) <= 7 ? Number(s.day_of_week) : 1,
+              start_time: startTime,
+              end_time: endTime,
+              session_type: s.session_type || 'regular',
+              status: s.status || 'published',
+              specific_date: s.specific_date || null,
+            };
+          });
         }
 
         const { error } = await supabase.from(tableName).upsert(payload);
         if (error) {
-          // If error is foreign key violation on semester_id, retry with default semester
-          if (type === 'sessions' && (error.code === '23503' || error.message.toLowerCase().includes('foreign key'))) {
-            console.warn('Foreign key violation for sessions import, attempting retry with default semester:', error.message);
-            const defaultSemId = (activeSemester && isValidUUID(activeSemester.id))
-              ? activeSemester.id
-              : (semesters.find((s) => isValidUUID(s.id))?.id || '11111111-1111-1111-1111-111111111111');
-            const withFixedSem = payload.map((s: any) => ({ ...s, semester_id: defaultSemId }));
-            const { error: retrySemErr } = await supabase.from('class_sessions').upsert(withFixedSem);
-            if (!retrySemErr) {
-              return { success: true, count: items.length };
+          if (type === 'sessions') {
+            console.warn('Batch session upsert encountered error, executing row-by-row fallback:', error.message);
+            let savedCount = 0;
+            for (const sp of payload) {
+              const { error: rowErr } = await supabase.from('class_sessions').upsert([sp]);
+              if (!rowErr) {
+                savedCount++;
+              } else {
+                console.warn(`Row-by-row session save notice for ${sp.id}:`, rowErr.message);
+              }
+            }
+            if (savedCount > 0) {
+              return { success: true, count: savedCount };
             }
           }
 
@@ -1933,8 +2065,95 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
       // 7. Class Sessions
       if (sessions.length > 0) {
-        const { error } = await supabase.from('class_sessions').upsert(sessions);
-        if (error) throw new Error(`Sessions sync error: ${error.message}`);
+        const defaultSemId = (activeSemester && isValidUUID(activeSemester.id))
+          ? activeSemester.id
+          : (semesters.find((s) => isValidUUID(s.id))?.id || '11111111-1111-1111-1111-111111111111');
+
+        const sessionPayload = sessions.map((s) => {
+          let courseId = s.course_id;
+          if (!isValidUUID(courseId) || !courses.some((c) => c.id === courseId)) {
+            const rawCode = (s as any).course_code || s.course_id || '';
+            const rawName = (s as any).course_name || '';
+            const cMatch = courses.find(
+              (c) => (rawCode && normalizeCode(c.code) === normalizeCode(rawCode)) ||
+                     (rawName && normalizeCode(c.name) === normalizeCode(rawName)) ||
+                     (rawCode && normalizeCode(c.name).includes(normalizeCode(rawCode)))
+            );
+            courseId = cMatch ? cMatch.id : (courses[0]?.id || generateUUID());
+          }
+
+          let facultyId = s.faculty_id;
+          if (!isValidUUID(facultyId) || !faculty.some((f) => f.id === facultyId)) {
+            const rawEmail = (s as any).faculty_email || s.faculty_id || '';
+            const rawName = (s as any).faculty_name || '';
+            const fMatch = faculty.find(
+              (f) => (rawEmail && normalizeEmail(f.email) === normalizeEmail(rawEmail)) ||
+                     (rawName && normalizeName(f.name) === normalizeName(rawName)) ||
+                     (rawName && normalizeName(f.name).includes(normalizeName(rawName)))
+            );
+            facultyId = fMatch ? fMatch.id : (faculty[0]?.id || generateUUID());
+          }
+
+          let batchId = s.batch_id;
+          if (!isValidUUID(batchId) || !batches.some((b) => b.id === batchId)) {
+            const rawBatch = (s as any).batch_name || s.batch_id || '';
+            const bMatch = batches.find(
+              (b) => (rawBatch && normalizeBatch(b.name) === normalizeBatch(rawBatch)) ||
+                     (rawBatch && normalizeBatch(b.name).includes(normalizeBatch(rawBatch)))
+            );
+            batchId = bMatch ? bMatch.id : (batches[0]?.id || generateUUID());
+          }
+
+          let roomId = (s.room_id && isValidUUID(s.room_id) && rooms.some((r) => r.id === s.room_id)) ? s.room_id : null;
+          if (!roomId && (s as any).room_name) {
+            const rawRoom = (s as any).room_name;
+            const rMatch = rooms.find(
+              (r) => (rawRoom && normalizeRoom(r.name) === normalizeRoom(rawRoom)) ||
+                     (rawRoom && normalizeRoom(r.name).includes(normalizeRoom(rawRoom)))
+            );
+            if (rMatch) roomId = rMatch.id;
+          }
+
+          let startTime = s.start_time || '08:30';
+          let endTime = s.end_time || '11:30';
+          if (startTime.length === 5) startTime += ':00';
+          if (endTime.length === 5) endTime += ':00';
+          if (endTime <= startTime) {
+            const [sh, sm] = startTime.split(':').map((x: string) => parseInt(x, 10) || 0);
+            const eh = Math.min(sh + 3, 22);
+            endTime = `${String(eh).padStart(2, '0')}:${String(sm).padStart(2, '0')}:00`;
+          }
+
+          return {
+            id: isValidUUID(s.id) ? s.id : generateUUID(),
+            semester_id: isValidUUID(s.semester_id) ? s.semester_id : defaultSemId,
+            course_id: courseId,
+            faculty_id: facultyId,
+            room_id: roomId,
+            batch_id: batchId,
+            batch_group_id: isValidUUID(s.batch_group_id) ? s.batch_group_id : null,
+            day_of_week: Number(s.day_of_week) >= 1 && Number(s.day_of_week) <= 7 ? Number(s.day_of_week) : 1,
+            start_time: startTime,
+            end_time: endTime,
+            session_type: s.session_type || 'regular',
+            status: s.status || 'published',
+            specific_date: s.specific_date || null,
+          };
+        });
+
+        // Batch upsert first
+        const { error: sessErr } = await supabase.from('class_sessions').upsert(sessionPayload);
+        if (sessErr) {
+          console.warn('Batch session sync encountered error, attempting row-by-row fallback:', sessErr.message);
+          let successCount = 0;
+          for (const sp of sessionPayload) {
+            const { error: rowErr } = await supabase.from('class_sessions').upsert([sp]);
+            if (!rowErr) successCount++;
+          }
+          if (successCount === 0) {
+            throw new Error(`Sessions sync error: ${sessErr.message}`);
+          }
+        }
       }
 
       setLastSyncTime(new Date().toLocaleTimeString());
