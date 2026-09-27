@@ -38,7 +38,27 @@ export interface WhatsAppConversationSession {
 }
 
 // In-Memory store for conversation sessions (keyed by student phone number)
-const conversationStore: Record<string, WhatsAppConversationSession> = {};
+export const conversationStore: Record<string, WhatsAppConversationSession> = {};
+
+export function getConversationSession(phoneNumber: string): WhatsAppConversationSession {
+  if (!conversationStore[phoneNumber]) {
+    conversationStore[phoneNumber] = {
+      phoneNumber,
+      isIdentified: false,
+      lastActivity: Date.now(),
+    };
+  }
+  return conversationStore[phoneNumber];
+}
+
+export function updateConversationSession(
+  phoneNumber: string,
+  updates: Partial<WhatsAppConversationSession>
+): WhatsAppConversationSession {
+  const session = getConversationSession(phoneNumber);
+  Object.assign(session, updates, { lastActivity: Date.now() });
+  return session;
+}
 
 export interface ProcessMessageContext {
   phoneNumber: string;
@@ -1083,4 +1103,248 @@ export async function sendRealWhatsAppMessage(toPhone: string, messageText: stri
   // Fallback for local simulation
   console.info(`[WhatsApp Dispatch Simulation] To: ${toPhone} | Length: ${messageText.length}`);
   return { success: true, id: `sim-${Date.now()}` };
+}
+
+/**
+ * Sends a Meta WhatsApp Interactive Button Message (up to 3 buttons)
+ */
+export async function sendWhatsAppInteractiveButtons(
+  toPhone: string,
+  bodyText: string,
+  buttons: Array<{ id: string; title: string }>,
+  headerText?: string,
+  footerText?: string
+): Promise<{ success: boolean; id?: string; error?: string }> {
+  const metaToken = process.env.WHATSAPP_ACCESS_TOKEN;
+  const metaPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const formattedPhone = toPhone.replace(/[^0-9]/g, '');
+
+  if (!metaToken || !metaPhoneId) {
+    console.warn('[WhatsApp Buttons] Meta token or phone ID missing, falling back to text.');
+    return sendRealWhatsAppMessage(toPhone, `${bodyText}\n\n${buttons.map((b) => `• ${b.title}`).join('\n')}`);
+  }
+
+  const url = `https://graph.facebook.com/v19.0/${metaPhoneId}/messages`;
+
+  // Meta allows at most 3 buttons and title max 20 chars
+  const formattedButtons = buttons.slice(0, 3).map((b) => ({
+    type: 'reply',
+    reply: {
+      id: b.id.slice(0, 256),
+      title: b.title.slice(0, 20),
+    },
+  }));
+
+  const payload: any = {
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to: formattedPhone,
+    type: 'interactive',
+    interactive: {
+      type: 'button',
+      body: {
+        text: bodyText.slice(0, 1024),
+      },
+      action: {
+        buttons: formattedButtons,
+      },
+    },
+  };
+
+  if (headerText) {
+    payload.interactive.header = {
+      type: 'text',
+      text: headerText.slice(0, 60),
+    };
+  }
+
+  if (footerText) {
+    payload.interactive.footer = {
+      text: footerText.slice(0, 60),
+    };
+  }
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${metaToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      console.error('[WhatsApp Buttons Error]:', data);
+      return sendRealWhatsAppMessage(toPhone, `${bodyText}\n\n${buttons.map((b) => `• ${b.title}`).join('\n')}`);
+    }
+
+    return { success: true, id: data.messages?.[0]?.id };
+  } catch (err: any) {
+    console.error('[WhatsApp Buttons Exception]:', err);
+    return sendRealWhatsAppMessage(toPhone, `${bodyText}\n\n${buttons.map((b) => `• ${b.title}`).join('\n')}`);
+  }
+}
+
+/**
+ * Sends a Meta WhatsApp Interactive List Message (up to 10 rows)
+ */
+export async function sendWhatsAppInteractiveList(
+  toPhone: string,
+  bodyText: string,
+  buttonLabel: string,
+  rows: Array<{ id: string; title: string; description?: string }>,
+  headerText?: string,
+  footerText?: string
+): Promise<{ success: boolean; id?: string; error?: string }> {
+  const metaToken = process.env.WHATSAPP_ACCESS_TOKEN;
+  const metaPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const formattedPhone = toPhone.replace(/[^0-9]/g, '');
+
+  if (!metaToken || !metaPhoneId) {
+    return sendRealWhatsAppMessage(toPhone, `${bodyText}\n\n${rows.map((r) => `• ${r.title}`).join('\n')}`);
+  }
+
+  const url = `https://graph.facebook.com/v19.0/${metaPhoneId}/messages`;
+
+  const formattedRows = rows.slice(0, 10).map((r) => ({
+    id: r.id.slice(0, 256),
+    title: r.title.slice(0, 24),
+    description: r.description ? r.description.slice(0, 72) : undefined,
+  }));
+
+  const payload: any = {
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to: formattedPhone,
+    type: 'interactive',
+    interactive: {
+      type: 'list',
+      body: {
+        text: bodyText.slice(0, 1024),
+      },
+      action: {
+        button: (buttonLabel || 'Select Option').slice(0, 20),
+        sections: [
+          {
+            title: 'Options',
+            rows: formattedRows,
+          },
+        ],
+      },
+    },
+  };
+
+  if (headerText) {
+    payload.interactive.header = {
+      type: 'text',
+      text: headerText.slice(0, 60),
+    };
+  }
+
+  if (footerText) {
+    payload.interactive.footer = {
+      text: footerText.slice(0, 60),
+    };
+  }
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${metaToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      console.error('[WhatsApp List Error]:', data);
+      return sendRealWhatsAppMessage(toPhone, `${bodyText}\n\n${rows.map((r) => `• ${r.title}`).join('\n')}`);
+    }
+
+    return { success: true, id: data.messages?.[0]?.id };
+  } catch (err: any) {
+    console.error('[WhatsApp List Exception]:', err);
+    return sendRealWhatsAppMessage(toPhone, `${bodyText}\n\n${rows.map((r) => `• ${r.title}`).join('\n')}`);
+  }
+}
+
+/**
+ * Sends a read receipt to Meta so the user sees blue double ticks
+ */
+export async function markWhatsAppMessageAsRead(messageId: string): Promise<boolean> {
+  const metaToken = process.env.WHATSAPP_ACCESS_TOKEN;
+  const metaPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+
+  if (!metaToken || !metaPhoneId || !messageId) return false;
+
+  try {
+    const url = `https://graph.facebook.com/v19.0/${metaPhoneId}/messages`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${metaToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        status: 'read',
+        message_id: messageId,
+      }),
+    });
+
+    return res.ok;
+  } catch (err) {
+    return false;
+  }
+}
+
+/**
+ * Downloads WhatsApp media binary (e.g. voice notes audio/ogg) from Meta API
+ */
+export async function downloadWhatsAppMedia(
+  mediaId: string
+): Promise<{ buffer: Buffer; mimeType: string } | null> {
+  const metaToken = process.env.WHATSAPP_ACCESS_TOKEN;
+  if (!metaToken || !mediaId) return null;
+
+  try {
+    const metaUrl = `https://graph.facebook.com/v19.0/${mediaId}`;
+    const metaRes = await fetch(metaUrl, {
+      headers: { Authorization: `Bearer ${metaToken}` },
+    });
+    if (!metaRes.ok) {
+      console.error('[WhatsApp Media] Failed to get media URL:', await metaRes.text());
+      return null;
+    }
+    const metaData = await metaRes.json();
+    const mediaDownloadUrl = metaData.url;
+    const mimeType = metaData.mime_type || 'audio/ogg';
+
+    if (!mediaDownloadUrl) return null;
+
+    const downloadRes = await fetch(mediaDownloadUrl, {
+      headers: {
+        Authorization: `Bearer ${metaToken}`,
+        'User-Agent': 'curl/7.64.1',
+      },
+    });
+
+    if (!downloadRes.ok) {
+      console.error('[WhatsApp Media] Failed to download binary:', downloadRes.statusText);
+      return null;
+    }
+
+    const arrayBuffer = await downloadRes.arrayBuffer();
+    return {
+      buffer: Buffer.from(arrayBuffer),
+      mimeType,
+    };
+  } catch (err) {
+    console.error('[WhatsApp Media Exception]:', err);
+    return null;
+  }
 }
