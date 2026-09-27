@@ -14,6 +14,7 @@ import {
   getLiveTimetableData,
   findMatchingBatches,
   findMatchingCourse,
+  findBatchesOfferingCourse,
   findStudent,
   enrichSession,
   EnrichedClassSession,
@@ -165,8 +166,8 @@ export async function POST(req: NextRequest) {
       });
 
       const resetReply = lang === 'roman_urdu'
-        ? `🔄 Session reset ho gaya hai! Salim Habib University Timetable Assistant mein khush-aamdeed. Kripya apna Roll Number (maslan *AF-2026-001*) ya Batch (maslan *Batch-3A-BAC*, *BAN-2*, *BBA 3rd*) batayein.`
-        : `🔄 Session reset successfully! Please provide your Student Roll Number (e.g. *AF-2026-001*) or Batch Name (e.g. *Batch-3A-BAC*, *BAN-2*, *BBA 3rd*) to continue.`;
+        ? `🔄 Session reset ho gaya hai! Salim Habib University Timetable Assistant mein khush-aamdeed. Kripya apna Batch (maslan *Batch 1A*, *BS (FT) - 2*, *BBA - 3A*, *BAN - 2*) batayein.`
+        : `🔄 Session reset successfully! Please provide your Batch Name (e.g. *Batch 1A*, *BS (FT) - 2*, *BBA - 3A*, *BAN - 2*) to continue.`;
 
       await sendRealWhatsAppMessage(fromPhone, resetReply);
       return NextResponse.json({ status: 'acknowledged' });
@@ -386,14 +387,105 @@ export async function POST(req: NextRequest) {
     const currentBatchId = session.batchId;
     const matchedCourse = findMatchingCourse(incomingText, courses);
 
-    // 12. If student is asking for timetable or a course but batch is not identified yet
+    // 12. If student is asking for a course or timetable but batch is not identified yet
     if ((matchedCourse || isNextClass || isToday || isTomorrow || isFullTimetable) && !currentBatchId) {
       session.pendingIntent = { type: 'custom_question', originalQuestion: incomingText };
 
-      // Friendly human request (no robotic menus)
+      // Case A: Student asked for a specific course directly
+      if (matchedCourse) {
+        const offeringBatches = findBatchesOfferingCourse(matchedCourse.id, sessions, batches);
+
+        if (offeringBatches.length > 0) {
+          if (offeringBatches.length <= 3) {
+            const buttonOptions = offeringBatches.map((b) => ({
+              id: `batch_${b.id}`,
+              title: b.name.slice(0, 20),
+            }));
+
+            const bodyText = lang === 'roman_urdu'
+              ? `Assalam-o-Alaikum! *${matchedCourse.name} (${matchedCourse.code})* darj zail batches mein schedule hai. Barah-e-karam apna Batch tap karein taake main aapki exact class aur timing bata sakun:`
+              : `Assalam-o-Alaikum! *${matchedCourse.name} (${matchedCourse.code})* is scheduled for the batches below. Please tap your Batch:`;
+
+            await sendWhatsAppInteractiveButtons(
+              fromPhone,
+              bodyText,
+              buttonOptions,
+              'Salim Habib University',
+              'Tap your batch to view room & timings'
+            );
+            return NextResponse.json({ status: 'acknowledged' });
+          } else {
+            const listRows = offeringBatches.slice(0, 10).map((b) => ({
+              id: `batch_${b.id}`,
+              title: b.name.slice(0, 24),
+              description: `${b.program} (${b.semester ? `Sem ${b.semester}` : 'Section'})`.slice(0, 72),
+            }));
+
+            const bodyText = lang === 'roman_urdu'
+              ? `Assalam-o-Alaikum! *${matchedCourse.name} (${matchedCourse.code})* darj zail batches mein schedule hai. Barah-e-karam apna Batch select karein:`
+              : `Assalam-o-Alaikum! *${matchedCourse.name} (${matchedCourse.code})* is scheduled for the batches below. Please select your Batch:`;
+
+            await sendWhatsAppInteractiveList(
+              fromPhone,
+              bodyText,
+              'Select Batch',
+              listRows,
+              'Salim Habib University',
+              'SHU Timetable Assistant'
+            );
+            return NextResponse.json({ status: 'acknowledged' });
+          }
+        }
+      }
+
+      // Case B: General schedule/class inquiry without specific course
+      if (batches.length > 0) {
+        const candidateBatches = batches.slice(0, 10);
+        if (candidateBatches.length <= 3) {
+          const buttonOptions = candidateBatches.map((b) => ({
+            id: `batch_${b.id}`,
+            title: b.name.slice(0, 20),
+          }));
+
+          const bodyText = lang === 'roman_urdu'
+            ? `Assalam-o-Alaikum! Aapka timetable check karne ke liye, barah-e-karam apna Batch tap karein:`
+            : `Assalam-o-Alaikum! To check your timetable, please tap your Batch:`;
+
+          await sendWhatsAppInteractiveButtons(
+            fromPhone,
+            bodyText,
+            buttonOptions,
+            'Salim Habib University',
+            'Tap your batch to view schedule'
+          );
+          return NextResponse.json({ status: 'acknowledged' });
+        } else {
+          const listRows = candidateBatches.map((b) => ({
+            id: `batch_${b.id}`,
+            title: b.name.slice(0, 24),
+            description: `${b.program} (${b.semester ? `Sem ${b.semester}` : 'Section'})`.slice(0, 72),
+          }));
+
+          const bodyText = lang === 'roman_urdu'
+            ? `Assalam-o-Alaikum! Aapka timetable check karne ke liye, barah-e-karam apna Batch select karein ya batch ka naam likhein:`
+            : `Assalam-o-Alaikum! To check your timetable, please select your Batch from the list below:`;
+
+          await sendWhatsAppInteractiveList(
+            fromPhone,
+            bodyText,
+            'Select Batch',
+            listRows,
+            'Salim Habib University',
+            'SHU Timetable Assistant'
+          );
+          return NextResponse.json({ status: 'acknowledged' });
+        }
+      }
+
+      // Fallback text if no batches in system yet
       const promptText = lang === 'roman_urdu'
-        ? `Assalam-o-Alaikum! Aapka timetable check karne ke liye, barah-e-karam apna *Student Roll Number* (maslan \`AF-2026-001\`) ya apna *Batch / Semester* (maslan \`ACF 3rd\`, \`BBA 1st\`, \`BAN-2\`) bata dein.`
-        : `Assalam-o-Alaikum! To check your schedule, could you please tell me your *Student Roll Number* (e.g. \`AF-2026-001\`) or your *Batch / Semester* (e.g. \`ACF 3rd\`, \`BBA 1st\`, \`BAN-2\`)?`;
+        ? `Assalam-o-Alaikum! Aapka timetable check karne ke liye, barah-e-karam apna *Batch / Semester* (maslan \`Batch 1A\`, \`BS (FT) - 2\`, \`BBA - 3A\`, \`BAN - 2\`) bata dein.`
+        : `Assalam-o-Alaikum! To check your schedule, could you please tell me your *Batch / Semester* (e.g. \`Batch 1A\`, \`BS (FT) - 2\`, \`BBA - 3A\`, \`BAN - 2\`)?`;
 
       await replyAndRemember(promptText);
       return NextResponse.json({ status: 'acknowledged' });

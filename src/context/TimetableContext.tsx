@@ -109,6 +109,13 @@ interface TimetableContextType {
   rejectMakeup: (requestId: string, reason?: string) => void;
   cloneSemesterRollover: (targetSemesterName: string, targetAcademicYear: string) => void;
   bulkImportEntities: (type: 'rooms' | 'faculty' | 'batches' | 'courses' | 'sessions' | 'students', items: any[]) => Promise<{ success: boolean; count: number; error?: string; warning?: string }>;
+  importMasterTimetable: (data: {
+    batches: Batch[];
+    courses: Course[];
+    faculty: Faculty[];
+    rooms: Room[];
+    sessions: ClassSession[];
+  }) => Promise<{ success: boolean; sessionCount: number; error?: string; warning?: string }>;
   addCourse: (input: string | Partial<Course>) => Promise<Course>;
   updateCourse: (updated: Course) => Promise<Course>;
   addFaculty: (input: string | Partial<Faculty>) => Promise<Faculty>;
@@ -1860,6 +1867,143 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Master Timetable Single Schedule Importer
+  const importMasterTimetable = async (data: {
+    batches: Batch[];
+    courses: Course[];
+    faculty: Faculty[];
+    rooms: Room[];
+    sessions: ClassSession[];
+  }): Promise<{ success: boolean; sessionCount: number; error?: string; warning?: string }> => {
+    try {
+      const {
+        batches: incomingBatches,
+        courses: incomingCourses,
+        faculty: incomingFaculty,
+        rooms: incomingRooms,
+        sessions: incomingSessions,
+      } = data;
+
+      // 1. Update React State
+      setBatches(incomingBatches);
+      setCourses(incomingCourses);
+      setFaculty(incomingFaculty);
+      setRooms(sanitizeRooms(incomingRooms).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })));
+      setSessions(incomingSessions);
+
+      // 2. Local Storage Cache
+      saveTimetableToCache({
+        sessions: incomingSessions,
+        rooms: incomingRooms,
+        faculty: incomingFaculty,
+        batches: incomingBatches,
+        courses: incomingCourses,
+        students: students,
+      });
+
+      // 3. Supabase Cloud Sync
+      if (isSupabaseConfigured && supabase) {
+        // Upsert batches
+        if (incomingBatches.length > 0) {
+          const payload = incomingBatches.map((b) => ({
+            id: isValidUUID(b.id) ? b.id : generateUUID(),
+            name: b.name,
+            program: b.program,
+            semester: b.semester,
+            student_count: b.student_count || 40,
+            is_irregular: Boolean(b.is_irregular),
+          }));
+          const { error: bErr } = await supabase.from('batches').upsert(payload);
+          if (bErr) console.warn('Supabase batch upsert warning:', bErr.message);
+        }
+
+        // Upsert courses
+        if (incomingCourses.length > 0) {
+          const payload = incomingCourses.map((c) => ({
+            id: isValidUUID(c.id) ? c.id : generateUUID(),
+            code: c.code,
+            name: c.name,
+            department: c.department || 'Faculty of Management Sciences',
+            credit_hours: c.credit_hours || 3,
+            required_room_types: c.required_room_types || ['standard'],
+          }));
+          const { error: cErr } = await supabase.from('courses').upsert(payload);
+          if (cErr) console.warn('Supabase course upsert warning:', cErr.message);
+        }
+
+        // Upsert faculty
+        if (incomingFaculty.length > 0) {
+          const payload = incomingFaculty.map((f) => ({
+            id: isValidUUID(f.id) ? f.id : generateUUID(),
+            name: f.name,
+            email: f.email,
+            department: f.department || 'Faculty of Management Sciences',
+            max_load_per_day: f.max_load_per_day || 4,
+            is_active: true,
+          }));
+          const { error: fErr } = await supabase.from('faculty').upsert(payload);
+          if (fErr) console.warn('Supabase faculty upsert warning:', fErr.message);
+        }
+
+        // Upsert rooms (with all specialities enabled by default)
+        if (incomingRooms.length > 0) {
+          const payload = incomingRooms.map((r) => ({
+            id: isValidUUID(r.id) ? r.id : generateUUID(),
+            name: r.name,
+            building: r.building,
+            floor: r.floor,
+            capacity: r.capacity || 50,
+            room_types: r.room_types || ['standard', 'multimedia', 'interactive_lcd', 'computer_lab', 'horseshoe'],
+            is_active: true,
+          }));
+          const { error: rErr } = await supabase.from('rooms').upsert(payload);
+          if (rErr) console.warn('Supabase rooms upsert warning:', rErr.message);
+        }
+
+        // Clean active semester sessions and insert fresh schedule
+        if (activeSemester?.id) {
+          await supabase.from('class_sessions').delete().eq('semester_id', activeSemester.id);
+        }
+
+        if (incomingSessions.length > 0) {
+          const chunkSize = 50;
+          for (let i = 0; i < incomingSessions.length; i += chunkSize) {
+            const chunk = incomingSessions.slice(i, i + chunkSize).map((s) => ({
+              id: isValidUUID(s.id) ? s.id : generateUUID(),
+              semester_id: activeSemester?.id || '11111111-1111-1111-1111-111111111111',
+              batch_id: s.batch_id,
+              course_id: s.course_id,
+              faculty_id: s.faculty_id,
+              room_id: (s.room_id && isValidUUID(s.room_id)) ? s.room_id : null,
+              day_of_week: s.day_of_week,
+              start_time: s.start_time.length === 5 ? `${s.start_time}:00` : s.start_time,
+              end_time: s.end_time.length === 5 ? `${s.end_time}:00` : s.end_time,
+              session_type: s.session_type || 'regular',
+              status: s.status || 'published',
+            }));
+            const { error: sErr } = await supabase.from('class_sessions').insert(chunk);
+            if (sErr) console.warn('Supabase sessions insert warning:', sErr.message);
+          }
+        }
+      }
+
+      // 4. Audit Log
+      const newLog: AuditLogEntry = {
+        id: `log-${Date.now()}`,
+        changed_by: currentUserName,
+        change_type: 'INSERT',
+        description: `Imported Master Timetable Schedule: ${incomingSessions.length} sessions, ${incomingBatches.length} batches, ${incomingCourses.length} courses, ${incomingFaculty.length} faculty, ${incomingRooms.length} rooms.`,
+        timestamp: new Date().toISOString(),
+      };
+      setAuditLogs((prev) => [newLog, ...prev]);
+
+      return { success: true, sessionCount: incomingSessions.length };
+    } catch (err: any) {
+      console.error('Master timetable import failed:', err);
+      return { success: false, sessionCount: 0, error: err?.message || 'Master timetable import failed' };
+    }
+  };
+
   // Quick Add Single Course (Inline "+ Add as New" or Programmatic)
   const addCourse = async (input: string | Partial<Course>): Promise<Course> => {
     let newCourse: Course;
@@ -2077,7 +2221,8 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         building: 'Main Campus',
         floor,
         capacity: 50,
-        room_types: isLab ? ['computer_lab', 'multimedia'] : isHorseshoe ? ['horseshoe', 'multimedia'] : ['standard'],
+        // All specialities enabled by default as requested until updated manually
+        room_types: ['standard', 'multimedia', 'interactive_lcd', 'computer_lab', 'horseshoe'],
         is_active: true,
       };
     } else {
@@ -2087,7 +2232,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         building: input.building || 'Main Campus',
         floor: input.floor || 1,
         capacity: input.capacity || 50,
-        room_types: input.room_types || ['standard'],
+        room_types: input.room_types || ['standard', 'multimedia', 'interactive_lcd', 'computer_lab', 'horseshoe'],
         is_active: input.is_active !== undefined ? input.is_active : true,
       };
     }
@@ -2301,6 +2446,7 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
         rejectMakeup,
         cloneSemesterRollover,
         bulkImportEntities,
+        importMasterTimetable,
         addCourse,
         updateCourse,
         addFaculty,

@@ -312,6 +312,23 @@ export function findMatchingCourse(text: string, courses: Course[]): Course | nu
 }
 
 /**
+ * Finds all batches that have sessions scheduled for a given course
+ */
+export function findBatchesOfferingCourse(
+  courseId: string,
+  sessions: ClassSession[],
+  batches: Batch[]
+): Batch[] {
+  const batchIdSet = new Set(
+    sessions
+      .filter((s) => s.course_id === courseId && s.status === 'published')
+      .map((s) => s.batch_id)
+  );
+
+  return batches.filter((b) => batchIdSet.has(b.id));
+}
+
+/**
  * Finds student by roll number or full name
  */
 export function findStudent(text: string, students: Student[]): Student | null {
