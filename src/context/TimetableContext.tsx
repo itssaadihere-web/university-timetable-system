@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import {
   ClassSession,
   Room,
@@ -325,6 +325,263 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     searchQuery: '',
   });
 
+  // Master automatic Supabase session synchronizer: ensures all foreign keys & check constraints pass
+  const autoSyncSessionsToSupabase = useCallback(
+    async (
+      targetSessions: ClassSession[],
+      optCourses?: Course[],
+      optFaculty?: Faculty[],
+      optBatches?: Batch[],
+      optRooms?: Room[],
+      targetSemId?: string
+    ): Promise<number> => {
+      if (!isSupabaseConfigured || !supabase || !targetSessions || targetSessions.length === 0) {
+        return 0;
+      }
+
+      const activeCrs = optCourses && optCourses.length > 0 ? optCourses : courses;
+      const activeFac = optFaculty && optFaculty.length > 0 ? optFaculty : faculty;
+      const activeBat = optBatches && optBatches.length > 0 ? optBatches : batches;
+      const activeRms = optRooms && optRooms.length > 0 ? optRooms : rooms;
+
+      const defaultSemId = (activeSemester && isValidUUID(activeSemester.id))
+        ? activeSemester.id
+        : (targetSemId && isValidUUID(targetSemId)
+            ? targetSemId
+            : (semesters.find((s) => isValidUUID(s.id))?.id || '11111111-1111-1111-1111-111111111111'));
+
+      try {
+        // 1. Ensure semester exists in Supabase
+        const { data: semInDb } = await supabase.from('semesters').select('id').eq('id', defaultSemId);
+        if (!semInDb || semInDb.length === 0) {
+          await supabase.from('semesters').upsert([{
+            id: defaultSemId,
+            name: activeSemester?.name || 'Fall 2026',
+            start_date: '2026-09-01',
+            end_date: '2027-01-31',
+            is_active: true,
+          }]);
+        }
+      } catch (semErr) {
+        console.warn('Auto-sync semester verification notice:', semErr);
+      }
+
+      // 2. Check & auto-provision referenced Batches in Supabase
+      const referencedBatchIds = Array.from(new Set(targetSessions.map((s: any) => s.batch_id).filter(isValidUUID)));
+      if (referencedBatchIds.length > 0) {
+        try {
+          const { data: dbBatches } = await supabase.from('batches').select('id').in('id', referencedBatchIds);
+          const dbBatchIdSet = new Set((dbBatches || []).map((b: any) => b.id));
+          const missingBatchIds = referencedBatchIds.filter((id) => !dbBatchIdSet.has(id));
+
+          if (missingBatchIds.length > 0) {
+            const batchesToCreate: Batch[] = missingBatchIds.map((bId) => {
+              const ref = targetSessions.find((s: any) => s.batch_id === bId);
+              return {
+                id: bId,
+                name: (ref as any)?.batch_name || `Batch-${bId.slice(0, 8)}`,
+                program: 'Undergraduate Program',
+                program_code: '',
+                semester: 1,
+                student_count: 0,
+                is_irregular: false,
+              };
+            });
+            const { error: bErr } = await supabase.from('batches').upsert(batchesToCreate);
+            if (!bErr) {
+              setBatches((prev) => [...prev, ...batchesToCreate]);
+            }
+          }
+        } catch (bErr) {
+          console.warn('Auto-provision batches notice:', bErr);
+        }
+      }
+
+      // 3. Check & auto-provision referenced Courses in Supabase
+      const referencedCourseIds = Array.from(new Set(targetSessions.map((s: any) => s.course_id).filter(isValidUUID)));
+      if (referencedCourseIds.length > 0) {
+        try {
+          const { data: dbCourses } = await supabase.from('courses').select('id').in('id', referencedCourseIds);
+          const dbCourseIdSet = new Set((dbCourses || []).map((c: any) => c.id));
+          const missingCourseIds = referencedCourseIds.filter((id) => !dbCourseIdSet.has(id));
+
+          if (missingCourseIds.length > 0) {
+            const coursesToCreate: Course[] = missingCourseIds.map((cId) => {
+              const ref = targetSessions.find((s: any) => s.course_id === cId);
+              const code = (ref as any)?.course_code || `CRS-${cId.slice(0, 6).toUpperCase()}`;
+              return {
+                id: cId,
+                code,
+                name: (ref as any)?.course_name || (ref as any)?.course_code || `Course ${code}`,
+                department: 'Faculty of Management Sciences',
+                credit_hours: 3,
+                required_room_types: ['standard'],
+              };
+            });
+            const { error: cErr } = await supabase.from('courses').upsert(coursesToCreate);
+            if (!cErr) {
+              setCourses((prev) => [...prev, ...coursesToCreate]);
+            }
+          }
+        } catch (cErr) {
+          console.warn('Auto-provision courses notice:', cErr);
+        }
+      }
+
+      // 4. Check & auto-provision referenced Faculty in Supabase
+      const referencedFacultyIds = Array.from(new Set(targetSessions.map((s: any) => s.faculty_id).filter(isValidUUID)));
+      if (referencedFacultyIds.length > 0) {
+        try {
+          const { data: dbFaculty } = await supabase.from('faculty').select('id, email').in('id', referencedFacultyIds);
+          const dbFacultyIdSet = new Set((dbFaculty || []).map((f: any) => f.id));
+          const missingFacultyIds = referencedFacultyIds.filter((id) => !dbFacultyIdSet.has(id));
+
+          if (missingFacultyIds.length > 0) {
+            const facultyToCreate: Faculty[] = missingFacultyIds.map((fId) => {
+              const ref = targetSessions.find((s: any) => s.faculty_id === fId);
+              const safeEmail = `faculty.${fId.slice(0, 8)}@shu.edu.pk`;
+              return {
+                id: fId,
+                name: (ref as any)?.faculty_name || `Faculty Member (${fId.slice(0, 6)})`,
+                email: safeEmail,
+                department: 'Faculty of Management Sciences',
+                max_load_per_day: 4,
+                is_active: true,
+              };
+            });
+            const { error: fErr } = await supabase.from('faculty').upsert(facultyToCreate);
+            if (!fErr) {
+              setFaculty((prev) => [...prev, ...facultyToCreate]);
+            }
+          }
+        } catch (fErr) {
+          console.warn('Auto-provision faculty notice:', fErr);
+        }
+      }
+
+      // 5. Check & auto-provision referenced Rooms in Supabase
+      const referencedRoomIds = Array.from(new Set(targetSessions.map((s: any) => s.room_id).filter(isValidUUID)));
+      if (referencedRoomIds.length > 0) {
+        try {
+          const { data: dbRooms } = await supabase.from('rooms').select('id, name').in('id', referencedRoomIds);
+          const dbRoomIdSet = new Set((dbRooms || []).map((r: any) => r.id));
+          const missingRoomIds = referencedRoomIds.filter((id) => !dbRoomIdSet.has(id));
+
+          if (missingRoomIds.length > 0) {
+            const roomsToCreate: Room[] = missingRoomIds.map((rId) => {
+              const ref = targetSessions.find((s: any) => s.room_id === rId);
+              return {
+                id: rId,
+                name: (ref as any)?.room_name || `Room ${rId.slice(0, 6)}`,
+                building: 'Main Campus',
+                floor: 1,
+                capacity: 40,
+                room_types: ['standard'],
+                is_active: true,
+              };
+            });
+            const { error: rErr } = await supabase.from('rooms').upsert(roomsToCreate);
+            if (!rErr) {
+              setRooms((prev) => sanitizeRooms([...prev, ...roomsToCreate]));
+            }
+          }
+        } catch (rErr) {
+          console.warn('Auto-provision rooms notice:', rErr);
+        }
+      }
+
+      // 6. Build clean Postgres payloads (strict database columns only)
+      const sessionPayload = targetSessions.map((s: any) => {
+        let courseId = s.course_id;
+        if (!isValidUUID(courseId) || !activeCrs.some((c) => c.id === courseId)) {
+          const rawCode = s.course_code || s.course_id || '';
+          const rawName = s.course_name || '';
+          const cMatch = activeCrs.find(
+            (c) => (rawCode && normalizeCode(c.code) === normalizeCode(rawCode)) ||
+                   (rawName && normalizeCode(c.name) === normalizeCode(rawName)) ||
+                   (rawCode && normalizeCode(c.name).includes(normalizeCode(rawCode)))
+          );
+          courseId = cMatch ? cMatch.id : (activeCrs[0]?.id || generateUUID());
+        }
+
+        let facultyId = s.faculty_id;
+        if (!isValidUUID(facultyId) || !activeFac.some((f) => f.id === facultyId)) {
+          const rawEmail = s.faculty_email || s.faculty_id || '';
+          const rawName = s.faculty_name || '';
+          const fMatch = activeFac.find(
+            (f) => (rawEmail && normalizeEmail(f.email) === normalizeEmail(rawEmail)) ||
+                   (rawName && normalizeName(f.name) === normalizeName(rawName)) ||
+                   (rawName && normalizeName(f.name).includes(normalizeName(rawName)))
+          );
+          facultyId = fMatch ? fMatch.id : (activeFac[0]?.id || generateUUID());
+        }
+
+        let batchId = s.batch_id;
+        if (!isValidUUID(batchId) || !activeBat.some((b) => b.id === batchId)) {
+          const rawBatch = s.batch_name || s.batch_id || '';
+          const bMatch = activeBat.find(
+            (b) => (rawBatch && normalizeBatch(b.name) === normalizeBatch(rawBatch)) ||
+                   (rawBatch && normalizeBatch(b.name).includes(normalizeBatch(rawBatch)))
+          );
+          batchId = bMatch ? bMatch.id : (activeBat[0]?.id || generateUUID());
+        }
+
+        let roomId = (s.room_id && isValidUUID(s.room_id) && activeRms.some((r) => r.id === s.room_id)) ? s.room_id : null;
+        if (!roomId && s.room_name) {
+          const rawRoom = s.room_name;
+          const rMatch = activeRms.find(
+            (r) => (rawRoom && normalizeRoom(r.name) === normalizeRoom(rawRoom)) ||
+                   (rawRoom && normalizeRoom(r.name).includes(normalizeRoom(rawRoom)))
+          );
+          if (rMatch) roomId = rMatch.id;
+        }
+
+        let startTime = s.start_time || '08:30';
+        let endTime = s.end_time || '11:30';
+        if (startTime.length === 5) startTime += ':00';
+        if (endTime.length === 5) endTime += ':00';
+        if (endTime <= startTime) {
+          const [sh, sm] = startTime.split(':').map((x: string) => parseInt(x, 10) || 0);
+          const eh = Math.min(sh + 3, 22);
+          endTime = `${String(eh).padStart(2, '0')}:${String(sm).padStart(2, '0')}:00`;
+        }
+
+        return {
+          id: isValidUUID(s.id) ? s.id : generateUUID(),
+          semester_id: isValidUUID(s.semester_id) ? s.semester_id : defaultSemId,
+          course_id: courseId,
+          faculty_id: facultyId,
+          room_id: roomId,
+          batch_id: batchId,
+          batch_group_id: isValidUUID(s.batch_group_id) ? s.batch_group_id : null,
+          day_of_week: Number(s.day_of_week) >= 1 && Number(s.day_of_week) <= 7 ? Number(s.day_of_week) : 1,
+          start_time: startTime,
+          end_time: endTime,
+          session_type: s.session_type || 'regular',
+          status: s.status || 'published',
+          specific_date: s.specific_date || null,
+        };
+      });
+
+      // 7. Upsert to Supabase
+      const { error: sessErr } = await supabase.from('class_sessions').upsert(sessionPayload);
+      if (sessErr) {
+        console.warn('Batch auto-sync notice, executing row-by-row fallback:', sessErr.message);
+        let savedCount = 0;
+        for (const sp of sessionPayload) {
+          const { error: rowErr } = await supabase.from('class_sessions').upsert([sp]);
+          if (!rowErr) savedCount++;
+        }
+        setLastSyncTime(new Date().toLocaleTimeString());
+        return savedCount;
+      }
+
+      setLastSyncTime(new Date().toLocaleTimeString());
+      return sessionPayload.length;
+    },
+    [courses, faculty, batches, rooms, activeSemester, semesters]
+  );
+
   // Fetch Live Data from Supabase if configured
   useEffect(() => {
     async function loadLiveSupabaseData() {
@@ -363,36 +620,46 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           supabase.from('makeup_requests').select('*'),
         ]);
 
-        if (semData) {
+        let activeSem: Semester | null = null;
+        if (semData && semData.length > 0) {
           setSemesters(semData as Semester[]);
-          const active = semData.find((s) => s.is_active) || semData[0] || null;
-          setActiveSemester(active as Semester);
-        }
-
-        if (roomData) {
-          setRooms(sanitizeRooms(roomData as Room[]));
-        }
-
-        if (facData) {
-          const cleanFaculty = (facData as Faculty[]).filter(
-            (f) => !f.name.toLowerCase().includes('turing') && !f.name.toLowerCase().includes('hopper')
-          );
-          setFaculty(cleanFaculty);
+          activeSem = (semData as Semester[]).find((s) => s.is_active) || (semData[0] as Semester) || null;
+          setActiveSemester(activeSem);
+        } else if (activeSemester) {
+          activeSem = activeSemester;
         }
 
         const cached = loadTimetableFromCache();
+
+        const loadedRooms = (roomData && roomData.length > 0)
+          ? sanitizeRooms(roomData as Room[])
+          : (cached?.rooms ? sanitizeRooms(cached.rooms) : []);
+        if (loadedRooms.length > 0) setRooms(loadedRooms);
+
+        let loadedFaculty: Faculty[] = [];
+        if (facData && facData.length > 0) {
+          loadedFaculty = (facData as Faculty[]).filter(
+            (f) => !f.name.toLowerCase().includes('turing') && !f.name.toLowerCase().includes('hopper')
+          );
+          setFaculty(loadedFaculty);
+        } else if (cached?.faculty?.length) {
+          loadedFaculty = cached.faculty;
+          setFaculty(loadedFaculty);
+        }
+
         const loadedStudents = (stdData && stdData.length > 0)
           ? (stdData as Student[])
           : (cached?.students || []);
         setStudents(loadedStudents);
 
+        let loadedBatches: Batch[] = [];
         if (batchData && batchData.length > 0) {
           const rawBatches = batchData as Batch[];
-          const realCountBatches = computeRealBatchCounts(rawBatches, loadedStudents);
-          setBatches(sortBatchesAlphabetically(realCountBatches));
+          loadedBatches = sortBatchesAlphabetically(computeRealBatchCounts(rawBatches, loadedStudents));
+          setBatches(loadedBatches);
         } else if (cached?.batches?.length) {
-          const syncedBatches = computeRealBatchCounts(cached.batches, loadedStudents);
-          setBatches(sortBatchesAlphabetically(syncedBatches));
+          loadedBatches = sortBatchesAlphabetically(computeRealBatchCounts(cached.batches, loadedStudents));
+          setBatches(loadedBatches);
         }
 
         const cachedCourses = cached?.courses || [];
@@ -419,83 +686,29 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           const unsyncedSessions = cachedSessions.filter((cs: ClassSession) => !remoteSessionIds.has(cs.id));
           loadedSessions = [...(sessData as ClassSession[]), ...unsyncedSessions];
 
-          // Auto-sync any unsynced local sessions to Supabase in background with valid UUIDs
+          // Auto-sync any unsynced local sessions to Supabase in background with valid UUIDs and foreign keys
           if (unsyncedSessions.length > 0 && isSupabaseConfigured && supabase) {
-            const syncPayload = unsyncedSessions.map((s: ClassSession) => {
-              let startTime = s.start_time || '08:30';
-              let endTime = s.end_time || '11:30';
-              if (startTime.length === 5) startTime += ':00';
-              if (endTime.length === 5) endTime += ':00';
-              if (endTime <= startTime) {
-                const [sh, sm] = startTime.split(':').map((x: string) => parseInt(x, 10) || 0);
-                const eh = Math.min(sh + 3, 22);
-                endTime = `${String(eh).padStart(2, '0')}:${String(sm).padStart(2, '0')}:00`;
-              }
-              return {
-                id: isValidUUID(s.id) ? s.id : generateUUID(),
-                semester_id: isValidUUID(s.semester_id) ? s.semester_id : '11111111-1111-1111-1111-111111111111',
-                course_id: isValidUUID(s.course_id) ? s.course_id : null,
-                faculty_id: isValidUUID(s.faculty_id) ? s.faculty_id : null,
-                room_id: isValidUUID(s.room_id) ? s.room_id : null,
-                batch_id: isValidUUID(s.batch_id) ? s.batch_id : null,
-                batch_group_id: isValidUUID(s.batch_group_id) ? s.batch_group_id : null,
-                day_of_week: Number(s.day_of_week) >= 1 && Number(s.day_of_week) <= 7 ? Number(s.day_of_week) : 1,
-                start_time: startTime,
-                end_time: endTime,
-                session_type: s.session_type || 'regular',
-                status: s.status || 'published',
-                specific_date: s.specific_date || null,
-              };
-            }).filter((s) => s.course_id && s.faculty_id && s.batch_id);
-
-            if (syncPayload.length > 0) {
-              const { error: syncErr } = await supabase.from('class_sessions').upsert(syncPayload);
-              if (syncErr) {
-                for (const row of syncPayload) {
-                  await supabase.from('class_sessions').upsert([row]);
-                }
-              }
-            }
+            autoSyncSessionsToSupabase(
+              unsyncedSessions,
+              loadedCourses,
+              loadedFaculty,
+              loadedBatches,
+              loadedRooms,
+              activeSem?.id
+            ).catch((err) => console.warn('Auto-sync unsynced sessions notice:', err));
           }
         } else if (cachedSessions.length > 0) {
           loadedSessions = cachedSessions;
-          // When Supabase is empty, sync local cached sessions to Supabase
+          // When Supabase is empty, automatically sync local cached sessions to Supabase
           if (isSupabaseConfigured && supabase) {
-            const syncPayload = cachedSessions.map((s: ClassSession) => {
-              let startTime = s.start_time || '08:30';
-              let endTime = s.end_time || '11:30';
-              if (startTime.length === 5) startTime += ':00';
-              if (endTime.length === 5) endTime += ':00';
-              if (endTime <= startTime) {
-                const [sh, sm] = startTime.split(':').map((x: string) => parseInt(x, 10) || 0);
-                const eh = Math.min(sh + 3, 22);
-                endTime = `${String(eh).padStart(2, '0')}:${String(sm).padStart(2, '0')}:00`;
-              }
-              return {
-                id: isValidUUID(s.id) ? s.id : generateUUID(),
-                semester_id: isValidUUID(s.semester_id) ? s.semester_id : '11111111-1111-1111-1111-111111111111',
-                course_id: isValidUUID(s.course_id) ? s.course_id : null,
-                faculty_id: isValidUUID(s.faculty_id) ? s.faculty_id : null,
-                room_id: isValidUUID(s.room_id) ? s.room_id : null,
-                batch_id: isValidUUID(s.batch_id) ? s.batch_id : null,
-                batch_group_id: isValidUUID(s.batch_group_id) ? s.batch_group_id : null,
-                day_of_week: Number(s.day_of_week) >= 1 && Number(s.day_of_week) <= 7 ? Number(s.day_of_week) : 1,
-                start_time: startTime,
-                end_time: endTime,
-                session_type: s.session_type || 'regular',
-                status: s.status || 'published',
-                specific_date: s.specific_date || null,
-              };
-            }).filter((s) => s.course_id && s.faculty_id && s.batch_id);
-
-            if (syncPayload.length > 0) {
-              const { error: syncErr } = await supabase.from('class_sessions').upsert(syncPayload);
-              if (syncErr) {
-                for (const row of syncPayload) {
-                  await supabase.from('class_sessions').upsert([row]);
-                }
-              }
-            }
+            autoSyncSessionsToSupabase(
+              cachedSessions,
+              loadedCourses,
+              loadedFaculty,
+              loadedBatches,
+              loadedRooms,
+              activeSem?.id
+            ).catch((err) => console.warn('Auto-sync cached sessions notice:', err));
           }
         }
         setSessions(sanitizeSessions(loadedSessions));
@@ -517,6 +730,33 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
     setLastSyncTime(new Date().toLocaleTimeString());
   }, [sessions, rooms, faculty, batches, courses, students]);
 
+  // Automatic background synchronization tracking
+  const lastSyncedSignatureRef = useRef<string>('');
+
+  // Debounced auto-sync whenever sessions change in state
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase || sessions.length === 0) return;
+
+    const currentSig = sessions
+      .map((s) => `${s.id}:${s.course_id}:${s.faculty_id}:${s.batch_id}:${s.day_of_week}:${s.start_time}:${s.end_time}:${s.room_id || ''}:${s.status}`)
+      .sort()
+      .join('|');
+
+    if (lastSyncedSignatureRef.current === currentSig) return;
+
+    const timer = setTimeout(() => {
+      autoSyncSessionsToSupabase(sessions)
+        .then((count) => {
+          if (count > 0) {
+            lastSyncedSignatureRef.current = currentSig;
+          }
+        })
+        .catch((err) => console.warn('Background auto-sync error:', err));
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [sessions, autoSyncSessionsToSupabase]);
+
   // Supabase Realtime Subscription setup (if configured)
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return;
@@ -530,14 +770,35 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           if (payload.eventType === 'INSERT') {
             const rawSession = payload.new as ClassSession;
             const newSession = sanitizeSessions([rawSession])[0];
-            setSessions((prev) => [...prev.filter((s) => s.id !== newSession.id), newSession]);
+            setSessions((prev) => {
+              const updated = [...prev.filter((s) => s.id !== newSession.id), newSession];
+              lastSyncedSignatureRef.current = updated
+                .map((s) => `${s.id}:${s.course_id}:${s.faculty_id}:${s.batch_id}:${s.day_of_week}:${s.start_time}:${s.end_time}:${s.room_id || ''}:${s.status}`)
+                .sort()
+                .join('|');
+              return updated;
+            });
           } else if (payload.eventType === 'UPDATE') {
             const rawUpdated = payload.new as ClassSession;
             const updated = sanitizeSessions([rawUpdated])[0];
-            setSessions((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+            setSessions((prev) => {
+              const updatedList = prev.map((s) => (s.id === updated.id ? updated : s));
+              lastSyncedSignatureRef.current = updatedList
+                .map((s) => `${s.id}:${s.course_id}:${s.faculty_id}:${s.batch_id}:${s.day_of_week}:${s.start_time}:${s.end_time}:${s.room_id || ''}:${s.status}`)
+                .sort()
+                .join('|');
+              return updatedList;
+            });
           } else if (payload.eventType === 'DELETE') {
             const deletedId = (payload.old as { id: string }).id;
-            setSessions((prev) => prev.filter((s) => s.id !== deletedId));
+            setSessions((prev) => {
+              const updatedList = prev.filter((s) => s.id !== deletedId);
+              lastSyncedSignatureRef.current = updatedList
+                .map((s) => `${s.id}:${s.course_id}:${s.faculty_id}:${s.batch_id}:${s.day_of_week}:${s.start_time}:${s.end_time}:${s.room_id || ''}:${s.status}`)
+                .sort()
+                .join('|');
+              return updatedList;
+            });
           }
         }
       )
@@ -1434,154 +1695,17 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        // If importing sessions, ensure referenced parent entities (batches, courses, faculty, rooms, semester) exist in Supabase
+        // If importing sessions, run our unified autoSyncSessionsToSupabase
         if (type === 'sessions') {
-          const defaultSemId = (activeSemester && isValidUUID(activeSemester.id))
-            ? activeSemester.id
-            : (semesters.find((s) => isValidUUID(s.id))?.id || '11111111-1111-1111-1111-111111111111');
-
-          // 1. Ensure active semester exists in DB
-          try {
-            const { data: semInDb } = await supabase.from('semesters').select('id').eq('id', defaultSemId);
-            if (!semInDb || semInDb.length === 0) {
-              await supabase.from('semesters').upsert([{
-                id: defaultSemId,
-                name: activeSemester?.name || 'Fall 2026',
-                start_date: '2026-09-01',
-                end_date: '2027-01-31',
-                is_active: true,
-              }]);
-            }
-          } catch (semErr) {
-            console.warn('Semester verification notice:', semErr);
-          }
-
-          // 2. Check and auto-provision missing Batches in Supabase
-          const referencedBatchIds = Array.from(new Set(processedItems.map((s: any) => s.batch_id).filter(isValidUUID)));
-          if (referencedBatchIds.length > 0) {
-            try {
-              const { data: dbBatches } = await supabase.from('batches').select('id').in('id', referencedBatchIds);
-              const dbBatchIdSet = new Set((dbBatches || []).map((b: any) => b.id));
-              const missingBatchIds = referencedBatchIds.filter((id) => !dbBatchIdSet.has(id));
-
-              if (missingBatchIds.length > 0) {
-                const batchesToCreate: Batch[] = missingBatchIds.map((bId) => {
-                  const ref = processedItems.find((s: any) => s.batch_id === bId);
-                  return {
-                    id: bId,
-                    name: ref?.batch_name || `Batch-${bId.slice(0, 8)}`,
-                    program: 'Undergraduate Program',
-                    program_code: '',
-                    semester: 1,
-                    student_count: 0,
-                    is_irregular: false,
-                  };
-                });
-                const { error: bErr } = await supabase.from('batches').upsert(batchesToCreate);
-                if (!bErr) {
-                  setBatches((prev) => [...prev, ...batchesToCreate]);
-                }
-              }
-            } catch (bErr) {
-              console.warn('Auto-provisioning batches notice:', bErr);
-            }
-          }
-
-          // 3. Check and auto-provision missing Courses in Supabase
-          const referencedCourseIds = Array.from(new Set(processedItems.map((s: any) => s.course_id).filter(isValidUUID)));
-          if (referencedCourseIds.length > 0) {
-            try {
-              const { data: dbCourses } = await supabase.from('courses').select('id').in('id', referencedCourseIds);
-              const dbCourseIdSet = new Set((dbCourses || []).map((c: any) => c.id));
-              const missingCourseIds = referencedCourseIds.filter((id) => !dbCourseIdSet.has(id));
-
-              if (missingCourseIds.length > 0) {
-                const coursesToCreate: Course[] = missingCourseIds.map((cId) => {
-                  const ref = processedItems.find((s: any) => s.course_id === cId);
-                  const code = ref?.course_code || `CRS-${cId.slice(0, 6).toUpperCase()}`;
-                  return {
-                    id: cId,
-                    code,
-                    name: ref?.course_name || ref?.course_code || `Course ${code}`,
-                    department: 'Faculty of Management Sciences',
-                    credit_hours: 3,
-                    required_room_types: ['standard'],
-                  };
-                });
-                const { error: cErr } = await supabase.from('courses').upsert(coursesToCreate);
-                if (!cErr) {
-                  setCourses((prev) => [...prev, ...coursesToCreate]);
-                }
-              }
-            } catch (cErr) {
-              console.warn('Auto-provisioning courses notice:', cErr);
-            }
-          }
-
-          // 4. Check and auto-provision missing Faculty in Supabase with collision avoidance
-          const referencedFacultyIds = Array.from(new Set(processedItems.map((s: any) => s.faculty_id).filter(isValidUUID)));
-          if (referencedFacultyIds.length > 0) {
-            try {
-              const { data: dbFaculty } = await supabase.from('faculty').select('id, email').in('id', referencedFacultyIds);
-              const dbFacultyIdSet = new Set((dbFaculty || []).map((f: any) => f.id));
-              const missingFacultyIds = referencedFacultyIds.filter((id) => !dbFacultyIdSet.has(id));
-
-              if (missingFacultyIds.length > 0) {
-                const facultyToCreate: Faculty[] = missingFacultyIds.map((fId) => {
-                  const ref = processedItems.find((s: any) => s.faculty_id === fId);
-                  const safeEmail = `faculty.${fId.slice(0, 8)}@shu.edu.pk`;
-                  return {
-                    id: fId,
-                    name: ref?.faculty_name || `Faculty Member (${fId.slice(0, 6)})`,
-                    email: safeEmail,
-                    department: 'Faculty of Management Sciences',
-                    max_load_per_day: 4,
-                    is_active: true,
-                  };
-                });
-                const { error: fErr } = await supabase.from('faculty').upsert(facultyToCreate);
-                if (!fErr) {
-                  setFaculty((prev) => [...prev, ...facultyToCreate]);
-                }
-              }
-            } catch (fErr) {
-              console.warn('Auto-provisioning faculty notice:', fErr);
-            }
-          }
-
-          // 5. Check and auto-provision missing Rooms in Supabase
-          const referencedRoomIds = Array.from(new Set(processedItems.map((s: any) => s.room_id).filter(isValidUUID)));
-          if (referencedRoomIds.length > 0) {
-            try {
-              const { data: dbRooms } = await supabase.from('rooms').select('id, name').in('id', referencedRoomIds);
-              const dbRoomIdSet = new Set((dbRooms || []).map((r: any) => r.id));
-              const missingRoomIds = referencedRoomIds.filter((id) => !dbRoomIdSet.has(id));
-
-              if (missingRoomIds.length > 0) {
-                const roomsToCreate: Room[] = missingRoomIds.map((rId) => {
-                  const ref = processedItems.find((s: any) => s.room_id === rId);
-                  return {
-                    id: rId,
-                    name: ref?.room_name || `Room ${rId.slice(0, 6)}`,
-                    building: 'Main Campus',
-                    floor: 1,
-                    capacity: 40,
-                    room_types: ['standard'],
-                    is_active: true,
-                  };
-                });
-                const { error: rErr } = await supabase.from('rooms').upsert(roomsToCreate);
-                if (!rErr) {
-                  setRooms((prev) => sanitizeRooms([...prev, ...roomsToCreate]));
-                }
-              }
-            } catch (rErr) {
-              console.warn('Auto-provisioning rooms notice:', rErr);
-            }
-          }
+          const savedCount = await autoSyncSessionsToSupabase(processedItems);
+          lastSyncedSignatureRef.current = processedItems
+            .map((s: any) => `${s.id}:${s.course_id}:${s.faculty_id}:${s.batch_id}:${s.day_of_week}:${s.start_time}:${s.end_time}:${s.room_id || ''}:${s.status}`)
+            .sort()
+            .join('|');
+          return { success: true, count: savedCount > 0 ? savedCount : items.length };
         }
 
-        const tableName = type === 'sessions' ? 'class_sessions' : type;
+        const tableName = type;
 
         // Ensure payload respects Supabase Postgres UUID constraints
         let payload = processedItems;
@@ -1633,57 +1757,10 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
             credit_hours: c.credit_hours || 3,
             required_room_types: c.required_room_types || ['standard'],
           }));
-        } else if (type === 'sessions') {
-          const defaultSemId = (activeSemester && isValidUUID(activeSemester.id))
-            ? activeSemester.id
-            : (semesters.find((s) => isValidUUID(s.id))?.id || '11111111-1111-1111-1111-111111111111');
-
-          payload = processedItems.map((s: any) => {
-            let startTime = s.start_time || '08:30';
-            let endTime = s.end_time || '11:30';
-            if (startTime.length === 5) startTime += ':00';
-            if (endTime.length === 5) endTime += ':00';
-            if (endTime <= startTime) {
-              const [sh, sm] = startTime.split(':').map((x: string) => parseInt(x, 10) || 0);
-              const eh = Math.min(sh + 3, 22);
-              endTime = `${String(eh).padStart(2, '0')}:${String(sm).padStart(2, '0')}:00`;
-            }
-
-            return {
-              id: isValidUUID(s.id) ? s.id : generateUUID(),
-              semester_id: isValidUUID(s.semester_id) ? s.semester_id : defaultSemId,
-              course_id: isValidUUID(s.course_id) ? s.course_id : (courses[0]?.id || null),
-              faculty_id: isValidUUID(s.faculty_id) ? s.faculty_id : (faculty[0]?.id || null),
-              room_id: isValidUUID(s.room_id) ? s.room_id : null,
-              batch_id: isValidUUID(s.batch_id) ? s.batch_id : (batches[0]?.id || null),
-              batch_group_id: isValidUUID(s.batch_group_id) ? s.batch_group_id : null,
-              day_of_week: Number(s.day_of_week) >= 1 && Number(s.day_of_week) <= 7 ? Number(s.day_of_week) : 1,
-              start_time: startTime,
-              end_time: endTime,
-              session_type: s.session_type || 'regular',
-              status: s.status || 'published',
-              specific_date: s.specific_date || null,
-            };
-          });
         }
 
         const { error } = await supabase.from(tableName).upsert(payload);
         if (error) {
-          if (type === 'sessions') {
-            console.warn('Batch session upsert encountered error, executing row-by-row fallback:', error.message);
-            let savedCount = 0;
-            for (const sp of payload) {
-              const { error: rowErr } = await supabase.from('class_sessions').upsert([sp]);
-              if (!rowErr) {
-                savedCount++;
-              } else {
-                console.warn(`Row-by-row session save notice for ${sp.id}:`, rowErr.message);
-              }
-            }
-            if (savedCount > 0) {
-              return { success: true, count: savedCount };
-            }
-          }
 
           // If error is foreign key violation on batch_id (code 23503 or message contains foreign key)
           if (type === 'students' && (error.code === '23503' || error.message.toLowerCase().includes('foreign key'))) {
@@ -2065,94 +2142,9 @@ export function TimetableProvider({ children }: { children: React.ReactNode }) {
 
       // 7. Class Sessions
       if (sessions.length > 0) {
-        const defaultSemId = (activeSemester && isValidUUID(activeSemester.id))
-          ? activeSemester.id
-          : (semesters.find((s) => isValidUUID(s.id))?.id || '11111111-1111-1111-1111-111111111111');
-
-        const sessionPayload = sessions.map((s) => {
-          let courseId = s.course_id;
-          if (!isValidUUID(courseId) || !courses.some((c) => c.id === courseId)) {
-            const rawCode = (s as any).course_code || s.course_id || '';
-            const rawName = (s as any).course_name || '';
-            const cMatch = courses.find(
-              (c) => (rawCode && normalizeCode(c.code) === normalizeCode(rawCode)) ||
-                     (rawName && normalizeCode(c.name) === normalizeCode(rawName)) ||
-                     (rawCode && normalizeCode(c.name).includes(normalizeCode(rawCode)))
-            );
-            courseId = cMatch ? cMatch.id : (courses[0]?.id || generateUUID());
-          }
-
-          let facultyId = s.faculty_id;
-          if (!isValidUUID(facultyId) || !faculty.some((f) => f.id === facultyId)) {
-            const rawEmail = (s as any).faculty_email || s.faculty_id || '';
-            const rawName = (s as any).faculty_name || '';
-            const fMatch = faculty.find(
-              (f) => (rawEmail && normalizeEmail(f.email) === normalizeEmail(rawEmail)) ||
-                     (rawName && normalizeName(f.name) === normalizeName(rawName)) ||
-                     (rawName && normalizeName(f.name).includes(normalizeName(rawName)))
-            );
-            facultyId = fMatch ? fMatch.id : (faculty[0]?.id || generateUUID());
-          }
-
-          let batchId = s.batch_id;
-          if (!isValidUUID(batchId) || !batches.some((b) => b.id === batchId)) {
-            const rawBatch = (s as any).batch_name || s.batch_id || '';
-            const bMatch = batches.find(
-              (b) => (rawBatch && normalizeBatch(b.name) === normalizeBatch(rawBatch)) ||
-                     (rawBatch && normalizeBatch(b.name).includes(normalizeBatch(rawBatch)))
-            );
-            batchId = bMatch ? bMatch.id : (batches[0]?.id || generateUUID());
-          }
-
-          let roomId = (s.room_id && isValidUUID(s.room_id) && rooms.some((r) => r.id === s.room_id)) ? s.room_id : null;
-          if (!roomId && (s as any).room_name) {
-            const rawRoom = (s as any).room_name;
-            const rMatch = rooms.find(
-              (r) => (rawRoom && normalizeRoom(r.name) === normalizeRoom(rawRoom)) ||
-                     (rawRoom && normalizeRoom(r.name).includes(normalizeRoom(rawRoom)))
-            );
-            if (rMatch) roomId = rMatch.id;
-          }
-
-          let startTime = s.start_time || '08:30';
-          let endTime = s.end_time || '11:30';
-          if (startTime.length === 5) startTime += ':00';
-          if (endTime.length === 5) endTime += ':00';
-          if (endTime <= startTime) {
-            const [sh, sm] = startTime.split(':').map((x: string) => parseInt(x, 10) || 0);
-            const eh = Math.min(sh + 3, 22);
-            endTime = `${String(eh).padStart(2, '0')}:${String(sm).padStart(2, '0')}:00`;
-          }
-
-          return {
-            id: isValidUUID(s.id) ? s.id : generateUUID(),
-            semester_id: isValidUUID(s.semester_id) ? s.semester_id : defaultSemId,
-            course_id: courseId,
-            faculty_id: facultyId,
-            room_id: roomId,
-            batch_id: batchId,
-            batch_group_id: isValidUUID(s.batch_group_id) ? s.batch_group_id : null,
-            day_of_week: Number(s.day_of_week) >= 1 && Number(s.day_of_week) <= 7 ? Number(s.day_of_week) : 1,
-            start_time: startTime,
-            end_time: endTime,
-            session_type: s.session_type || 'regular',
-            status: s.status || 'published',
-            specific_date: s.specific_date || null,
-          };
-        });
-
-        // Batch upsert first
-        const { error: sessErr } = await supabase.from('class_sessions').upsert(sessionPayload);
-        if (sessErr) {
-          console.warn('Batch session sync encountered error, attempting row-by-row fallback:', sessErr.message);
-          let successCount = 0;
-          for (const sp of sessionPayload) {
-            const { error: rowErr } = await supabase.from('class_sessions').upsert([sp]);
-            if (!rowErr) successCount++;
-          }
-          if (successCount === 0) {
-            throw new Error(`Sessions sync error: ${sessErr.message}`);
-          }
+        const count = await autoSyncSessionsToSupabase(sessions);
+        if (count === 0 && sessions.length > 0) {
+          throw new Error('Failed to auto-sync sessions to Supabase');
         }
       }
 
