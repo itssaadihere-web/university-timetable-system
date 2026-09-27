@@ -10,6 +10,8 @@ export interface GenerateAIResponseParams {
   nextClass?: EnrichedClassSession;
   todayClasses?: EnrichedClassSession[];
   upcomingClasses?: EnrichedClassSession[];
+  weeklySchedule?: Record<string, EnrichedClassSession[]> | string;
+  matchedCourseSession?: EnrichedClassSession;
   roomInfo?: {
     roomName: string;
     building: string;
@@ -17,7 +19,7 @@ export interface GenerateAIResponseParams {
     directions: string;
   };
   multipleBatchesFound?: string[];
-  intent?: 'next_class' | 'today' | 'tomorrow' | 'full_schedule' | 'room_navigation' | 'batch_selection' | 'general';
+  intent?: 'next_class' | 'today' | 'tomorrow' | 'full_schedule' | 'course_inquiry' | 'room_navigation' | 'batch_selection' | 'general';
 }
 
 /**
@@ -34,14 +36,24 @@ export function detectLanguage(text: string): 'english' | 'roman_urdu' | 'urdu' 
     'kahan', 'kab', 'konsi', 'kaunsi', 'kis', 'meri', 'mera', 'mere', 
     'aaj', 'kal', 'parson', 'batao', 'bataen', 'bata dein', 'shukriya', 
     'assalam', 'salaam', 'kya', 'hai', 'hain', 'hogi', 'hoga', 'pehle', 
-    'agli', 'agla', 'kamra', 'rasta', 'kiddar', 'idhar', 'udhar', 'acha',
-    'theek', 'jee', 'bhai', 'sir'
+    'agli', 'agla', 'kamra', 'rasta', 'kiddar', 'kidhr', 'kidher', 'kdr', 
+    'hy', 'hn', 'he', 'kon', 'kaun', 'bhi', 'me', 'mein', 'mai', 'se', 
+    'ko', 'par', 'pe', 'idhar', 'udhar', 'acha', 'theek', 'jee', 'bhai', 
+    'sir', 'btao', 'h', 'kia', 'kitne'
   ];
 
   const words = lower.split(/[\s,?!.]+/);
   const matchCount = words.filter((w) => romanUrduKeywords.includes(w)).length;
 
-  if (matchCount >= 1 || lower.includes('class kahan') || lower.includes('konsi class') || lower.includes('aaj ki class')) {
+  if (
+    matchCount >= 1 || 
+    lower.includes('kidhr') || 
+    lower.includes('class kahan') || 
+    lower.includes('konsi class') || 
+    lower.includes('aaj ki class') ||
+    lower.includes('class hy') ||
+    lower.includes('class he')
+  ) {
     return 'roman_urdu';
   }
 
@@ -163,10 +175,33 @@ function buildGeminiPrompt(
   p: GenerateAIResponseParams,
   lang: 'english' | 'roman_urdu' | 'urdu'
 ): string {
+  let weeklyStr = '';
+  if (typeof p.weeklySchedule === 'string') {
+    weeklyStr = p.weeklySchedule;
+  } else if (p.weeklySchedule) {
+    for (const [dayName, dayClasses] of Object.entries(p.weeklySchedule)) {
+      weeklyStr += `Day: ${dayName}\n` + dayClasses.map(c => `  - ${c.startTime} to ${c.endTime}: ${c.courseName} (${c.courseCode}) in Room ${c.roomName} (${c.roomBuilding}, Floor ${c.roomFloor}) with ${c.facultyName}`).join('\n') + '\n';
+    }
+  }
+
   const timetableContext = {
     studentName: p.studentName || 'Student',
     batchName: p.batchName || 'Not selected yet',
     program: p.programName || '',
+    completeWeeklyScheduleForThisBatch: weeklyStr || 'No weekly sessions recorded',
+    specificCourseMatched: p.matchedCourseSession
+      ? {
+          courseName: p.matchedCourseSession.courseName,
+          courseCode: p.matchedCourseSession.courseCode,
+          day: p.matchedCourseSession.dayName,
+          timings: `${p.matchedCourseSession.startTime} to ${p.matchedCourseSession.endTime}`,
+          room: p.matchedCourseSession.roomName,
+          building: p.matchedCourseSession.roomBuilding,
+          floor: p.matchedCourseSession.roomFloor,
+          faculty: p.matchedCourseSession.facultyName,
+          walkingDirections: p.matchedCourseSession.navigationDirections,
+        }
+      : null,
     currentClass: p.currentClass
       ? `${p.currentClass.courseName} (${p.currentClass.courseCode}) in Room ${p.currentClass.roomName} (${p.currentClass.roomBuilding}) with ${p.currentClass.facultyName} from ${p.currentClass.startTime} to ${p.currentClass.endTime}`
       : 'None right now',
@@ -186,21 +221,28 @@ function buildGeminiPrompt(
   };
 
   return `You are the official AI Timetable Assistant for Salim Habib University (SHU), Karachi.
-A student just sent a message on WhatsApp: "${p.userMessage}".
+A student sent a message on WhatsApp: "${p.userMessage}".
 
 LIVE TIMETABLE CONTEXT FOR THIS STUDENT/BATCH:
 ${JSON.stringify(timetableContext, null, 2)}
 
-INSTRUCTIONS:
-1. Speak warmly, respectfully, clearly, and concisely like a human university coordinator or counselor.
-2. ABSOLUTELY DO NOT output rigid robotic menus or numbered command options like "1. What is my next class, 2. Today's classes, 3. Full Timetable, 4. Where is room TF-308".
-3. Language Matching:
-   - If language is 'roman_urdu', reply in natural, polite Roman Urdu (e.g. "Assalam-o-Alaikum! Batch-3A-BAC ke schedule ke mutabiq aap ki agli class...").
-   - If language is 'urdu', reply in Urdu Arabic script.
-   - If language is 'english', reply in warm, clear English.
-4. If multiple sections were found for their batch (e.g. Batch-3A-BAC, Batch-3B-BAC, Batch-3C-BAC), politely inform them that there are sections available and ask them to confirm their section. Note: WhatsApp interactive buttons will also be sent with this message, so invite them to tap their section below.
-5. Format important details (Course, Time, Room, Instructor) with subtle WhatsApp bolding (*text*) for readability.
-6. Keep the message concise (1 to 2 short paragraphs or bullet points).`;
+CRITICAL INSTRUCTIONS:
+1. STRICT LANGUAGE MATCHING:
+   - You MUST reply in the EXACT SAME LANGUAGE and phrasing style as the user's question!
+   - If the student asked in Roman Urdu (e.g. "Batch 1A acf islamic studies class kidhr hy?", "meri class kahan hai?", "aaj konsi class hy?"), your entire response MUST be in natural, polite Roman Urdu (e.g. "Batch 1A ACF ki Islamic Studies ki class Monday ko 01:00 PM se 03:00 PM tak Room TF-306 mein hogi...").
+   - If the student asked in English (e.g. "Where is the Islamic studies class?"), reply in fluent, clear English.
+   - If the student asked in Urdu script (اردو), reply in polite Urdu script.
+
+2. ANSWER THE EXACT QUESTION ASKED:
+   - DO NOT default to talking about "next class" unless the user specifically asked "What is my next class?"!
+   - If the user asked about a specific subject (such as Islamic Studies, Islamiat, Marketing, Accounting, Microeconomics, Fehm-ul-Quran, Mathematics, etc.): Look up that subject in the weekly schedule and provide its exact day, timing (12-hour format e.g. 01:00 PM - 03:00 PM), room, and instructor!
+   - If the user asked where a room is, explain its floor and directions.
+
+3. TONE & FORMAT:
+   - Speak warmly, respectfully, and clearly like an intelligent human university coordinator.
+   - Absolutely DO NOT output robotic numbered command lists (e.g. "1. Next class, 2. Today's classes").
+   - Format important details (Course, Timings, Room, Faculty) with subtle WhatsApp bolding (*text*).
+   - Keep the reply direct and concise.`;
 }
 
 /**
@@ -221,8 +263,17 @@ function generateHumanFallbackResponse(
     return `Hello! We found multiple sections for your program:\n\n${p.multipleBatchesFound.map((b) => `• *${b}*`).join('\n')}\n\nPlease tap your section below so I can show your exact schedule!`;
   }
 
-  // Next Class query
-  if (p.intent === 'next_class' || p.nextClass) {
+  // If a specific course inquiry was matched
+  if (p.matchedCourseSession) {
+    const s = p.matchedCourseSession;
+    if (lang === 'roman_urdu') {
+      return `*${s.courseName}* (${s.courseCode}) ki class *${s.dayName}* ko *${s.startTime} se ${s.endTime}* tak *Room ${s.roomName}* (${s.roomBuilding}, Floor ${s.roomFloor}) mein hogi *${s.facultyName}* ke sath.\n\n${s.navigationDirections ? `💡 *Rasta:* ${s.navigationDirections}\n\n` : ''}Agar koi aur sawal ho tou zaroor batayein!`;
+    }
+    return `Your *${s.courseName}* (${s.courseCode}) class is scheduled on *${s.dayName}* from *${s.startTime} to ${s.endTime}* in *Room ${s.roomName}* (${s.roomBuilding}, Floor ${s.roomFloor}) with *${s.facultyName}*.\n\n${s.navigationDirections ? `💡 *Directions:* ${s.navigationDirections}\n\n` : ''}Have a great class!`;
+  }
+
+  // Next Class query ONLY if explicitly requested
+  if (p.intent === 'next_class') {
     const next = p.nextClass;
     if (!next) {
       if (lang === 'roman_urdu') {

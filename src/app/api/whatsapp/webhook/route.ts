@@ -11,7 +11,10 @@ import {
 import {
   getLiveTimetableData,
   findMatchingBatches,
+  findMatchingCourse,
   findStudent,
+  enrichSession,
+  EnrichedClassSession,
   getBatchNextClass,
   getBatchSessionsForDay,
   getBatchFullWeeklySchedule,
@@ -181,45 +184,47 @@ export async function POST(req: NextRequest) {
           isIdentified: true,
         });
 
-        // Check if there was a pending query like "today" or "next class"
-        const pendingType = session.pendingIntent?.type;
+        // Retrieve any prior question the student asked before clicking the button
+        const pendingQuestion = session.pendingIntent?.originalQuestion;
         session.pendingIntent = null; // Clear pending
 
-        if (pendingType === 'today_schedule') {
-          const now = new Date();
-          const d = now.getDay() === 0 ? 7 : now.getDay();
-          const todayClasses = getBatchSessionsForDay(matchedBatch.id, d, sessions, courses, faculty, rooms);
-          const reply = await generateHumanTimetableResponse({
-            userMessage: "Today's classes",
-            batchName: matchedBatch.name,
-            language: lang,
-            todayClasses,
-            intent: 'today',
-          });
-          await sendRealWhatsAppMessage(fromPhone, reply);
-          return NextResponse.json({ status: 'acknowledged' });
-        }
+        const allWeekly = getBatchFullWeeklySchedule(matchedBatch.id, sessions, courses, faculty, rooms);
+        const nextInfo = getBatchNextClass(matchedBatch.id, sessions, courses, faculty, rooms);
 
-        if (pendingType === 'next_class') {
-          const nextInfo = getBatchNextClass(matchedBatch.id, sessions, courses, faculty, rooms);
+        // If the user previously asked a question (e.g. "Batch 1A acf islamic studies class kidhr hy?"), answer THAT exact question!
+        if (pendingQuestion) {
+          const qLang = detectLanguage(pendingQuestion);
+          const matchedCourse = findMatchingCourse(pendingQuestion, courses);
+          let courseSession: EnrichedClassSession | undefined = undefined;
+          if (matchedCourse) {
+            const s = sessions.find((x) => x.batch_id === matchedBatch.id && x.course_id === matchedCourse.id);
+            if (s) {
+              courseSession = enrichSession(s, courses, faculty, rooms);
+            }
+          }
+
           const reply = await generateHumanTimetableResponse({
-            userMessage: 'What is my next class?',
+            userMessage: pendingQuestion,
             batchName: matchedBatch.name,
-            language: lang,
+            programName: matchedBatch.program,
+            language: qLang,
+            weeklySchedule: allWeekly,
+            matchedCourseSession: courseSession,
             nextClass: nextInfo.nextClass,
             currentClass: nextInfo.currentClass,
-            intent: 'next_class',
+            intent: courseSession ? 'course_inquiry' : 'general',
           });
+
           await sendRealWhatsAppMessage(fromPhone, reply);
           return NextResponse.json({ status: 'acknowledged' });
         }
 
         // Default greeting upon confirming batch with next upcoming class
-        const nextInfo = getBatchNextClass(matchedBatch.id, sessions, courses, faculty, rooms);
         const reply = await generateHumanTimetableResponse({
           userMessage: `I am in ${matchedBatch.name}`,
           batchName: matchedBatch.name,
           language: lang,
+          weeklySchedule: allWeekly,
           nextClass: nextInfo.nextClass,
           currentClass: nextInfo.currentClass,
           intent: 'next_class',
@@ -249,12 +254,8 @@ export async function POST(req: NextRequest) {
 
     // If multiple sections match (e.g. Batch-3A-BAC, Batch-3B-BAC, Batch-3C-BAC)
     if (candidateBatches.length > 1) {
-      // Remember any intent in this message (e.g. "today", "next class")
-      if (cleaned.includes('today') || cleaned.includes('aaj')) {
-        session.pendingIntent = { type: 'today_schedule', originalQuestion: incomingText };
-      } else if (cleaned.includes('next') || cleaned.includes('agli')) {
-        session.pendingIntent = { type: 'next_class', originalQuestion: incomingText };
-      }
+      // Remember user's full original question so it can be answered once they tap a button
+      session.pendingIntent = { type: 'custom_question', originalQuestion: incomingText };
 
       const programLabel = candidateBatches[0].program || 'Your program';
       const semLabel = candidateBatches[0].semester ? `Semester ${candidateBatches[0].semester}` : '';
@@ -379,11 +380,11 @@ export async function POST(req: NextRequest) {
       cleaned === 'timetable';
 
     const currentBatchId = session.batchId;
+    const matchedCourse = findMatchingCourse(incomingText, courses);
 
-    // 12. If student is asking for timetable but batch is not identified yet
-    if ((isNextClass || isToday || isTomorrow || isFullTimetable) && !currentBatchId) {
-      if (isNextClass) session.pendingIntent = { type: 'next_class', originalQuestion: incomingText };
-      if (isToday) session.pendingIntent = { type: 'today_schedule', originalQuestion: incomingText };
+    // 12. If student is asking for timetable or a course but batch is not identified yet
+    if ((matchedCourse || isNextClass || isToday || isTomorrow || isFullTimetable) && !currentBatchId) {
+      session.pendingIntent = { type: 'custom_question', originalQuestion: incomingText };
 
       // Friendly human request (no robotic menus)
       const promptText = lang === 'roman_urdu'
@@ -397,6 +398,27 @@ export async function POST(req: NextRequest) {
     // 13. Answer Timetable Inquiries with Live Data & Generative AI Human Text
     if (currentBatchId) {
       const currentBatch = batches.find((b) => b.id === currentBatchId);
+      const allWeekly = getBatchFullWeeklySchedule(currentBatchId, sessions, courses, faculty, rooms);
+
+      // Specific Course Inquiry (e.g. Islamic Studies / Islamiat, Marketing, Accounting)
+      if (matchedCourse) {
+        const batchCourseSession = sessions.find((s) => s.batch_id === currentBatchId && s.course_id === matchedCourse.id);
+        const enrichedCourseSession = batchCourseSession ? enrichSession(batchCourseSession, courses, faculty, rooms) : undefined;
+
+        const reply = await generateHumanTimetableResponse({
+          userMessage: incomingText,
+          language: lang,
+          studentName: session.studentName,
+          batchName: currentBatch?.name || session.batchName,
+          programName: currentBatch?.program,
+          weeklySchedule: allWeekly,
+          matchedCourseSession: enrichedCourseSession,
+          intent: 'course_inquiry',
+        });
+
+        await sendRealWhatsAppMessage(fromPhone, reply);
+        return NextResponse.json({ status: 'acknowledged' });
+      }
 
       // A. Next Class
       if (isNextClass) {
@@ -407,6 +429,7 @@ export async function POST(req: NextRequest) {
           studentName: session.studentName,
           batchName: currentBatch?.name || session.batchName,
           programName: currentBatch?.program,
+          weeklySchedule: allWeekly,
           nextClass: nextInfo.nextClass,
           currentClass: nextInfo.currentClass,
           intent: 'next_class',
@@ -428,6 +451,7 @@ export async function POST(req: NextRequest) {
           studentName: session.studentName,
           batchName: currentBatch?.name || session.batchName,
           programName: currentBatch?.program,
+          weeklySchedule: allWeekly,
           todayClasses,
           intent: 'today',
         });

@@ -27,7 +27,7 @@ export interface WhatsAppConversationSession {
   program?: string;
   isIdentified: boolean;
   pendingIntent?: {
-    type: 'full_timetable' | 'next_class' | 'today_schedule' | 'tomorrow_schedule' | 'day_schedule' | 'room_navigation' | 'course_schedule' | 'faculty_schedule';
+    type: 'full_timetable' | 'next_class' | 'today_schedule' | 'tomorrow_schedule' | 'day_schedule' | 'room_navigation' | 'course_schedule' | 'faculty_schedule' | 'custom_question';
     targetCourseId?: string;
     targetFacultyId?: string;
     targetRoomId?: string;

@@ -217,14 +217,98 @@ export function findMatchingBatches(text: string, batches: Batch[]): Batch[] {
     return progMatches && semMatches;
   });
 
-  // If specific section was mentioned, narrow down further
+  // If specific section was mentioned, narrow down strictly by section token
   if (sectionLetter && matched.length > 1) {
-    const sectionMatched = matched.filter((b) => b.name.toUpperCase().includes(sectionLetter));
+    const sectionMatched = matched.filter((b) => {
+      if (b.section && b.section.toUpperCase() === sectionLetter) return true;
+      const bUpper = b.name.toUpperCase();
+      const targetPattern = semNumber ? `${semNumber}${sectionLetter}` : `-${sectionLetter}-`;
+      return (
+        bUpper.includes(`-${targetPattern}-`) ||
+        bUpper.includes(`-${targetPattern}`) ||
+        bUpper.includes(targetPattern) ||
+        bUpper.includes(`-${sectionLetter}-`)
+      );
+    });
     if (sectionMatched.length > 0) return sectionMatched;
   }
 
   // Sort batches neatly by name
   return matched.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Common subject aliases for courses taught at university
+ */
+export const COURSE_ALIASES: Record<string, string> = {
+  islamiat: 'islamic studies',
+  islamiyat: 'islamic studies',
+  islamic: 'islamic studies',
+  quran: 'fehm-ul-quran',
+  stats: 'statistics',
+  math: 'mathematics',
+  maths: 'mathematics',
+  mkt: 'marketing',
+  acc: 'accounting',
+  eco: 'microeconomics',
+  fin: 'finance',
+  ob: 'organizational behavior',
+};
+
+/**
+ * Finds matching course from text (e.g. "islamic studies", "islamiat", "marketing", "mkt-101")
+ */
+export function findMatchingCourse(text: string, courses: Course[]): Course | null {
+  const cleaned = cleanText(text);
+  const alpha = alphanumericOnly(text);
+
+  // Check aliases
+  let expanded = cleaned;
+  for (const [alias, canonical] of Object.entries(COURSE_ALIASES)) {
+    if (cleaned.includes(alias)) {
+      expanded = expanded.replace(alias, canonical);
+    }
+  }
+
+  // 1. Direct course code match (e.g. "IST - 101", "MKT - 101", "ECO - 102")
+  for (const c of courses) {
+    const cCodeAlpha = alphanumericOnly(c.code);
+    if (cCodeAlpha.length >= 3 && alpha.includes(cCodeAlpha)) {
+      return c;
+    }
+  }
+
+  // 2. Direct course name match or alias match
+  for (const c of courses) {
+    const cNameClean = cleanText(c.name);
+    if (cleaned.includes(cNameClean) || expanded.includes(cNameClean)) {
+      return c;
+    }
+  }
+
+  // 3. Partial keyword matching
+  const keywords = [
+    'islamic studies',
+    'fehm-ul-quran',
+    'principles of marketing',
+    'financial accounting',
+    'microeconomics',
+    'business mathematics',
+    'statistics',
+    'finance',
+    'business analytics',
+    'supply chain',
+    'fintech',
+    'organizational behavior',
+  ];
+  for (const kw of keywords) {
+    if (cleaned.includes(kw) || expanded.includes(kw)) {
+      const match = courses.find((c) => cleanText(c.name).includes(kw));
+      if (match) return match;
+    }
+  }
+
+  return null;
 }
 
 /**
