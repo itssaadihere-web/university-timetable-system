@@ -19,6 +19,7 @@ export interface GenerateAIResponseParams {
     directions: string;
   };
   multipleBatchesFound?: string[];
+  conversationHistory?: Array<{ role: 'user' | 'assistant'; text: string }>;
   intent?: 'next_class' | 'today' | 'tomorrow' | 'full_schedule' | 'course_inquiry' | 'room_navigation' | 'batch_selection' | 'general';
 }
 
@@ -218,6 +219,9 @@ function buildGeminiPrompt(
       ? `Room: ${p.roomInfo.roomName}, Building: ${p.roomInfo.building}, Floor: ${p.roomInfo.floor}. Directions: ${p.roomInfo.directions}`
       : null,
     multipleBatchesFound: p.multipleBatchesFound || [],
+    recentConversationMemory: p.conversationHistory && p.conversationHistory.length > 0
+      ? p.conversationHistory.slice(-5).map((m) => `${m.role === 'user' ? 'Student' : 'Assistant'}: ${m.text}`)
+      : ['No previous messages (first message in session)'],
   };
 
   return `You are the official AI Timetable Assistant for Salim Habib University (SHU), Karachi.

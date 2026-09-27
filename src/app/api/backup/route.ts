@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Automated backup endpoint for pg_dump trigger and json snapshot export via n8n cron job
+ * Automated backup endpoint for pg_dump trigger and json snapshot export
  */
 export async function GET(req: NextRequest) {
   try {
@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
       success: true,
       backupStatus: 'READY',
       timestamp,
-      instructions: 'For zero-cost Postgres backup: configure an n8n Cron node running weekly calling pg_dump or querying table snapshots to Supabase Storage.',
+      instructions: 'For automated Postgres backup: schedule a periodic job calling pg_dump or querying table snapshots to Supabase Storage.',
     });
   } catch (err: any) {
     return NextResponse.json(

@@ -7,6 +7,8 @@ import {
   downloadWhatsAppMedia,
   getConversationSession,
   updateConversationSession,
+  addMessageToSessionHistory,
+  getSessionHistory,
 } from '@/lib/whatsapp-state-engine';
 import {
   getLiveTimetableData,
@@ -62,16 +64,6 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-
-    // Forward to n8n if configured
-    const n8nWebhookUrl = process.env.N8N_WHATSAPP_WEBHOOK_URL || process.env.N8N_SCHEDULE_CHANGE_WEBHOOK_URL;
-    if (n8nWebhookUrl) {
-      fetch(n8nWebhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      }).catch((e) => console.error('Error forwarding to n8n:', e));
-    }
 
     const entry = body?.entry?.[0];
     const change = entry?.changes?.[0]?.value;
@@ -137,6 +129,15 @@ export async function POST(req: NextRequest) {
     }
 
     console.log(`[WhatsApp Inbound] From: ${fromPhone} | Text: "${incomingText}" | InteractiveId: "${interactiveId}"`);
+
+    // Record incoming user text in session history (memory of last 5 messages)
+    addMessageToSessionHistory(fromPhone, 'user', incomingText);
+
+    // Helper to send reply and record assistant response in session history
+    const replyAndRemember = async (text: string) => {
+      addMessageToSessionHistory(fromPhone, 'assistant', text);
+      await sendRealWhatsAppMessage(fromPhone, text);
+    };
 
     // 3. Natural Human Typing Delay (1.5 - 2.3 seconds)
     await new Promise((resolve) => setTimeout(resolve, 1500 + Math.random() * 800));
@@ -210,12 +211,13 @@ export async function POST(req: NextRequest) {
             language: qLang,
             weeklySchedule: allWeekly,
             matchedCourseSession: courseSession,
+            conversationHistory: getSessionHistory(fromPhone),
             nextClass: nextInfo.nextClass,
             currentClass: nextInfo.currentClass,
             intent: courseSession ? 'course_inquiry' : 'general',
           });
 
-          await sendRealWhatsAppMessage(fromPhone, reply);
+          await replyAndRemember(reply);
           return NextResponse.json({ status: 'acknowledged' });
         }
 
@@ -225,11 +227,12 @@ export async function POST(req: NextRequest) {
           batchName: matchedBatch.name,
           language: lang,
           weeklySchedule: allWeekly,
+          conversationHistory: getSessionHistory(fromPhone),
           nextClass: nextInfo.nextClass,
           currentClass: nextInfo.currentClass,
           intent: 'next_class',
         });
-        await sendRealWhatsAppMessage(fromPhone, reply);
+        await replyAndRemember(reply);
         return NextResponse.json({ status: 'acknowledged' });
       }
     }
@@ -337,6 +340,7 @@ export async function POST(req: NextRequest) {
         language: lang,
         studentName: session.studentName,
         batchName: session.batchName,
+        conversationHistory: getSessionHistory(fromPhone),
         roomInfo: {
           roomName: targetRoom.name,
           building: targetRoom.building,
@@ -346,7 +350,7 @@ export async function POST(req: NextRequest) {
         intent: 'room_navigation',
       });
 
-      await sendRealWhatsAppMessage(fromPhone, reply);
+      await replyAndRemember(reply);
       return NextResponse.json({ status: 'acknowledged' });
     }
 
@@ -391,7 +395,7 @@ export async function POST(req: NextRequest) {
         ? `Assalam-o-Alaikum! Aapka timetable check karne ke liye, barah-e-karam apna *Student Roll Number* (maslan \`AF-2026-001\`) ya apna *Batch / Semester* (maslan \`ACF 3rd\`, \`BBA 1st\`, \`BAN-2\`) bata dein.`
         : `Assalam-o-Alaikum! To check your schedule, could you please tell me your *Student Roll Number* (e.g. \`AF-2026-001\`) or your *Batch / Semester* (e.g. \`ACF 3rd\`, \`BBA 1st\`, \`BAN-2\`)?`;
 
-      await sendRealWhatsAppMessage(fromPhone, promptText);
+      await replyAndRemember(promptText);
       return NextResponse.json({ status: 'acknowledged' });
     }
 
@@ -413,10 +417,11 @@ export async function POST(req: NextRequest) {
           programName: currentBatch?.program,
           weeklySchedule: allWeekly,
           matchedCourseSession: enrichedCourseSession,
+          conversationHistory: getSessionHistory(fromPhone),
           intent: 'course_inquiry',
         });
 
-        await sendRealWhatsAppMessage(fromPhone, reply);
+        await replyAndRemember(reply);
         return NextResponse.json({ status: 'acknowledged' });
       }
 
@@ -430,12 +435,13 @@ export async function POST(req: NextRequest) {
           batchName: currentBatch?.name || session.batchName,
           programName: currentBatch?.program,
           weeklySchedule: allWeekly,
+          conversationHistory: getSessionHistory(fromPhone),
           nextClass: nextInfo.nextClass,
           currentClass: nextInfo.currentClass,
           intent: 'next_class',
         });
 
-        await sendRealWhatsAppMessage(fromPhone, reply);
+        await replyAndRemember(reply);
         return NextResponse.json({ status: 'acknowledged' });
       }
 
@@ -453,10 +459,11 @@ export async function POST(req: NextRequest) {
           programName: currentBatch?.program,
           weeklySchedule: allWeekly,
           todayClasses,
+          conversationHistory: getSessionHistory(fromPhone),
           intent: 'today',
         });
 
-        await sendRealWhatsAppMessage(fromPhone, reply);
+        await replyAndRemember(reply);
         return NextResponse.json({ status: 'acknowledged' });
       }
 
@@ -473,11 +480,13 @@ export async function POST(req: NextRequest) {
           studentName: session.studentName,
           batchName: currentBatch?.name || session.batchName,
           programName: currentBatch?.program,
+          weeklySchedule: allWeekly,
           todayClasses: tomorrowClasses,
+          conversationHistory: getSessionHistory(fromPhone),
           intent: 'tomorrow',
         });
 
-        await sendRealWhatsAppMessage(fromPhone, reply);
+        await replyAndRemember(reply);
         return NextResponse.json({ status: 'acknowledged' });
       }
 
@@ -497,7 +506,7 @@ export async function POST(req: NextRequest) {
           ? `🗓️ *${currentBatch?.name || 'Aapka'} Weekly Timetable:*\n\n${scheduleFormatted.trim()}\n\nAgar kisi class ya room ka rasta poochna ho tou zaroor batayein!`
           : `🗓️ *Weekly Timetable for ${currentBatch?.name || 'Your Batch'}:*\n\n${scheduleFormatted.trim()}\n\nLet me know if you need specific room directions!`;
 
-        await sendRealWhatsAppMessage(fromPhone, reply);
+        await replyAndRemember(reply);
         return NextResponse.json({ status: 'acknowledged' });
       }
     }
@@ -507,6 +516,9 @@ export async function POST(req: NextRequest) {
     const nextInfo = currentBatchId
       ? getBatchNextClass(currentBatchId, sessions, courses, faculty, rooms)
       : undefined;
+    const weeklySchedule = currentBatchId
+      ? getBatchFullWeeklySchedule(currentBatchId, sessions, courses, faculty, rooms)
+      : undefined;
 
     const generalReply = await generateHumanTimetableResponse({
       userMessage: incomingText,
@@ -514,12 +526,14 @@ export async function POST(req: NextRequest) {
       studentName: session.studentName,
       batchName: session.batchName,
       programName: session.program,
+      weeklySchedule,
+      conversationHistory: getSessionHistory(fromPhone),
       nextClass: nextInfo?.nextClass,
       currentClass: nextInfo?.currentClass,
       intent: 'general',
     });
 
-    await sendRealWhatsAppMessage(fromPhone, generalReply);
+    await replyAndRemember(generalReply);
 
     return NextResponse.json({
       status: 'acknowledged',

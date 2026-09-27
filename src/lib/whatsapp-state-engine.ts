@@ -17,6 +17,12 @@ import {
   formatWhatsAppRoomNavigation 
 } from '@/lib/campus-navigation';
 
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  text: string;
+  timestamp: number;
+}
+
 export interface WhatsAppConversationSession {
   phoneNumber: string;
   studentId?: string;
@@ -26,6 +32,7 @@ export interface WhatsAppConversationSession {
   batchName?: string;
   program?: string;
   isIdentified: boolean;
+  history?: ChatMessage[];
   pendingIntent?: {
     type: 'full_timetable' | 'next_class' | 'today_schedule' | 'tomorrow_schedule' | 'day_schedule' | 'room_navigation' | 'course_schedule' | 'faculty_schedule' | 'custom_question';
     targetCourseId?: string;
@@ -45,6 +52,7 @@ export function getConversationSession(phoneNumber: string): WhatsAppConversatio
     conversationStore[phoneNumber] = {
       phoneNumber,
       isIdentified: false,
+      history: [],
       lastActivity: Date.now(),
     };
   }
@@ -58,6 +66,30 @@ export function updateConversationSession(
   const session = getConversationSession(phoneNumber);
   Object.assign(session, updates, { lastActivity: Date.now() });
   return session;
+}
+
+/**
+ * Maintains memory of the last 5 user & assistant messages
+ */
+export function addMessageToSessionHistory(phoneNumber: string, role: 'user' | 'assistant', text: string): void {
+  const session = getConversationSession(phoneNumber);
+  if (!session.history) {
+    session.history = [];
+  }
+  session.history.push({
+    role,
+    text,
+    timestamp: Date.now(),
+  });
+  // Maintain the last 10 messages (5 user + 5 assistant turns)
+  if (session.history.length > 10) {
+    session.history = session.history.slice(-10);
+  }
+}
+
+export function getSessionHistory(phoneNumber: string): ChatMessage[] {
+  const session = getConversationSession(phoneNumber);
+  return session.history || [];
 }
 
 export interface ProcessMessageContext {

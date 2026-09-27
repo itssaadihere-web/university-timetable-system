@@ -35,7 +35,7 @@ A zero-operational-cost, real-time web portal for automating university course, 
 7. **Zero-Operational-Cost Infrastructure**
    - **Frontend**: Next.js 14 (App Router) on Vercel Hobby Tier.
    - **Database & Sync**: Supabase Postgres Free Tier with Row Level Security (RLS) & Realtime WebSockets.
-   - **Automation**: n8n self-hosted workflows for WhatsApp / Email change notifications and automated `pg_dump` backups.
+   - **AI Agent**: Google Gemini 3.8 Flash integrated natively with Meta WhatsApp Cloud API.
 
 ---
 
@@ -77,15 +77,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-public-key
 
 ---
 
-## 🔔 n8n Automation Hub & WhatsApp Chat Agent
-- **WhatsApp Chat Agent Workflow**: An importable n8n workflow is ready to connect incoming WhatsApp messages to the timetable backend at `/api/whatsapp/webhook`.
-- **Schedule Change Webhook**: `POST /api/n8n/webhook` dispatches schedule change events to n8n to send WhatsApp / Email alerts to faculty and batch reps.
-- **Backup Endpoint**: `GET /api/backup` can be triggered weekly via an n8n Cron node to archive table snapshots to free object storage.
-
----
-
-## 📲 Connected WhatsApp Service (Meta / Twilio / n8n)
-Students can text directly from their WhatsApp phones to the university's designated number to query timetable schedules, immediate next class venues, and step-by-step campus room navigation.
+## 📲 Connected WhatsApp AI Agent (Gemini 3.8 Flash + Meta Cloud API)
+Students can text or send voice notes directly from WhatsApp to query timetable schedules, immediate next class venues, and step-by-step campus room navigation.
 
 ### Webhook Endpoint
 - **GET & POST `/api/whatsapp/webhook`**

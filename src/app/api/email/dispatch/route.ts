@@ -88,34 +88,6 @@ export async function POST(req: NextRequest) {
       },
     ];
 
-    // Forward to n8n automation hub if configured
-    const n8nWebhookUrl = process.env.N8N_SCHEDULE_CHANGE_WEBHOOK_URL;
-    if (n8nWebhookUrl) {
-      try {
-        await fetch(n8nWebhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            eventType,
-            changeSummary,
-            coordinatorName,
-            coordinatorEmail,
-            courseCode: course?.code,
-            courseName: course?.name,
-            instructorName: faculty?.name,
-            instructorEmail: faculty?.email,
-            batchName: batch?.name,
-            newSlot: { day: dayName, time: newTime, room: room?.name, building: navInfo?.buildingType },
-            previousSlot: { day: prevDayName, time: prevTime, room: previousRoom?.name },
-            recipients,
-            timestamp: new Date().toISOString(),
-          }),
-        });
-      } catch (n8nErr) {
-        console.warn('n8n Webhook forward notice:', n8nErr);
-      }
-    }
-
     console.info(`[Email Agent Dispatched] 4 Stakeholder Notifications sent for session ${updatedSession.id}`);
 
     return NextResponse.json({
