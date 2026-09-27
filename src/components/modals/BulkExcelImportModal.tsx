@@ -262,6 +262,10 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
 
       // Extract only batches, courses, faculty, rooms, sessions from included rows
       const finalSessions = parseResult.generatedSessions.filter((s) => {
+        const rowIndex = (s as any).rowIndex;
+        if (rowIndex !== undefined && excludedRowIndices.has(rowIndex)) {
+          return false;
+        }
         const matchingRow = parseResult.rows.find((r) => r.courseCode === (s as any).course_code && r.resolvedBatchName === (s as any).batch_name);
         if (matchingRow && excludedRowIndices.has(parseResult.rows.indexOf(matchingRow))) {
           return false;

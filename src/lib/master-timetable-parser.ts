@@ -324,21 +324,77 @@ export function parseMasterTimetableData(
   }
 
   const headerRow = rawData[headerIndex].map((h) => String(h || '').trim().toLowerCase());
-  const getColIdx = (...terms: string[]) => {
-    return headerRow.findIndex((h) =>
-      terms.some((t) => h.replace(/[\s_-]+/g, '').includes(t.replace(/[\s_-]+/g, '')))
-    );
+  const cleanHeader = headerRow.map((h) => h.replace(/[\s_\-\/.]+/g, ''));
+
+  // Prioritized term search: checks each candidate term across all columns in priority order,
+  // while ensuring we don't accidentally reuse an already matched column (e.g. code vs title).
+  const getColIdx = (terms: string[], excludeIdxs: number[] = []) => {
+    for (const term of terms) {
+      const cleanTerm = term.replace(/[\s_\-\/.]+/g, '').toLowerCase();
+      const idx = cleanHeader.findIndex(
+        (h, i) => !excludeIdxs.includes(i) && h.includes(cleanTerm)
+      );
+      if (idx !== -1) return idx;
+    }
+    return -1;
   };
 
-  const degreeIdx = getColIdx('degreeprogram', 'degree', 'program');
-  const semIdx = getColIdx('semester', 'sem');
-  const codeIdx = getColIdx('coursecode', 'code');
-  const secIdx = getColIdx('section', 'sec');
-  const titleIdx = getColIdx('coursetitle', 'title', 'course');
-  const classNoIdx = getColIdx('classno', 'class', 'crn');
-  const instructorIdx = getColIdx('instructorname', 'instructor', 'faculty', 'teacher');
-  const roomIdx = getColIdx('roomvenue', 'room', 'venue');
-  const timingsIdx = getColIdx('daystimings', 'days', 'timings', 'schedule');
+  const degreeIdx = getColIdx(['degreeprogram', 'degree', 'program', 'dept', 'department']);
+  const semIdx = getColIdx(['semester', 'sem', 'term']);
+  const codeIdx = getColIdx([
+    'coursecode',
+    'crsecode',
+    'subjectcode',
+    'subcode',
+    'courseno',
+    'coursenum',
+    'classcode',
+    'code',
+  ]);
+  const secIdx = getColIdx(['section', 'sec']);
+  
+  // For Course Title: look for Title / Name columns first, strictly excluding codeIdx!
+  const titleIdx = getColIdx(
+    [
+      'coursetitle',
+      'coursename',
+      'subjecttitle',
+      'subjectname',
+      'title',
+      'coursedescription',
+      'description',
+      'subject',
+      'coursetext',
+      'course', // fallback if column is simply named "Course" (and not "Course Code")
+    ],
+    codeIdx !== -1 ? [codeIdx] : []
+  );
+
+  const classNoIdx = getColIdx(
+    ['classno', 'classnum', 'classnumber', 'class#', 'class', 'crn', 'callno'],
+    [codeIdx, titleIdx].filter((i) => i !== -1)
+  );
+  const instructorIdx = getColIdx([
+    'instructorname',
+    'instructor',
+    'facultyname',
+    'faculty',
+    'teachername',
+    'teacher',
+    'professor',
+  ]);
+  const roomIdx = getColIdx(['roomvenue', 'venue', 'room', 'classroom', 'hall', 'location']);
+  const timingsIdx = getColIdx([
+    'daystimings',
+    'daystiming',
+    'daytiming',
+    'timings',
+    'timing',
+    'days',
+    'schedule',
+    'time',
+    'slot',
+  ]);
 
   const rows = rawData.slice(headerIndex + 1);
 
@@ -452,12 +508,19 @@ export function parseMasterTimetableData(
         resolvedCourse = {
           id: generateUUID(),
           code: stdCode,
-          name: rawTitle,
+          name: rawTitle || stdCode,
           department: batchInfo.program || 'Management Sciences',
           credit_hours: 3,
           required_room_types: isLabCourse ? ['computer_lab', 'multimedia'] : ['standard'],
         };
         coursesMap.set(courseKey, resolvedCourse);
+      } else {
+        // If course exists, update its name with the title from the file if the title is valid
+        if (rawTitle && rawTitle.toLowerCase() !== stdCode.toLowerCase()) {
+          resolvedCourse.name = rawTitle;
+        } else if (rawTitle && (resolvedCourse.name === resolvedCourse.code || !resolvedCourse.name || resolvedCourse.name.startsWith('CRS-') || resolvedCourse.name === 'Course')) {
+          resolvedCourse.name = rawTitle;
+        }
       }
 
       // --- Faculty Entity ---
@@ -543,7 +606,10 @@ export function parseMasterTimetableData(
           end_time: slot.endTime,
           session_type: 'regular',
           status: 'published',
-        });
+          course_code: stdCode,
+          batch_name: batchInfo.name,
+          rowIndex: idx,
+        } as any);
       });
     }
   });
