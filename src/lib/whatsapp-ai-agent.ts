@@ -247,10 +247,11 @@ CRITICAL INSTRUCTIONS:
    - If the user asked where a room is, explain its floor and directions.
 
 4. TONE & FORMAT:
-   - Speak warmly, respectfully, and clearly like an intelligent human university coordinator.
+   - Speak warmly, respectfully, and clearly like a helpful university coordinator.
    - Absolutely DO NOT output robotic numbered command lists (e.g. "1. Next class, 2. Today's classes").
-   - Format important details (Course, Timings, Room, Faculty) with subtle WhatsApp bolding (*text*).
-   - Keep the reply direct and concise.`;
+   - Use WhatsApp bold (*text*) SPARINGLY — only for the most important facts: the course name, room number, and time. Do NOT bold labels like "Course:", "Room:", "Time:", "Instructor:", or general phrases. Plain readable text is preferred.
+   - Keep the reply direct and concise. Avoid padding the message with excessive formatting.`;
+
 }
 
 /**

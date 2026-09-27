@@ -81,30 +81,32 @@ export function getCleanCourseDisplay(course?: Partial<Course>): { code: string;
   let code = (course.code || '').trim();
   let name = (course.name || '').trim();
 
-  // If code is a system placeholder (like "CRS-5100" or empty) and name contains the actual code in parentheses/brackets:
-  const parenMatch = name.match(/^[(\[]\s*([A-Za-z0-9\s-]+?)\s*[)\]]\s*[:|-]?\s*(.+)$/);
-  if (parenMatch) {
-    // If current code is an automated placeholder or blank, adopt the user's explicit code from the title
-    if (!code || /^CRS-\d+$/i.test(code)) {
+  // Only attempt to parse/extract code+name from the name string when no real code exists yet.
+  // If a valid code is already stored (not blank and not a CRS-placeholder), trust it and
+  // display the name exactly as stored — avoids mangling names that contain dashes or colons.
+  const isMissingCode = !code || /^CRS-\d+$/i.test(code);
+
+  if (isMissingCode) {
+    // Try to extract code from name if it's in a pattern like "(ACC-101) Title" or "ACC-101: Title"
+    const parenMatch = name.match(/^[(\[]\s*([A-Za-z0-9\s-]+?)\s*[)\]]\s*[:|-]?\s*(.+)$/);
+    if (parenMatch) {
       code = parenMatch[1].trim().toUpperCase();
-    }
-    // Clean name so it doesn't duplicate the code in parentheses
-    name = parenMatch[2].trim();
-  } else {
-    const dashMatch = name.match(/^([A-Za-z0-9\s-]+?)[:|-]\s*(.+)$/);
-    if (dashMatch && dashMatch[1].length <= 8) {
-      if (!code || /^CRS-\d+$/i.test(code)) {
+      name = parenMatch[2].trim();
+    } else {
+      const dashMatch = name.match(/^([A-Za-z0-9\s-]+?)[:|-]\s*(.+)$/);
+      if (dashMatch && dashMatch[1].length <= 8) {
         code = dashMatch[1].trim().toUpperCase();
+        name = dashMatch[2].trim();
       }
-      name = dashMatch[2].trim();
     }
   }
 
   return {
     code: code || 'CRS-101',
-    name: name || 'Course',
+    name: name || code || 'Course',
   };
 }
+
 
 /**
  * Normalization helpers to reliably match user Excel inputs to database entities

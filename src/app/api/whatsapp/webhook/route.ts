@@ -59,6 +59,11 @@ export async function GET(req: NextRequest) {
   });
 }
 
+// Deduplication: track recently processed message IDs to prevent Meta retry duplicates.
+// Meta may re-deliver the same event if it doesn't receive a fast 200 response.
+const processedMessageIds = new Set<string>();
+const MAX_DEDUP_ENTRIES = 500; // prevent unbounded memory growth
+
 /**
  * POST Handler for Meta WhatsApp Inbound Messages
  */
@@ -78,10 +83,25 @@ export async function POST(req: NextRequest) {
     const fromPhone = message.from; // e.g. "923200269021"
     const messageId = message.id;
 
-    // 1. Mark incoming message as read (blue double ticks)
+    // 1. Deduplicate: Meta sometimes re-delivers the same event. Skip if already processed.
+    if (messageId) {
+      if (processedMessageIds.has(messageId)) {
+        console.log(`[WhatsApp Dedup] Duplicate message ${messageId} — skipping.`);
+        return NextResponse.json({ status: 'acknowledged' });
+      }
+      processedMessageIds.add(messageId);
+      // Trim set if it grows too large
+      if (processedMessageIds.size > MAX_DEDUP_ENTRIES) {
+        const firstKey = processedMessageIds.values().next().value;
+        if (firstKey) processedMessageIds.delete(firstKey);
+      }
+    }
+
+    // 2. Mark incoming message as read (blue double ticks)
     if (messageId) {
       markWhatsAppMessageAsRead(messageId).catch(() => {});
     }
+
 
     // 2. Extract message content across all formats (text, interactive buttons, list, voice notes)
     let incomingText = '';
