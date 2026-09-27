@@ -251,51 +251,37 @@ export function resolveBatchInfo(
   semesterVal: string,
   sectionVal: string
 ): { name: string; semester: number; program: string; section: string } {
-  const degree = (degreeProgram || '').trim();
+  const degree = (degreeProgram || '').trim() || 'Undergraduate';
   const sem = (semesterVal || '').trim();
   const sec = (sectionVal || '').trim();
 
-  // If Semester contains specific cohort name e.g. "BS (FT) - 2", "BS(AF) - 3A", "BBA - 2", "BAN - 2", "ARM - 3"
-  const isCohortPattern =
-    (/^[A-Za-z0-9()\s]+[-–]\s*\d+[A-Za-z]?/i.test(sem) || /^[A-Za-z]+[-–]\d+/i.test(sem)) &&
-    !sem.toLowerCase().startsWith('semester');
+  let semPart = '1';
+  let semNumber = 1;
 
-  if (isCohortPattern) {
-    const semDigitMatch = sem.match(/\d+/);
-    const semNum = semDigitMatch ? parseInt(semDigitMatch[0], 10) : 1;
-    return {
-      name: sem,
-      semester: semNum,
-      program: degree || 'Management Sciences',
-      section: sec,
-    };
-  }
-
-  // Semester 1 / generic semester
-  const semDigitMatch = sem.match(/\d+/);
-  const semNum = semDigitMatch ? parseInt(semDigitMatch[0], 10) : 1;
-
-  let cleanName = `Batch-${sec}`;
-  if (degree.includes('A&F') && !degree.includes('FT')) {
-    cleanName = `Batch-${sec}-BAC`;
-  } else if (degree.includes('FinTech') || degree.includes('(FT)')) {
-    cleanName = `Batch-${sec}-FT`;
-  } else if (degree.includes('Business Analytics') || degree.includes('BAN')) {
-    cleanName = `Batch-${sec}-BAN`;
-  } else if (degree.includes('Supply Chain') || degree.includes('SCM')) {
-    cleanName = `Batch-${sec}-SCM`;
-  } else if (degree.includes('BBA')) {
-    cleanName = `Batch-${sec}-BBA`;
-  } else if (sec) {
-    cleanName = `Batch-${sec}`;
+  if (/^semester\s*(\d+)/i.test(sem)) {
+    const m = sem.match(/^semester\s*(\d+)/i);
+    semPart = m ? m[1] : '1';
+    semNumber = parseInt(semPart, 10) || 1;
   } else {
-    cleanName = `Semester ${semNum}`;
+    const m = sem.match(/[-–]\s*(\d+[A-Za-z]?)/);
+    if (m) {
+      semPart = m[1].toUpperCase();
+    } else {
+      const anyNum = sem.match(/(\d+[A-Za-z]?)/);
+      if (anyNum) semPart = anyNum[1].toUpperCase();
+    }
+    const numOnly = semPart.match(/\d+/);
+    semNumber = numOnly ? parseInt(numOnly[0], 10) : 1;
   }
+
+  // Exact user-specified syntax: "Sem <semPart> . <Degree Program>"
+  // e.g. "Sem 1 . BS (A&F)", "Sem 3A . BS (A&F)", "Sem 2 . BS (FinTech)", "Sem 2 . BBA"
+  const batchName = `Sem ${semPart} . ${degree}`;
 
   return {
-    name: cleanName,
-    semester: semNum,
-    program: degree || 'Management Sciences',
+    name: batchName,
+    semester: semNumber,
+    program: degree,
     section: sec,
   };
 }

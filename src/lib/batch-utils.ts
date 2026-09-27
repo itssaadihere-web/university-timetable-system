@@ -126,6 +126,19 @@ export function formatCleanBatch(batch: Partial<Batch>): CleanBatchDisplay {
     badgeColor = 'amber';
   }
 
+  if (name.startsWith('Sem ')) {
+    return {
+      batchNumber: name,
+      semesterLabel: `Sem ${batch.semester || 1}`,
+      programLabel: cleanProgram,
+      programCode: code,
+      displayTitle: name,
+      shortDisplay: name,
+      badgeText: batch.is_irregular ? 'Irregular' : (code || cleanSem),
+      badgeColor,
+    };
+  }
+
   // Display Title format: Semester / Batch Number & Program
   // e.g. "Sem 1 • Batch 1A • BS Accounting & Finance"
   const displayTitle = `${cleanSem} • ${cleanBatchNum} • ${cleanProgram}`;
