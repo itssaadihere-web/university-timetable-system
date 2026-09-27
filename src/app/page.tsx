@@ -125,8 +125,18 @@ export default function AppMainPage() {
             <span className="text-slate-300">•</span>
             <span className="text-slate-600">Salim Habib University</span>
           </div>
-          <div className="flex items-center gap-3 text-[11px] text-slate-400">
-            <span>Faculty of Management Sciences</span>
+          <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-slate-500">
+            <a href="/privacy" className="hover:text-shu-700 font-medium transition-colors">
+              Privacy Policy
+            </a>
+            <span className="text-slate-300">•</span>
+            <a href="/terms" className="hover:text-shu-700 font-medium transition-colors">
+              Terms of Service
+            </a>
+            <span className="text-slate-300">•</span>
+            <a href="/data-deletion" className="hover:text-shu-700 font-medium transition-colors">
+              Data Deletion
+            </a>
           </div>
         </div>
       </footer>
