@@ -105,3 +105,35 @@ export function getCleanCourseDisplay(course?: Partial<Course>): { code: string;
     name: name || 'Course',
   };
 }
+
+/**
+ * Normalization helpers to reliably match user Excel inputs to database entities
+ */
+export function normalizeCode(str: string): string {
+  return (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+export function normalizeName(str: string): string {
+  return (str || '')
+    .toLowerCase()
+    .replace(/^(dr|prof|engr|mr|ms|mrs)\.?\s+/i, '')
+    .replace(/[^a-z0-9]/g, '');
+}
+
+export function normalizeEmail(str: string): string {
+  return (str || '').toLowerCase().replace(/[^a-z0-9@]/g, '');
+}
+
+export function normalizeBatch(str: string): string {
+  return (str || '')
+    .toLowerCase()
+    .replace(/^(batch|sec|section)[\s_-]*/i, '')
+    .replace(/[^a-z0-9]/g, '');
+}
+
+export function normalizeRoom(str: string): string {
+  return (str || '')
+    .toLowerCase()
+    .replace(/^(room|hall|lab|classroom)\s+/i, '')
+    .replace(/[^a-z0-9]/g, '');
+}

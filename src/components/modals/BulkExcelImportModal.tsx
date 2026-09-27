@@ -18,6 +18,7 @@ import {
   Info
 } from 'lucide-react';
 import { generateUUID, isValidUUID } from '@/lib/uuid';
+import { normalizeCode, normalizeName, normalizeEmail, normalizeBatch, normalizeRoom } from '@/lib/course-utils';
 
 export type ImportEntityType = 'rooms' | 'faculty' | 'batches' | 'courses' | 'sessions' | 'students';
 
@@ -501,7 +502,10 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
             resolvedBatchId = directMatch.id;
             resolvedBatchName = directMatch.name;
           } else if (rawBatchName) {
-            const nameMatch = batches.find((b) => b.name.trim().toLowerCase() === rawBatchName.trim().toLowerCase());
+            const nameMatch = batches.find(
+              (b) => b.name.trim().toLowerCase() === rawBatchName.trim().toLowerCase() ||
+                     normalizeBatch(b.name) === normalizeBatch(rawBatchName)
+            );
             if (nameMatch) {
               resolvedBatchId = nameMatch.id;
               resolvedBatchName = nameMatch.name;
@@ -512,8 +516,13 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
             resolvedBatchId = rawBatchId;
           }
         } else if (rawBatchName) {
+          const normRaw = normalizeBatch(rawBatchName);
           const nameMatch = batches.find(
-            (b) => b.name.trim().toLowerCase() === rawBatchName.trim().toLowerCase() || b.id.toLowerCase() === rawBatchName.toLowerCase()
+            (b) => b.name.trim().toLowerCase() === rawBatchName.trim().toLowerCase() ||
+                   b.id.toLowerCase() === rawBatchName.toLowerCase() ||
+                   normalizeBatch(b.name) === normRaw ||
+                   (normRaw && normalizeBatch(b.name).includes(normRaw)) ||
+                   (normRaw && normRaw.includes(normalizeBatch(b.name)))
           );
           if (nameMatch) {
             resolvedBatchId = nameMatch.id;
@@ -539,7 +548,11 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
             resolvedCourseCode = directMatch.code;
             resolvedCourseName = directMatch.name;
           } else if (rawCourseCode) {
-            const codeMatch = courses.find((c) => c.code.trim().toLowerCase() === rawCourseCode.trim().toLowerCase());
+            const normCode = normalizeCode(rawCourseCode);
+            const codeMatch = courses.find(
+              (c) => c.code.trim().toLowerCase() === rawCourseCode.trim().toLowerCase() ||
+                     normalizeCode(c.code) === normCode
+            );
             if (codeMatch) {
               resolvedCourseId = codeMatch.id;
               resolvedCourseCode = codeMatch.code;
@@ -551,10 +564,19 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
             resolvedCourseId = rawCourseId;
           }
         } else if (rawCourseCode || rawCourseName) {
-          const target = (rawCourseCode || rawCourseName).trim().toLowerCase();
-          const match = courses.find(
-            (c) => c.code.trim().toLowerCase() === target || c.name.trim().toLowerCase() === target || c.id.toLowerCase() === target
-          );
+          const normCode = normalizeCode(rawCourseCode);
+          const normName = normalizeCode(rawCourseName);
+          const match = courses.find((c) => {
+            const cNormCode = normalizeCode(c.code);
+            const cNormName = normalizeCode(c.name);
+            return (
+              (normCode && cNormCode === normCode) ||
+              (normName && cNormName === normName) ||
+              (normCode && cNormName.includes(normCode)) ||
+              (normName && cNormCode.includes(normName)) ||
+              (normCode && cNormCode.includes(normCode))
+            );
+          });
           if (match) {
             resolvedCourseId = match.id;
             resolvedCourseCode = match.code;
@@ -581,8 +603,12 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
             resolvedFacultyName = directMatch.name;
             resolvedFacultyEmail = directMatch.email;
           } else if (rawFacultyEmail || rawFacultyName) {
-            const target = (rawFacultyEmail || rawFacultyName).trim().toLowerCase();
-            const match = faculty.find((f) => f.email.trim().toLowerCase() === target || f.name.trim().toLowerCase() === target);
+            const normEmail = normalizeEmail(rawFacultyEmail);
+            const normName = normalizeName(rawFacultyName);
+            const match = faculty.find(
+              (f) => (normEmail && normalizeEmail(f.email) === normEmail) ||
+                     (normName && normalizeName(f.name) === normName)
+            );
             if (match) {
               resolvedFacultyId = match.id;
               resolvedFacultyName = match.name;
@@ -594,10 +620,20 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
             resolvedFacultyId = rawFacultyId;
           }
         } else if (rawFacultyEmail || rawFacultyName) {
-          const target = (rawFacultyEmail || rawFacultyName).trim().toLowerCase();
-          const match = faculty.find(
-            (f) => f.email.trim().toLowerCase() === target || f.name.trim().toLowerCase() === target || f.id.toLowerCase() === target
-          );
+          const normEmail = normalizeEmail(rawFacultyEmail);
+          const normName = normalizeName(rawFacultyName);
+          const emailPrefix = rawFacultyEmail ? normalizeName(rawFacultyEmail.split('@')[0]) : '';
+          const match = faculty.find((f) => {
+            const fNormEmail = normalizeEmail(f.email);
+            const fNormName = normalizeName(f.name);
+            return (
+              (normEmail && fNormEmail === normEmail) ||
+              (normName && fNormName === normName) ||
+              (emailPrefix && fNormName === emailPrefix) ||
+              (normName && fNormName.includes(normName)) ||
+              (normName && normName.includes(fNormName))
+            );
+          });
           if (match) {
             resolvedFacultyId = match.id;
             resolvedFacultyName = match.name;
@@ -622,7 +658,11 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
             resolvedRoomId = directMatch.id;
             resolvedRoomName = directMatch.name;
           } else if (rawRoomName) {
-            const match = rooms.find((r) => r.name.trim().toLowerCase() === rawRoomName.trim().toLowerCase());
+            const normRoom = normalizeRoom(rawRoomName);
+            const match = rooms.find(
+              (r) => r.name.trim().toLowerCase() === rawRoomName.trim().toLowerCase() ||
+                     normalizeRoom(r.name) === normRoom
+            );
             if (match) {
               resolvedRoomId = match.id;
               resolvedRoomName = match.name;
@@ -633,9 +673,17 @@ export const BulkExcelImportModal: React.FC<BulkExcelImportModalProps> = ({
             resolvedRoomId = rawRoomId;
           }
         } else if (rawRoomName) {
-          const match = rooms.find(
-            (r) => r.name.trim().toLowerCase() === rawRoomName.trim().toLowerCase() || r.id.toLowerCase() === rawRoomName.toLowerCase()
-          );
+          const normRoom = normalizeRoom(rawRoomName);
+          const match = rooms.find((r) => {
+            const rNorm = normalizeRoom(r.name);
+            return (
+              r.name.trim().toLowerCase() === rawRoomName.trim().toLowerCase() ||
+              r.id.toLowerCase() === rawRoomName.toLowerCase() ||
+              (normRoom && rNorm === normRoom) ||
+              (normRoom && rNorm.includes(normRoom)) ||
+              (normRoom && normRoom.includes(rNorm))
+            );
+          });
           if (match) {
             resolvedRoomId = match.id;
             resolvedRoomName = match.name;
